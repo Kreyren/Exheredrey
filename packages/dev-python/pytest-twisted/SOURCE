@@ -1,0 +1,37 @@
+# Created by Jacob "Kreyren" Hrbek <kreyren@rixotstudio.cz> in 2019 under GNUv2 (https://www.gnu.org/licenses/old-licenses/gpl-2.0.en.html)
+
+# NOT PRODUCTION READY!!!
+
+# ABSTRACT: Resolve https://gitlab.exherbo.org/kreyren/exheredrey/issues/28 since it seems to be easy to include -> Fetch and compile.
+##X Depends on python 2.7~3.7 ||/&& pypi 1.10
+## Installed using `pip install pytest-twisted`
+## Source: https://github.com/pytest-dev/pytest-twisted
+## Make one SOURCE file with symlinks to rest of the files to make automatic version bumps
+
+BUGS_TO="exherbo.gitlab+kreyren-exheredrey-779-2e93xao4j6itjj8byb9pqb5vc-issue@gmail.com" # Email an issue in https://gitlab.exherbo.org/kreyren/exheredrey/issues
+
+# INFO
+REPOSITORY="pytest-twisted"
+  REPO="${REPOSITORY}" # Shorthand for REPOSITORY
+UPSTREAM="pytest-dev"
+  PUS="${UPSTREAM}" # Shorthand for UPSTREAM
+SUMMARY="Python twisted framework test function."
+DESCRIPTION="pytest-twisted is a plugin for pytest, which allows to test code, which uses the twisted framework. test functions can return Deferred objects and pytest will wait for their completion with this plugin." # From https://github.com/pytest-dev/pytest-twisted/blob/master/README.rst
+LICENCES="BSD-3-Clause"
+
+# Technical
+## TODO: Add more platforms
+DEPENDENCIES="
+    build+run:
+        dev-lang/python[>=2.7] [[
+            description = [ python 2.7,3.4,3.5,3.6,3.7 || pypi 1.10 mandatory ]
+            url = [ https://git.exherbo.org/summer/packages/dev-lang/python/index.html ]
+        ]]
+"
+DOWNLOADS="platform:amd64? ( https://github.com/pytest-dev/pytest-twisted/archive/1.8.tar.gz )"
+SLOT="0"
+PLATFORMS="~amd64" # Possible other archs
+
+pkg_setup() {
+  pip install pytest-twisted || die "Unable to install pytest-twisted." # This is so wrong, but i need more info
+}

@@ -1,0 +1,11 @@
+# Created by Jacob "Kreyren" Hrbek <kreyren@rixotstudio.cz> in 2019 under GNUv2 (https://www.gnu.org/licenses/old-licenses/gpl-2.0.en.html)
+
+# ABSTRACT: Provide wrapper for WINE that doesn't violate sandbox and exports finished wineprefix into live system to be used with end-user's WINE without the need of installation.
+
+DEPENDENCIES="
+    %%Depends on wine%%
+"
+GAMEDIR="$HOME/Games"
+
+wine() { env WINEDEBUG="fixme-all" WINEPREFIX="${IMAGEDIR}/${GAMEDIR}/${PN}-paludis" wine $1 }
+## Do i need more?

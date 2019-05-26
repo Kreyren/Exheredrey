@@ -1,0 +1,8 @@
+Title: example
+Author: Jacob hrbek <kreyren@rixotstudio.cz>
+Content-Type: text/plain
+Posted: 2019-04-19
+Revision: 1
+News-Item-Format: 1.0
+
+ Lorem ipsum dolor sit amet, consectetur adipiscing elit. Integer a vestibulum quam, ac gravida ante. Morbi pulvinar enim venenatis ipsum porta laoreet. In vulputate, est a ultricies hendrerit, ipsum nisi molestie lacus, sed fringilla magna mauris vitae urna. In auctor vitae odio quis consectetur. Sed ut ultrices ligula. Nullam at diam malesuada, porta nisl sit amet, porta lectus. Ut eu tortor ac justo suscipit sodales. Morbi fringilla felis a lectus iaculis eleifend. Etiam ut felis viverra, maximus lorem at, rhoncus purus. Aliquam maximus aliquet odio, sed mattis justo accumsan eu. 

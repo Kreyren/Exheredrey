@@ -1,0 +1,10 @@
+# Created by Jacob "Kreyren" Hrbek <kreyren@rixotstudio.cz> in 2019 under GNUv2 (https://www.gnu.org/licenses/old-licenses/gpl-2.0.en.html)
+
+# NOT PRODUCTION READY!!!
+
+# ABSTRACT: Fetch DoTA2 using paludis steamless.
+## Steam authentification to fetch from steam server
+## Authentificate into DoTA2 *somehow*
+
+
+die "WIP"

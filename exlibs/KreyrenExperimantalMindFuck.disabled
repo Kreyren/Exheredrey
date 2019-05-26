@@ -1,0 +1,14 @@
+## EXPERIMENTAL
+deduce_source() { # Helper: If source is provided on github, fetch only based on provided upstream and repository name
+
+# Abstract check GitHub if provided $UPSTREAM and $REPOSITORY are valid; if valid -> Use as variable.
+## Download each hoster in /tmp
+
+  if [[ $HOSTED="GitHub" && <option_is_not_kreygitted> ]]; then
+    # FIXME: Could be done better
+    [ $(printf ${PLATFORMS} | grep -o "amd64") = "amd64" ] && DOWNLOADS="${DOWNLOADS}\nplatform:amd64? ( https://github.com/${PUS}/${REPO}/archive/${PV}.tar.gz )"
+    [ $(printf ${PLATFORMS} | grep -o "i636") = "i636" ] && DOWNLOADS="${DOWNLOADS}\nplatform:amd64? ( https://github.com/${PUS}/${REPO}/archive/${PV}.tar.gz ) -> i636_source"
+  fi
+
+  :
+}

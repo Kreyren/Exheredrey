@@ -1,0 +1,42 @@
+# Copyright 2019 Jacob Hrbek <kreyren@rixotstudio.cz>
+# Distributed under the terms of the GNU General Public License v2
+
+# DISCLAIMER: This is first exhered made by Kreyren which is expected to be masterpiece, feel free to insult me over anything that is not perfect, excluding comments which are mandatory for me.
+
+SUMMARY="Multiplayer Online Battle Arena (MOBA) video game."
+DESCRIPTION="Multiplayer Online Battle Arena video game developed by Riot Games, inc."
+
+HOMEPAGE="https://www.leagueoflegends.com/"
+REGION="eune" # temporary, TODO: logic for region
+DOWNLOADS="https://riotgamespatcher-a.akamaihd.net/releases/live/installer/deploy/League%20of%20Legends%20installer%20${REGION}.exe -> $SOURCE"
+
+LICENCES="Proprietary shit"
+SLOT="0"
+PLATFORMS="amd64 x86 ~amd64 ~x86"
+MYOPTION="" # TODO: Investigate
+
+DEPENDENCIES="
+  build:
+    app-emulation/wine[>=4.6][staging]
+  build+run:
+    app-emulation/wine[>=4.6][staging]
+" # Assuming https://git.exherbo.org/summer/packages/app-emulation/wine/index.html used
+
+BUGS_TO="kreyren@rixotstudio.cz
+  wine? (someone@exherbo.org)"
+
+# TODO: Expected to download source and run it in wine to install in $HOME/Games/LeagueOfLegends wineprefix with executable `leagueoflegends`
+## Installation of software should be sandboxed and sanity checked after the fact.
+
+pkg_setup {
+# Do not run as root!
+# TODO: invoke wine <LOL_INSTALLER.exe> and install in $HOME/Games/LeagueOfLegends
+:
+}
+
+pkg_install {
+# TODO: if pkg-setup was successful -> Install in live system.
+:
+}
+
+## STATUS: Abadoned for now, bcs exherbo ppl think i'm crazy
