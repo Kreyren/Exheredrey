@@ -3,9 +3,13 @@
 # ABSTRACT: Provide wrapper for WINE that doesn't violate sandbox and exports finished wineprefix into live system to be used with end-user's WINE without the need of installation.
 
 DEPENDENCIES="
-    %%Depends on wine%%
-"
+  build:
+    app-emulation/wine
+  build+run:
+    app-emulation/wine
+" # Assuming https://git.exherbo.org/summer/packages/app-emulation/wine/index.html used
+
 GAMEDIR="$HOME/Games"
 
-wine() { env WINEDEBUG="fixme-all" WINEPREFIX="${IMAGEDIR}/${GAMEDIR}/${PN}-paludis" wine $1 }
+exwine() { env WINEDEBUG="fixme-all" WINEPREFIX="${IMAGEDIR}/${GAMEDIR}/${PN}-paludis" wine $1 }
 ## Do i need more?

@@ -1,0 +1,47 @@
+# Created by Jacob "Kreyren" Hrbek <kreyren@rixotstudio.cz> in 2019 under GNUv2 (https://www.gnu.org/licenses/old-licenses/gpl-2.0.en.html)
+
+# NOT PRODUCTION READY!!!
+
+# ABSTRACT: Resolve https://gitlab.exherbo.org/kreyren/exheredrey/issues/28 since it seems to be easy to include -> Fetch and compile.
+##X Depends on python 2.7~3.7 ||/&& pypi 1.10
+##X Installed using `pip install pytest-twisted`
+##X Source: https://github.com/pytest-dev/pytest-twisted
+## Perform tests
+### Relevant https://travis-ci.org/pytest-dev/pytest-twisted/jobs/537507943#L540
+####X pytest 4.5.0 - Needs verification
+
+require pypi [ suffix=zip ] # To resolve DOWNLOADS
+require setup-py [ import=setuptools test=pytest ]
+## From https://github.com/pytest-dev/pytest-twisted/blob/81b91f174c19a7337386700275dcc30e2487ee3e/setup.py#L1 -> setuptools
+## Blacklist not needed assuming 2.7,3.4,3.5,3.7 supported
+### TODO: Make whitelist function, reason: sanitized
+
+BUGS_TO="exherbo.gitlab+kreyren-exheredrey-779-2e93xao4j6itjj8byb9pqb5vc-issue@gmail.com" # Email an issue in https://gitlab.exherbo.org/kreyren/exheredrey/issues
+
+# INFO
+SUMMARY="Python twisted framework test function."
+DESCRIPTION="pytest-twisted is a plugin for pytest, which allows to test code, which uses the twisted framework. test functions can return Deferred objects and pytest will wait for their completion with this plugin." # From https://github.com/pytest-dev/pytest-twisted/blob/master/README.rst
+LICENCES="BSD-3" # BSD-3-Clause is used
+#HOMEPAGE="https://pypi.org/project/pytest-twisted/"
+#DOWNLOADS="https://github.com/pytest-dev/pytest-twisted/archive/${PV}.tar.gz"
+#DEPENDENCIES="
+#    build:
+#        dev-python/setuptools_scm[python_abis:*(-)?]
+#"
+DEPENDENCIES="
+  test:
+    dev-python/decorator
+    dev-python/greenlet
+    net-twisted/Twisted
+"
+## Left blank based on https://gitlab.exherbo.org/exherbo/python/blob/master/packages/dev-python/BeautifulSoup/BeautifulSoup.exlib#L37 assuming pypi and setup-py used which sets DEPENDENCIES assuming https://gitlab.exherbo.org/exherbo/arbor/blob/master/exlibs/setup-py.exlib#L116
+## Added dev-python/setuptools_scm based on https://gitlab.exherbo.org/exherbo/python/blob/master/packages/dev-python/Automat/Automat-0.6.0.exheres-0#L15
+## Based on https://gist.githubusercontent.com/Kreyren/47176d7967b6d8738df377cd55936d88/raw/f272b7f124293bd044f7d31767a536266f366f94/sagsdagas it depends on decorator for recommended_tests
+## Based on https://gist.githubusercontent.com/Kreyren/bf04f23b594cd05d854cb216b07584ff/raw/8f2f390b909e3ead8abd289c41223abb0b82a515/sagasdgasd it depends on greenlet for recommended_tests
+## Based on https://gist.githubusercontent.com/Kreyren/76aa0753386a284acd014edd0774b3ab/raw/a33a5478c89ce945e6231a0b795f0b78fb26b5e9/sdagasdghasd it depends on twisted for recommended_tests -> Twisted not present in exherbo repository -> tests can never be successful
+UPSTREAM_DOCUMENTATION="https://pypi.org/project/pytest-twisted/#description"
+UPSTREAM_CHANGELOG="https://pypi.org/project/pytest-twisted/#history"
+MYOPTIONS=""
+SLOT="0"
+#DOWNLOADS="https://github.com/pytest-dev/pytest-twisted/archive/${PV}.tar.gz"
+# Fails if grabbed by pypi exlib with HTTP request sent, awaiting response... 404 Not Found

@@ -1,0 +1,77 @@
+# Copyright 2009, 2010 Ingmar Vanhassel
+# Distributed under the terms of the GNU General Public License v2
+
+require autotools [ supported_autoconf=[ 2.5 ] supported_automake=[ 1.16 ] ]
+require flag-o-matic
+
+SUMMARY="Libraries/utilities to handle ELF objects"
+HOMEPAGE="https://sourceware.org/${PN}"
+DOWNLOADS="${HOMEPAGE}/ftp/${PV}/${PNV}.tar.bz2"
+
+BUGS_TO="philantrop@exherbo.org"
+
+LICENCES="GPL-3 || ( GPL-2 LGPL-3 )"
+SLOT="0"
+PLATFORMS="~amd64 ~arm ~armv7 ~armv8 ~x86"
+MYOPTIONS="( libc: musl )"
+
+RESTRICT="test"
+
+DEPENDENCIES="
+    build:
+        sys-devel/bison
+        sys-devel/flex[>=2.5.4]
+        sys-devel/gettext[>=0.18.2]
+    build+run:
+        app-arch/bzip2
+        app-arch/xz
+        sys-libs/zlib
+        libc:musl? (
+            dev-libs/argp-standalone
+            dev-libs/musl-fts
+            dev-libs/musl-obstack[>=1.1]
+        )
+        !dev-libs/libelf [[
+            description = [ installs the same headers, but the libraries are ABI incompatible ]
+            resolution = manual
+        ]]
+"
+
+DEFAULT_SRC_CONFIGURE_PARAMS=(
+    --program-prefix=eu-
+    --enable-nls
+    --disable-valgrind
+    --with-bzlib
+    --with-lzma
+    --with-zlib
+)
+
+
+if [[ $(exhost --target) == *-musl* ]]; then
+    DEFAULT_SRC_PREPARE_PATCHES+=(
+        "${FILES}"/musl-cdefs.patch
+        "${FILES}"/musl-fts-obstack.patch
+        "${FILES}"/musl-macros.patch
+        "${FILES}"/musl-qsort_r.patch
+        "${FILES}"/musl-strerror_r.patch
+        "${FILES}"/musl-strndupa.patch
+    )
+fi
+
+src_prepare() {
+    if [[ $(exhost --target) == *-musl* ]]; then
+        edo cp "${FILES}"/error.h "${WORK}"/lib
+        edo cp "${FILES}"/error.h "${WORK}"/src
+    fi
+
+    autotools_src_prepare
+}
+
+src_configure() {
+    # NOTE (abdulras) tests require that the debug information be present in the tools
+    expecting_tests && append-flags -g
+
+    append-flags -Wno-error
+
+    default
+}

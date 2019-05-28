@@ -1,0 +1,51 @@
+# Created by Jacob "Kreyren" Hrbek <kreyren@rixotstudio.cz> in 2019 under GNUv2 (https://www.gnu.org/licenses/old-licenses/gpl-2.0.en.html)
+
+# NOT PRODUCTION READY!
+
+require wine-wrapper
+
+# ABSTRACT: Fetch League Of Legends into sandboxed wineprefix where installation will be finished; then export into $GAMEDIR=$HOME/Games
+## Stage 2: Custom WINE to work around https://github.com/PhoenicisOrg/scripts/pull/797
+## Stage 3: DXV9 modification to get more raw power
+
+SUMMARY="Multiplayer Online Battle Arena (MOBA) video game."
+DESCRIPTION="Multiplayer Online Battle Arena video game developed by Riot Games, inc."
+
+HOMEPAGE="https://www.leagueoflegends.com/"
+REGION="EUNE" # temporary, TODO: logic for region
+DOWNLOADS="https://riotgamespatcher-a.akamaihd.net/releases/live/installer/deploy/League%20of%20Legends%20installer%20${REGION}.exe -> lol_installer.exe"
+## Checksum keeps changing, should be automatized
+
+LICENCES="Proprietary shit"
+SLOT="0"
+PLATFORMS="~amd64 ~x86"
+
+DEPENDENCIES="
+  build:
+    app-emulation/wine[>=4.8][staging,samba]
+  build+run:
+    app-emulation/wine[>=4.8][staging,samba]
+" # Assuming https://git.exherbo.org/summer/packages/app-emulation/wine/index.html used
+## WINE
+### Samba required for ntl..something
+### Staging required for to avoid pakman violation (Game's anti-cheat)
+### Always use latest version
+
+BUGS_TO="exherbo.gitlab+kreyren-exheredrey-779-2e93xao4j6itjj8byb9pqb5vc-issue@gmail.com
+  wine? (wine@exherbo.org)" # verify wine@exherbo.org
+
+# TODO: Expected to download source and run it in wine to install in $HOME/Games/LeagueOfLegends wineprefix with executable `leagueoflegends`
+## Installation of software should be sandboxed and sanity checked after the fact.
+
+pkg_setup() {
+  # Do not run as root!
+  # TODO: invoke wine <LOL_INSTALLER.exe> and install in $HOME/Games/LeagueOfLegends
+  [ $HOME == "/home/kreyren/" ] && env WINEDEBUG="fixme-all" WINEPREFIX="${IMAGEDIR}/$HOME/Games/${PN}-paludis" wine $1 lol_installer.exe || die "Unable to install league of legends."
+  ## Will probably fail once installation is finished?
+}
+
+pkg_install() {
+  # TODO: if pkg-setup was successful -> Install in live system.
+  # HELP_WANTED: Export content of $IMAGEDIR into live system
+:
+}

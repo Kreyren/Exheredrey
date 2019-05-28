@@ -29,6 +29,8 @@ LOW_PRIO: Mirror with Github
 
 LOW_PRIO: Integrate pbins (https://paludis.exherbo.org/overview/pbins.html)
 
+LOW_PRIO: Exherbo doesn't provide checksum -> Integrate 
+
 ### Installation (WIP)
 Unknown
 
