@@ -1,9 +1,9 @@
 # Exheredrey
-krey's personal repository on exherbo
+This is personal repository of Jacob Hrbek for personal use.
 
 !!! NOT PART OF EXHERBO !!!
 
-This is personal repository of Jacob Hrbek for personal use.
+![](https://media.giphy.com/media/WMyHsTLLKlBsc/giphy.gif)
 
 ### Installation (WIP)
 Parse following in /etc/paludis/repositories/exheredrey.conf
