@@ -1,4 +1,5 @@
-# Created by Jacob "Kreyren" Hrbek <kreyren@rixotstudio.cz> in 2019 under GNUv2 (https://www.gnu.org/licenses/old-licenses/gpl-2.0.en.html)
+# Copyright 2019 Jacob Hrbek <kreyren@rixotstudio.cz>
+# Distributed under the terms of the GNU General Public License v2
 
 require pytest-twisted
 
