@@ -32,7 +32,14 @@ LOW_PRIO: Integrate pbins (https://paludis.exherbo.org/overview/pbins.html)
 LOW_PRIO: Exherbo doesn't provide checksum -> Integrate 
 
 ### Installation (WIP)
-Unknown
+Parse following in /etc/paludis/repositories/exheredrey.conf
+```
+format = e
+location = /var/db/paludis/repositories/exheredrey
+sync = git+https://gitlab.exherbo.org/kreyren/exheredrey.git
+```
+
+TODO: Push in unavailable so that it can be grabbed using `cave resolve -x1 repository/exheredrey` once it's worth sharing
 
 ### Code Of Conduct (WIP)
 1) DevOps everything -> Make everything automatic
