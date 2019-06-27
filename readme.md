@@ -1,11 +1,13 @@
 # Exheredrey
 krey's personal repository on exherbo
 
-This is overlay ~~or how do you call that on exherbo~~ of exherbo packages + tweaks for personal usage.
+!!! NOT PART OF EXHERBO !!!
+
+This is personal repository of Jacob Hrbek for personal use.
 
 ##TODOs
 Sync with Arbor(system packages), Hasufell (OpenRC), others? That automatically merge into master if no conflicts; else make TODO in TODO.md asking for resolution with required info.
-1.1) Add Arbor branch
+1.1) Add Arbor branch - DONE
 1.1.1) Sync Arbor branch with master
 1.2) Add Hasufell branch
 1.2.1) Sync Hasufell with master
