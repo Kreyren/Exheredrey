@@ -19,7 +19,7 @@ LOW_PRIO: Adapt logic from Gentoo's RXT067 project to automatically make version
 3.2) LOW_PRIO: Try to add dependendies if recognized error is grabbed.
 
 
-LOW_PRIO: Adapt custom Tensorflow IA to resolve issues depending on context.
+EXPERIMENT: Adapt custom Tensorflow IA to resolve issues depending on context.
 
 
 HIGH_PRIO: Adapt passive compilation using MuQSS scaling and give paludis full power on jobs that won't hardbrick system nor affect end-user task on DREAMON.
@@ -29,7 +29,7 @@ LOW_PRIO: Mirror with Github
 
 LOW_PRIO: Integrate pbins (https://paludis.exherbo.org/overview/pbins.html)
 
-LOW_PRIO: Exherbo doesn't provide checksum -> Integrate 
+HIGH_PRIO: Exherbo doesn't provide checksum -> Integrate
 
 ### Installation (WIP)
 Parse following in /etc/paludis/repositories/exheredrey.conf
