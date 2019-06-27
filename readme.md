@@ -33,10 +33,10 @@ LOW_PRIO: Exherbo doesn't provide checksum -> Integrate
 
 ### Installation (WIP)
 Parse following in /etc/paludis/repositories/exheredrey.conf
-```
+```conf
 format = e
 location = /var/db/paludis/repositories/exheredrey
-sync = git+https://gitlab.exherbo.org/kreyren/exheredrey.git
+sync = git+ssh://git@gitlab.exherbo.org/kreyren/exheredrey.git
 ```
 
 TODO: Push in unavailable so that it can be grabbed using `cave resolve -x1 repository/exheredrey` once it's worth sharing
