@@ -1,0 +1,92 @@
+# Copyright 2008, 2009 Ali Polatel
+# Copyright 2009 Ingmar Vanhassel
+# Distributed under the terms of the GNU General Public License v2
+# Based in part upon 'distutils.eclass' from Gentoo, which is:
+#   Copyright 1999-2008 Gentoo Foundation
+
+# The distutils eclass is designed to allow easier installation of distutils-based python modules
+# and their incorporation into Exherbo.
+
+myexparam python_dep=
+
+myexparam -b has_lib=true
+myexparam -b has_bin=false
+
+exparam -v PYTHON_DEP python_dep
+exparam -v PYTHON_HAS_LIB has_lib
+exparam -v PYTHON_HAS_BIN has_bin
+
+PYTHON_EXLIB_API=2
+
+if [[ -n $(exparam python_dep) ]]; then
+    exparam -v PYTHON_DEP python_dep
+    if [[ "${PYTHON_DEP:0:1}" != '[' && "${PYTHON_DEP:0:1}" != '' ]]; then
+        PYTHON_EXLIB_API=1
+    fi
+else
+    # if not bin nor lib, we don't have a dependency and everything should work
+    if exparam -b has_lib || exparam -b has_bin; then
+        PYTHON_EXLIB_API=1
+    fi
+fi
+
+case ${PYTHON_EXLIB_API} in
+    1)
+        require python [ python_dep="${PYTHON_DEP}" has_lib="${PYTHON_HAS_LIB}" has_bin="${PYTHON_HAS_BIN}" ]
+
+        export_exlib_phases src_prepare src_compile src_install
+
+        distutils_src_prepare() {
+            default
+
+            # remove ez_setup stuff to prevent packages
+            # from installing setuptools on their own
+            rm -rf ez_setup*
+            echo "def use_setuptools(*args, **kwargs): pass" > ez_setup.py
+        }
+
+        distutils_src_compile() {
+            [[ -n ${@} ]] && die "${FUNCNAME} takes no arguments"
+
+            # get the sysconfig.py and friends for the target
+            local target=$(exhost --target)
+            export _PYTHON_HOST_PLATFORM=linux-${target%%-*}
+            export PYTHONPATH=$(python_get_libdir)
+
+            edo ${PYTHON} -B setup.py build_ext     \
+                --include-dirs=$(python_get_incdir) \
+                --library-dirs=$(python_get_libdir) \
+                "${DISTUTILS_SRC_COMPILE_PARAMS[@]}"
+
+            edo ${PYTHON} -B setup.py build         \
+                "${DISTUTILS_SRC_COMPILE_PARAMS[@]}"
+        }
+
+        distutils_src_install() {
+            [[ -n ${@} ]] && die "${FUNCNAME} takes no arguments"
+
+            # get the sysconfig.py and friends for the target
+            local target=$(exhost --target)
+            export _PYTHON_HOST_PLATFORM=linux-${target%%-*}
+            export PYTHONPATH=$(python_get_libdir)
+
+            edo ${PYTHON} -B setup.py install       \
+                --root="${IMAGE}"                   \
+                --install-data=/usr                 \
+                --prefix=/usr/$(exhost --target)    \
+                --no-compile                        \
+                "${DISTUTILS_SRC_INSTALL_PARAMS[@]}"
+
+            emagicdocs
+
+            python_bytecompile
+        }
+        ;;
+    2)
+        die "use the setup-py exlib instead of distutils"
+        ;;
+    *)
+        die "Detecting python exlib api went wrong"
+        ;;
+esac
+

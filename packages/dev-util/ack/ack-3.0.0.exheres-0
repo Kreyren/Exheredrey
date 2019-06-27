@@ -1,0 +1,51 @@
+# Copyright 2008, 2009, 2010, 2012 Ingmar Vanhassel <ingmar@exherbo.org>
+# Distributed under the terms of the GNU General Public License v2
+
+MY_PV=v${PV}
+MODULE_AUTHOR=PETDANCE
+
+require perl-module [ module_author=${MODULE_AUTHOR} ] \
+        bash-completion zsh-completion
+
+SUMMARY="Ack is a grep-like tool, aimed at programmers with large trees of source code"
+HOMEPAGE="https://beyondgrep.com/ ${HOMEPAGE}"
+DOWNLOADS="mirror://cpan/authors/id/P/PE/${MODULE_AUTHOR}/${PN}-${MY_PV}.tar.gz"
+
+BUGS_TO="ingmar@exherbo.org"
+
+SLOT="0"
+PLATFORMS="~amd64 ~armv8 ~x86"
+MYOPTIONS=""
+
+DEPENDENCIES="
+    build:
+        dev-lang/perl:*[>=5.8.9]
+    build+run:
+        dev-perl/File-Next[>=1.16]
+    test:
+        dev-perl/IO-Tty
+"
+
+WORK="${WORKBASE}"/${PN}-${MY_PV}
+
+DEFAULT_SRC_TEST_PARAMS=( -j1 )
+
+src_test() {
+    export TMPDIR=/tmp
+    default
+}
+
+src_install() {
+    perl-module_src_install
+
+    dodoc "${FILES}"/ackrc.example
+
+    # Neither the completions nor the script to generate them isn't included in the tarball,
+    # see https://github.com/petdance/ack2/issues/486 for details.
+    # I've generated them from the git repo with
+    # ./dev/generate-completion-scripts.pl completion.{bash,zsh} to avoid a
+    # dependency on dev-perl/Template-Toolkit.
+    dobashcompletion "${FILES}"/completion.bash
+    dozshcompletion "${FILES}"/completion.zsh _ack
+}
+

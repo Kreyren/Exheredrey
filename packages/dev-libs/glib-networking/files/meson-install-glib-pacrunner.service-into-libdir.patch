@@ -1,0 +1,29 @@
+Source: Timo Gurr <tgurr@exherbo.org>
+Upstream: Reported, https://bugzilla.gnome.org/show_bug.cgi?id=796332
+Reason: Fix install with libproxy option enabled
+
+From 760acf031e02e7739fd5875972d69b45debcfbac Mon Sep 17 00:00:00 2001
+From: Timo Gurr <timo.gurr@gmail.com>
+Date: Tue, 22 May 2018 15:09:01 +0200
+Subject: [PATCH] meson: install glib-pacrunner.service into libdir
+
+---
+ proxy/libproxy/meson.build | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/proxy/libproxy/meson.build b/proxy/libproxy/meson.build
+index 66a4d37..0a56ee0 100644
+--- a/proxy/libproxy/meson.build
++++ b/proxy/libproxy/meson.build
+@@ -17,7 +17,7 @@ configure_file(
+   input: service + '.in',
+   output: service,
+   install: true,
+-  install_dir: join_paths('lib', 'systemd', 'user'),
++  install_dir: join_paths(libdir, 'systemd', 'user'),
+   configuration: service_conf
+ )
+ 
+-- 
+2.17.0
+

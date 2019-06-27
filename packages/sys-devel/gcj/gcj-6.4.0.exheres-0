@@ -1,0 +1,15 @@
+# Copyright 2012 © Saleem Abdulrasool <compnerd@compnerd.org>
+# Distributed under the terms of the GNU General Public License v2
+
+ECJ_JAR_PV=4.9
+require gcj
+
+PLATFORMS="~amd64"
+
+DEFAULT_SRC_PREPARE_PATCHES=(
+    "${FILES}"/gcc-6-exherbo-multiarch-paths.patch
+    "${FILES}"/gcc-6-exherbo-gold-sysroot-support.patch
+    "${FILES}"/gcc-6-b685411208e0aaa79190d54faf945763514706b8.patch
+    "${FILES}"/gcc-6-2017-09-07-Matthias-Klose-doko-ubuntu.com.patch
+)
+

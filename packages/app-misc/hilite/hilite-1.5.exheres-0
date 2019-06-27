@@ -1,0 +1,28 @@
+# Copyright 2007 Bo Ørsted Andresen
+# Distributed under the terms of the GNU General Public License v2
+
+SUMMARY="Highlights stderr output in red"
+HOMEPAGE="http://sourceforge.net/projects/${PN}"
+DOWNLOADS="mirror://sourceforge/${PN}/${PN}.c -> ${PNV}.c"
+
+LICENCES="GPL-2"
+SLOT="0"
+PLATFORMS="~amd64 ~x86"
+MYOPTIONS=""
+
+DEPENDENCIES=""
+
+WORK="${WORKBASE}"
+
+src_unpack() {
+    edo cp "${FETCHEDDIR}/${ARCHIVES}" "${WORKBASE}"
+}
+
+src_compile() {
+    edo ${CC} ${CFLAGS} -o ${PN} ${PNV}.c
+}
+
+src_install() {
+    dobin ${PN}
+}
+

@@ -1,0 +1,171 @@
+# Copyright 2015 Saleem Abdulrasool <compnerd@compnerd.org>
+# Distributed under the terms of the GNU General Public License v2
+
+require gcc.gnu.org
+require alternatives toolchain-runtime-libraries
+
+export_exlib_phases src_unpack src_prepare src_configure src_compile src_install pkg_postinst
+
+SUMMARY="GNU C++ Runtime (libstdc++)"
+
+LICENCES="GPL-2"
+SLOT="$(ever major)"
+
+UPSTREAM_DOCUMENTATION="${HOMEPAGE}onlinedocs/libstdc++/libstdc++-html-USERS-${SLOT}/ [[ description = [ API documentation ] ]]"
+
+MYOPTIONS="
+    doc
+    (
+        linguas:
+            be ca da de el eo es fi fr hr id ja nl ru sr sv tr uk vi zh_CN zh_TW
+    )
+"
+
+DEPENDENCIES="
+    build:
+        sys-apps/texinfo[>4.4]
+        sys-devel/gcc:${SLOT}
+        sys-devel/gettext
+        doc? (
+            app-doc/doxygen[>=1.5.1]
+            app-text/docbook-xsl-ns-stylesheets
+            dev-libs/libxml2:2.0
+            dev-libs/libxslt
+            media-gfx/graphviz
+        )
+    build+run:
+        sys-libs/libatomic:${SLOT}
+    post:
+        sys-libs/libgcc:${SLOT}
+"
+
+# fails though it gets ignored. should be fixed and then marked as expensive.
+RESTRICT="test"
+
+# TODO(compnerd) enable precompiled headers
+# TODO(compnerd) make vtv an optional feature; it is not free and everything built against it will
+# need to explicitly depend on the VTV option as it changes vtable information.
+DEFAULT_SRC_CONFIGURE_PARAMS=(
+    --enable-clocale=gnu
+    --disable-libstdcxx-pch
+    --disable-vtable-verify
+    --with-python-dir=../share/gdb/python
+    --disable-multilib
+    --enable-libstdcxx-visibility
+    --with-default-libstdcxx-abi=new
+)
+
+if [[ ${PV} == *_pre* ]] ; then
+    ECONF_SOURCE="${WORKBASE}/gcc-$(ever major)-${PV##*_pre}/libstdc++-v3"
+elif [[ ${PV} == *-rc* ]] ; then
+    ECONF_SOURCE="${WORKBASE}/gcc-${PV/rc/RC-}/libstdc++-v3"
+else
+    ECONF_SOURCE="${WORKBASE}/gcc-${PV/_p?(re)/-}/libstdc++-v3"
+fi
+WORK="${WORKBASE}/build/$(exhost --target)/libstdc++-v3"
+
+libstdc++_src_unpack() {
+    default
+    edo mkdir -p "${WORK}"
+
+    # TODO(compnerd) find a more elegant solution to this (potentially addressing one of the
+    # upstream FIXMEs in the process)
+    edo sed -e "s,glibcxx_toolexecdir=no,glibcxx_toolexecdir='\${libdir}',"         \
+            -e "s,glibcxx_toolexeclibdir=no,glibcxx_toolexeclibdir='\${libdir}',"   \
+            -i "${ECONF_SOURCE}/configure"
+
+    # NOTE(compnerd) make sure that we setup _GLIBCXX_HAS_GTHREADS properly
+    edo ln -s gthr-$(${CXX} -v 2>&1 | sed -n 's/^Thread model: //p').h "$(dirname "${ECONF_SOURCE}")/libgcc/gthr-default.h"
+}
+
+libstdc++_src_prepare() {
+    edo cd "${ECONF_SOURCE}/.."
+    default
+
+    # g++ ${srcdir}/doc/doxygen/stdheader.cc -o ./stdheader
+    # newh=`echo $oldh | ./stdheader`
+    edo sed -i -e "s/^g++ /$(exhost --build)-g++-${SLOT} /" libstdc++-v3/scripts/run_doxygen
+}
+
+libstdc++_src_configure() {
+    CC=$(exhost --tool-prefix)gcc-${SLOT}       \
+    CPP=$(exhost --tool-prefix)gcc-cpp-${SLOT}  \
+    CXX=$(exhost --tool-prefix)g++-${SLOT}      \
+    default
+}
+
+libstdc++_src_compile() {
+    default
+
+    if option doc; then
+        edo pushd doc
+        emake doc-{html,man}
+        edo popd
+    fi
+}
+
+libstdc++_src_install() {
+    local locale= libpath= name= suffix=
+
+    default
+
+    if option doc; then
+        edo pushd doc
+        emake -j1 DESTDIR="${IMAGE}" doc-install-{html,man}
+        edo rm "${IMAGE}"/usr/share/man/man3/_*_sys-libs-libstdc__*
+        edo popd
+    fi
+
+    symlink_dynamic_libs ${PN}
+    slot_dynamic_libs ${PN}
+    slot_other_libs {${PN},libstdc++fs,libsupc++}.{a,la}
+
+    edo pushd "${IMAGE}"
+
+    # GDB extension
+    # c.f. http://gcc.gnu.org/ml/gcc/2009-09/msg00085.html
+    # NOTE(compnerd) these are formatters which are platform agnostic, so simply grab the version
+    # from the primary ABI
+    libpath=usr/$(exhost --target)/lib
+    dodir /usr/share/gdb/auto-load/${libpath}
+    name=$(basename ${libpath}/${PN}.so.*-gdb.py)
+    suffix=${name#*.}
+    edo mv ${libpath}/${PN}.${suffix} usr/share/gdb/auto-load/${libpath}/${PN}-${SLOT}.${suffix}
+
+    alternatives=()
+    mo_provided=()
+
+    alternatives+=( /usr/share/gdb/python/libstdcxx /usr/share/gdb/python/libstdcxx-${SLOT} )
+
+    for locale in usr/share/locale/*/*/*.mo; do
+        [[ -e ${locale} ]] || continue
+        name=${locale##*/}
+        alternatives+=( /${locale} ${name%.mo}-${SLOT}.mo )
+        mo_provided+=( /${locale} )
+    done
+
+    for man in usr/share/man/man3/*.3; do
+        [[ -e ${man} ]] || continue
+        name=${man##*/}
+        alternatives+=( /${man} ${name%.3}-${SLOT}.3 )
+    done
+
+    edo popd
+
+    [[ -z "${alternatives}" ]] || alternatives_for _${PN} ${SLOT} ${SLOT} "${alternatives[@]}"
+}
+
+libstdc++_pkg_postinst() {
+    local mo
+    for mo in "${mo_provided[@]}"; do
+        if [[ -e ${ROOT}${mo} && ! -L ${ROOT}${mo} ]]; then
+            nonfatal edo rm "${ROOT}${mo}" || ewarn "Failed to remove /${mo}"
+        fi
+    done
+
+    # fix alternatives junk
+    [[ -d "${ROOT}/usr/share/gdb/python/libstdcxx" ]] && nonfatal edo rm -rf "${ROOT}/usr/share/gdb/python/libstdcxx"
+
+    alternatives_pkg_postinst
+}
+

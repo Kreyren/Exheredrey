@@ -1,0 +1,63 @@
+# Copyright 2012 Quentin "Sardem FF7" Glidic <sardemff7+exherbo@sardemff7.net>
+# Distributed under the terms of the GNU General Public License v2
+
+# This exlib is for Vala-based packages
+# Mainly handle the VALAC export
+#
+# optional parameters:
+#     vala_slots=[ supported slots ]
+
+myexparam -b vala_dep=$(ever is_scm && echo true || echo false)
+myexparam -b with_opt=false
+
+# If the package doesn't support all slots you have to list them yourself
+myexparam vala_slots=[ 0.42 0.44 ]
+
+exparam -b with_opt && myexparam option_name=vapi
+
+exparam -v vala_slots vala_slots[@]
+if exparam -b with_opt; then
+    exparam -v OPTION_NAME option_name
+    MYOPTIONS="${OPTION_NAME}"
+fi
+
+if [[ -n "${vala_slots[*]}" ]]; then
+    MYOPTIONS+="
+        $(exparam -b with_opt && echo ${OPTION_NAME}?) (
+            ( vala_abis: ${vala_slots[*]} ) [[ number-selected = exactly-one ]]
+        )
+    "
+fi
+
+export_exlib_phases pkg_setup
+
+print_vala_dependencies() {
+    for slot in "${vala_slots[@]}"; do
+        echo "vala_abis:${slot}? ( dev-lang/vala:${slot} )"
+    done
+}
+
+if exparam -b vala_dep; then
+    DEPENDENCIES="
+        $(exparam -b with_opt && echo ${OPTION_NAME}?) (
+            build:
+                $(print_vala_dependencies)
+        )
+    "
+fi
+
+vala_get_abi() {
+    echo -n "${VALA_ABIS}"
+}
+
+vala_pkg_setup() {
+    if exparam -b vala_dep && { ! exparam -b with_opt || { exparam -b with_opt && option ${OPTION_NAME} ; } }; then
+        local vala_version="$(vala_get_abi)"
+        export VALAC="$(type -P valac-${vala_version})"
+        export VAPIGEN="$(type -P vapigen-${vala_version})"
+    else
+        export ac_cv_path_VALAC=
+    fi
+    default
+}
+

@@ -1,0 +1,8 @@
+#!/bin/execlineb -P
+
+fdmove -c 2 1
+
+# starting dhcpcd
+foreground { s6-echo -- "\033[35;1m===\033[0m Starting longrun: dhcpcd" }
+dhcpcd -BM
+

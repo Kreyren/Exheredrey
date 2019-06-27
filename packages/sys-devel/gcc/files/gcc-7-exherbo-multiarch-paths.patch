@@ -1,0 +1,201 @@
+From 46d85f7cfd0ce823fc8fa1c8bb4f6036ad29feb3 Mon Sep 17 00:00:00 2001
+From: Saleem Abdulrasool <compnerd@compnerd.org>
+Date: Sun, 1 Mar 2015 17:47:15 -0800
+Subject: [PATCH 1/2] exherbo multi-arch paths
+
+---
+ gcc/config.gcc                     |  2 +-
+ gcc/config/aarch64/aarch64-linux.h | 14 ++++++++++++++
+ gcc/config/arm/linux-eabi.h        | 21 +++++++++++++++++++++
+ gcc/config/i386/linux.h            | 15 +++++++++++++++
+ gcc/config/i386/linux64.h          | 27 +++++++++++++++++++++++++++
+ gcc/config/ia64/linux.h            | 12 ++++++++++++
+ gcc/config/rs6000/linux64.h        | 32 ++++++++++++++++++++++++++++++++
+ 7 files changed, 122 insertions(+), 1 deletion(-)
+
+diff --git a/gcc/config.gcc b/gcc/config.gcc
+index 75f9f81dc42..d4eaf5dad3a 100644
+--- a/gcc/config.gcc
++++ b/gcc/config.gcc
+@@ -227,7 +227,7 @@ default_use_cxa_atexit=no
+ default_gnu_indirect_function=no
+ target_gtfiles=
+ need_64bit_isa=
+-native_system_header_dir=/usr/include
++native_system_header_dir=/usr/${target}/include
+ target_type_format_char='@'
+ 
+ # Don't carry these over build->host->target.  Please.
+diff --git a/gcc/config/aarch64/aarch64-linux.h b/gcc/config/aarch64/aarch64-linux.h
+index c45fc1d35d1..0be8b36031a 100644
+--- a/gcc/config/aarch64/aarch64-linux.h
++++ b/gcc/config/aarch64/aarch64-linux.h
+@@ -91,4 +91,18 @@
+ /* Define this to be nonzero if static stack checking is supported.  */
+ #define STACK_CHECK_STATIC_BUILTIN 1
+ 
++/* exherbo specific paths */
++
++#undef GLIBC_DYNAMIC_LINKER
++#define GLIBC_DYNAMIC_LINKER "/usr/" DEFAULT_TARGET_MACHINE "/lib/ld-linux-aarch64%{mbig-endian:_be}%{mabi=ilp32:_ilp32}.so.1"
++
++#undef MUSL_DYNAMIC_LINKER
++#define MUSL_DYNAMIC_LINKER "/usr/" DEFAULT_TARGET_MACHINE "/lib/ld-musl-aarch64%{mbig-endian:_be}%{mabi=ilp32:_ilp32}.so.1"
++
++#undef STANDARD_STARTFILE_PREFIX_1
++#define STANDARD_STARTFILE_PREFIX_1 "/usr/" DEFAULT_TARGET_MACHINE "/lib/"
++
++#undef STANDARD_STARTFILE_PREFIX_2
++#define STANDARD_STARTFILE_PREFIX_2 "/" DEFAULT_TARGET_MACHINE "/lib/"
++
+ #endif  /* GCC_AARCH64_LINUX_H */
+diff --git a/gcc/config/arm/linux-eabi.h b/gcc/config/arm/linux-eabi.h
+index a08cfb34377..3e31f40bbf3 100644
+--- a/gcc/config/arm/linux-eabi.h
++++ b/gcc/config/arm/linux-eabi.h
+@@ -132,3 +132,24 @@
+ #define CLEAR_INSN_CACHE(BEG, END) not_used
+ 
+ #define ARM_TARGET2_DWARF_FORMAT (DW_EH_PE_pcrel | DW_EH_PE_indirect)
++
++/* exherbo specific paths */
++
++#undef GLIBC_DYNAMIC_LINKER_SOFT_FLOAT
++#define GLIBC_DYNAMIC_LINKER_SOFT_FLOAT "/usr/" DEFAULT_TARGET_MACHINE "/lib/ld-linux.so.3"
++
++#undef GLIBC_DYNAMIC_LINKER_HARD_FLOAT
++#define GLIBC_DYNAMIC_LINKER_HARD_FLOAT "/usr/" DEFAULT_TARGET_MACHINE "/lib/ld-linux-armhf.so.3"
++
++#undef MUSL_DYNAMIC_LINKER_SOFT_FLOAT
++#define MUSL_DYNAMIC_LINKER_SOFT_FLOAT "/usr/" DEFAULT_TARGET_MACHINE "/lib/ld-musl-arm" MUSL_DYNAMIC_LINKER_ENDIAN ".so.1"
++
++#undef MUSL_DYNAMIC_LINKER_HARD_FLOAT
++#define MUSL_DYNAMIC_LINKER_HARD_FLOAT "/usr/" DEFAULT_TARGET_MACHINE "/lib/ld-musl-arm" MUSL_DYNAMIC_LINKER_ENDIAN "hf.so.1"
++
++#undef STANDARD_STARTFILE_PREFIX_1
++#define STANDARD_STARTFILE_PREFIX_1 "/usr/" DEFAULT_TARGET_MACHINE "/lib/"
++
++#undef STANDARD_STARTFILE_PREFIX_2
++#define STANDARD_STARTFILE_PREFIX_2 "/" DEFAULT_TARGET_MACHINE "/lib/"
++
+diff --git a/gcc/config/i386/linux.h b/gcc/config/i386/linux.h
+index 59132124d6b..911d787537f 100644
+--- a/gcc/config/i386/linux.h
++++ b/gcc/config/i386/linux.h
+@@ -24,3 +24,18 @@ along with GCC; see the file COPYING3.  If not see
+ 
+ #undef MUSL_DYNAMIC_LINKER
+ #define MUSL_DYNAMIC_LINKER "/lib/ld-musl-i386.so.1"
++
++/* exherbo specific paths */
++
++#undef GLIBC_DYNAMIC_LINKER
++#define GLIBC_DYNAMIC_LINKER "/usr/" DEFAULT_TARGET_MACHINE "/lib/ld-linux.so.2"
++
++#undef MUSL_DYNAMIC_LINKER
++#define MUSL_DYNAMIC_LINKER "/usr/" DEFAULT_TARGET_MACHINE "/lib/ld-musl-i386.so.1"
++
++#undef STANDARD_STARTFILE_PREFIX_1
++#define STANDARD_STARTFILE_PREFIX_1 "/usr/" DEFAULT_TARGET_MACHINE "/lib/"
++
++#undef STANDARD_STARTFILE_PREFIX_2
++#define STANDARD_STARTFILE_PREFIX_2 "/" DEFAULT_TARGET_MACHINE "/lib/"
++
+diff --git a/gcc/config/i386/linux64.h b/gcc/config/i386/linux64.h
+index e65c404ff91..985e7302a9c 100644
+--- a/gcc/config/i386/linux64.h
++++ b/gcc/config/i386/linux64.h
+@@ -37,3 +37,30 @@ see the files COPYING3 and COPYING.RUNTIME respectively.  If not, see
+ #define MUSL_DYNAMIC_LINKER64 "/lib/ld-musl-x86_64.so.1"
+ #undef MUSL_DYNAMIC_LINKERX32
+ #define MUSL_DYNAMIC_LINKERX32 "/lib/ld-musl-x32.so.1"
++
++/* exherbo specific paths */
++
++#undef GLIBC_DYNAMIC_LINKER32
++#define GLIBC_DYNAMIC_LINKER32 "/usr/" DEFAULT_TARGET_MACHINE "/lib/ld-linux.so.2"
++
++#undef GLIBC_DYNAMIC_LINKER64
++#define GLIBC_DYNAMIC_LINKER64 "/usr/" DEFAULT_TARGET_MACHINE "/lib/ld-linux-x86-64.so.2"
++
++#undef GLIBC_DYNAMIC_LINKERX32
++#define GLIBC_DYNAMIC_LINKERX32 "/usr/" DEFAULT_TARGET_MACHINE "/lib/ld-linux-x32.so.2"
++
++#undef MUSL_DYNAMIC_LINKER32
++#define MUSL_DYNAMIC_LINKER32 "/usr/" DEFAULT_TARGET_MACHINE "/lib/ld-musl-i386.so.1"
++
++#undef MUSL_DYNAMIC_LINKER64
++#define MUSL_DYNAMIC_LINKER64 "/usr/" DEFAULT_TARGET_MACHINE "/lib/ld-musl-x86_64.so.1"
++
++#undef MUSL_DYNAMIC_LINKERX32
++#define MUSL_DYNAMIC_LINKERX32 "/usr/" DEFAULT_TARGET_MACHINE "/lib/ld-musl-x32.so.1"
++
++#undef STANDARD_STARTFILE_PREFIX_1
++#define STANDARD_STARTFILE_PREFIX_1 "/usr/" DEFAULT_TARGET_MACHINE "/lib/"
++
++#undef STANDARD_STARTFILE_PREFIX_2
++#define STANDARD_STARTFILE_PREFIX_2 "/" DEFAULT_TARGET_MACHINE "/lib/"
++
+diff --git a/gcc/config/ia64/linux.h b/gcc/config/ia64/linux.h
+index cf47145fbf7..717715e42eb 100644
+--- a/gcc/config/ia64/linux.h
++++ b/gcc/config/ia64/linux.h
+@@ -81,3 +81,15 @@ do {						\
+ 
+ /* Define this to be nonzero if static stack checking is supported.  */
+ #define STACK_CHECK_STATIC_BUILTIN 1
++
++/* exherbo specific paths */
++
++#undef GLIBC_DYNAMIC_LINKER
++#define GLIBC_DYNAMIC_LINKER "/usr/" DEFAULT_TARGET_MACHINE "/lib/ld-linux-ia64.so.2"
++
++#undef STANDARD_STARTFILE_PREFIX_1
++#define STANDARD_STARTFILE_PREFIX_1 "/usr/" DEFAULT_TARGET_MACHINE "/lib/"
++
++#undef STANDARD_STARTFILE_PREFIX_2
++#define STANDARD_STARTFILE_PREFIX_2 "/" DEFAULT_TARGET_MACHINE "/lib/"
++
+diff --git a/gcc/config/rs6000/linux64.h b/gcc/config/rs6000/linux64.h
+index 71e35b709ad..5d7ecf9b264 100644
+--- a/gcc/config/rs6000/linux64.h
++++ b/gcc/config/rs6000/linux64.h
+@@ -640,3 +640,35 @@ extern int dot_symbols;
+    enabling the __float128 keyword.  */
+ #undef	TARGET_FLOAT128_ENABLE_TYPE
+ #define TARGET_FLOAT128_ENABLE_TYPE 1
++
++/* exherbo specifc paths */
++
++#undef GLIBC_DYNAMIC_LINKER32
++#define GLIBC_DYNAMIC_LINKER32 "/usr/" DEFAULT_TARGET_MACHINE "/lib/ld.so.1"
++
++#undef GLIBC_DYNAMIC_LINKER64
++#ifdef LINUX64_DEFAULT_ABI_ELFv2
++#define GLIBC_DYNAMIC_LINKER64                                                 \
++  "%{mabi=elfv1:/usr/" DEFAULT_TARGET_MACHINE "/lib/ld64.so.1;"           \
++              ":/usr/" DEFAULT_TARGET_MACHINE "/lib/ld64.so.2}"
++#else
++#define GLIBC_DYNAMIC_LINKER64                                                 \
++  "%{mabi=elfv2:/usr/" DEFAULT_TARGET_MACHINE "/lib/ld64.so.2;"           \
++              ":/usr/" DEFAULT_TARGET_MACHINE "/lib/ld64.so.1}"
++#endif
++
++#undef MUSL_DYNAMIC_LINKER32
++#define MUSL_DYNAMIC_LINKER32                                                  \
++  "/usr/" DEFAULT_TARGET_MACHINE "/lib/"                                   \
++  "ld-musl-powerpc" MUSL_DYNAMIC_LINKER_E "%{msoft-float:-sf}.so.1"
++#define MUSL_DYNAMIC_LINKER64
++#define MUSL_DYNAMIC_LINKER64                                                  \
++  "/usr/" DEFAULT_TARGET_MACHINE "/lib/"                                 \
++  "ld-musl-powerpc64" MUSL_DYNAMIC_LINKER_E "%{msoft-float:-sf}.so.1"
++
++#undef STANDARD_STARTFILE_PREFIX_1
++#define STANDARD_STARTFILE_PREFIX_1 "/usr/" DEFAULT_TARGET_MACHINE "/lib/"
++
++#undef STANDARD_STARTFILE_PREFIX_2
++#define STANDARD_STARTFILE_PREFIX_2 "/" DEFAULT_TARGET_MACHINE "/lib/"
++
+-- 
+2.11.1
+

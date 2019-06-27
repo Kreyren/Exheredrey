@@ -1,0 +1,36 @@
+# Copyright 2014 Alex Elsayed <eternaleye@gmail.com>
+# Distributed under the terms of the GNU General Public License v2
+
+require gem
+
+SUMMARY="A pure-Ruby parser for the ELF file format"
+DESCRIPTION="
+Ruby-Elf is a pure-Ruby library for parse and fetch information
+about ELF format used by Linux, FreeBSD, Solaris and other
+Unix-like operating systems, and include a set of analysis tools
+helpful for both optimisations and verification of compiled ELF files.
+"
+HOMEPAGE="http://www.flameeyes.eu/projects/ruby-elf"
+
+LICENCES="GPL-2"
+SLOT="0"
+PLATFORMS="~amd64 ~armv8"
+MYOPTIONS=""
+
+BUGS_TO="eternaleye@gmail.com"
+
+src_install() {
+    gem_src_install
+
+    # if only gem's unpacked so they could be patched easily ...
+    # https://github.com/Flameeyes/ruby-elf/pull/6
+    # https://github.com/Flameeyes/ruby-elf/commit/ff9fee21837343afde89ab0a226caeac9f0c1fa3
+    find "${IMAGE}" -name elf.rb -print0 | xargs --verbose -0 sed -i \
+        -e "/135 => \[ :Score, 'Sunplus Score' \],/d" \
+        -e "/168 => \[ :ECOG1, 'Cyan Technology eCOG1X family' \],/d" \
+        -e "/180 => \[ :L1OM, 'Intel L1OM' \],/a\
+\           183 => [ :AArch64, 'ARM AARCH64 (ARM64)' ]," \
+        -e "/190 => \[ :CUDA, 'NVIDIA CUDA architecture' \],/a\
+\           191 => [ :TILEGx, 'Tilera TILE-Gx' ],"
+    assert "sed failed"
+}

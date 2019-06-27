@@ -1,0 +1,83 @@
+Upstream: yes
+
+From 05cb87276c21c3a47226c75026fa46a955553dd9 Mon Sep 17 00:00:00 2001
+From: NIIBE Yutaka <gniibe@fsij.org>
+Date: Thu, 26 Oct 2017 11:24:39 +0900
+Subject: [PATCH] agent, tests: Support --disable-scdaemon build case.
+
+* agent/command.c (cmd_scd): Support !BUILD_WITH_SCDAEMON.
+* tests/openpgp/defs.scm (create-gpghome): Likewise.
+* tests/gpgsm/gpgsm-defs.scm (create-gpgsmhome): Likewise.
+
+--
+
+We could modify gpg-agent to remove all support of scdaemon, with no
+inclusion of call-scd.c, divert-scd.c, and learncard.c, but it would
+not be worth to do that.
+
+GnuPG-bug-id: 3316
+Signed-off-by: NIIBE Yutaka <gniibe@fsij.org>
+---
+ agent/command.c            | 9 ++++++---
+ tests/gpgsm/gpgsm-defs.scm | 4 +++-
+ tests/openpgp/defs.scm     | 4 +++-
+ 3 files changed, 12 insertions(+), 5 deletions(-)
+
+diff --git a/agent/command.c b/agent/command.c
+index f2a668306..e20361a11 100644
+--- a/agent/command.c
++++ b/agent/command.c
+@@ -1988,14 +1988,17 @@ static const char hlp_scd[] =
+ static gpg_error_t
+ cmd_scd (assuan_context_t ctx, char *line)
+ {
+-  ctrl_t ctrl = assuan_get_pointer (ctx);
+   int rc;
+-
++#ifdef BUILD_WITH_SCDAEMON
++  ctrl_t ctrl = assuan_get_pointer (ctx);
+   if (ctrl->restricted)
+     return leave_cmd (ctx, gpg_error (GPG_ERR_FORBIDDEN));
+ 
+   rc = divert_generic_cmd (ctrl, line, ctx);
+-
++#else
++  (void)ctx; (void)line;
++  rc = gpg_error (GPG_ERR_NOT_SUPPORTED);
++#endif
+   return rc;
+ }
+ 
+diff --git a/tests/gpgsm/gpgsm-defs.scm b/tests/gpgsm/gpgsm-defs.scm
+index d99d7dad4..c78a12797 100644
+--- a/tests/gpgsm/gpgsm-defs.scm
++++ b/tests/gpgsm/gpgsm-defs.scm
+@@ -67,7 +67,9 @@
+ 	       "faked-system-time 1008241200")
+   (create-file "gpg-agent.conf"
+ 	       (string-append "pinentry-program " (tool 'pinentry))
+-	       (string-append "scdaemon-program " (tool 'scdaemon))
++	       (if (assoc "scdaemon" gpg-components)
++		   (string-append "scdaemon-program " (tool 'scdaemon))
++		   "# No scdaemon available")
+ 	       )
+   (start-agent)
+   (create-file
+diff --git a/tests/openpgp/defs.scm b/tests/openpgp/defs.scm
+index f52f31614..a6347fe1f 100644
+--- a/tests/openpgp/defs.scm
++++ b/tests/openpgp/defs.scm
+@@ -354,7 +354,9 @@
+ 	       (if (flag "--extended-key-format" *args*)
+ 		   "enable-extended-key-format" "#enable-extended-key-format")
+ 	       (string-append "pinentry-program " (tool 'pinentry))
+-	       (string-append "scdaemon-program " (tool 'scdaemon))
++	       (if (assoc "scdaemon" gpg-components)
++		   (string-append "scdaemon-program " (tool 'scdaemon))
++		   "# No scdaemon available")
+ 	       ))
+ 
+ ;; Initialize the test environment, install appropriate configuration
+-- 
+2.14.3
+

@@ -1,0 +1,74 @@
+# Copyright 2008 Alexander Færøy <eroyf@exherbo.org>
+# Copyright 2009 Bo Ørsted Andresen <zlin@exherbo.org>
+# Copyright 2010 Adriaan Leijnse <adriaan@leijnse.net>
+# Distributed under the terms of the GNU General Public License v2
+
+require python [ blacklist=none multibuild=false with_opt=true ]
+
+SUMMARY="ALSA library"
+HOMEPAGE="https://www.alsa-project.org"
+DOWNLOADS="mirror://alsaproject/${PN#alsa-}/${PNV}.tar.bz2"
+
+LICENCES="LGPL-2.1"
+SLOT="0"
+PLATFORMS="~amd64 ~armv8 ~x86"
+MYOPTIONS="
+    doc
+"
+
+DEPENDENCIES="
+    build:
+        doc? ( app-doc/doxygen[>=1.2.6] )
+"
+
+DEFAULT_SRC_INSTALL_EXTRA_DOCS=( MEMORY-LEAK )
+
+src_configure() {
+    local myconf=(
+        --enable-thread-safety
+        --without-wordexp
+        --disable-mixer-modules
+        --disable-mixer-pymods
+    )
+
+    if option python; then
+        myconf+=(
+            --with-pythonlibs="$(/usr/$(exhost --target)/bin/python$(python_get_abi)-config --libs)"
+            --with-pythonincludes="$(python_get_incdir)"
+        )
+        if [[ $(python_get_abi) == 2.7 ]]; then
+            myconf+=(
+              --enable-python2
+            )
+        fi
+    else
+        myconf+=(
+            --disable-python
+        )
+    fi
+
+    econf "${myconf[@]}"
+}
+
+src_compile() {
+    default
+
+    if option doc; then
+        emake doc
+        edo find doc/doxygen/html -type f -print0 | xargs -0 sed -i -e "s:${WORK}::g" ||
+            die "sed to strip ${WORK} from api docs failed"
+    fi
+}
+
+src_install() {
+    default
+
+    # Fix alsaucm: unable to obtain card list: No such file or directory
+    keepdir /usr/share/alsa/ucm
+
+    if option doc; then
+        docinto html
+        dodoc -r doc/doxygen/html/*
+        docinto
+    fi
+}

@@ -1,0 +1,17 @@
+Source: https://sources.gentoo.org/cgi-bin/viewvc.cgi/gentoo-x86/net-misc/ntp/files/ntp-4.2.8-ipc-caps.patch?revision=1.1
+Upstream: http://bugs.ntp.org/show_bug.cgi?id=2646
+Reason: Fix ntpd always crashes after start
+
+--- a/ntpd/ntpd.c
++++ a/ntpd/ntpd.c
+@@ -971,8 +971,8 @@ getgroup:
+ 			char *captext;
+ 			
+ 			captext = (0 != interface_interval)
+-				      ? "cap_sys_time,cap_net_bind_service=pe"
+-				      : "cap_sys_time=pe";
++				      ? "cap_ipc_lock,cap_sys_time,cap_net_bind_service=pe"
++				      : "cap_ipc_lock,cap_sys_time=pe";
+ 			caps = cap_from_text(captext);
+ 			if (!caps) {
+ 				msyslog(LOG_ERR,

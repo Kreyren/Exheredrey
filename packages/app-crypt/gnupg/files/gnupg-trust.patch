@@ -1,0 +1,17 @@
+Source:   Daniel Kahn Gillmor <dkg@fifthhorseman.net>
+Upstream: https://bugs.debian.org/cgi-bin/bugreport.cgi?bug=735363
+Reason:   Fixes regression that breaks caff (app-crypt/signing-party),
+		  amongst other things.
+
+diff --git a/g10/trustdb.c b/g10/trustdb.c
+index 0bf92e4..828b90f 100644
+--- a/g10/trustdb.c
++++ b/g10/trustdb.c
+@@ -927,6 +927,8 @@ clear_ownertrusts (PKT_public_key *pk)
+   TRUSTREC rec;
+   int rc;
+ 
++  init_trustdb();
++
+   if (trustdb_args.no_trustdb && opt.trust_model == TM_ALWAYS)
+     return 0;

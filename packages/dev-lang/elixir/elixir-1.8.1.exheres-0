@@ -1,0 +1,33 @@
+# Copyright 2016 Julian Ospald <hasufell@posteo.de>
+# Distributed under the terms of the GNU General Public License v2
+
+require github [ user="elixir-lang" tag=v${PV} ] utf8-locale
+
+SUMMARY="Elixir programming language"
+HOMEPAGE="http://elixir-lang.org"
+
+LICENCES="Apache-2.0 EPL-1.1"
+SLOT="0"
+PLATFORMS="~amd64 ~x86"
+MYOPTIONS=""
+
+DEPENDENCIES="
+    build+run:
+        dev-lang/erlang[>=20.3]
+"
+
+DEFAULT_SRC_COMPILE_PARAMS=(
+    Q=""
+)
+
+DEFAULT_SRC_INSTALL_PARAMS=(
+    PREFIX="/usr/$(exhost --target)"
+    SHARE_PREFIX="/usr/share"
+)
+
+pkg_setup() {
+    require_utf8_locale
+}
+
+RESTRICT="test"
+

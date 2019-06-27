@@ -1,0 +1,32 @@
+# Copyright 2015 Kylie McClain <somasis@exherbo.org>
+# Distributed under the terms of the GNU General Public License v2
+
+SUMMARY="Virtual: coreutils providers"
+DESCRIPTION="${PN} consists of common system utilities which must exist
+on all systems in order to function properly.
+
+This includes utilities such as:
+    cat, chmod, chown, chroot, cp, cut, date, dd, df, du, env, expr,
+    head, hostname, install, ln, ls, mkdir, mv, rm, sort, tail,
+    touch, tr, uname, ...
+"
+
+HOMEPAGE=""
+
+SLOT="0"
+PLATFORMS="~amd64 ~armv7 ~armv8 ~x86"
+MYOPTIONS="
+    ( providers:
+        busybox
+        gnu
+    ) [[
+        *description = [ coreutils provider ]
+        number-selected = at-least-one
+    ]]
+"
+
+DEPENDENCIES="
+    providers:busybox? ( sys-apps/busybox )
+    providers:gnu? ( sys-apps/coreutils )
+"
+

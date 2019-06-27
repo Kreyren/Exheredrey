@@ -1,0 +1,29 @@
+# Copyright 2007 Bryan Østergaard
+# Distributed under the terms of the GNU General Public License v2
+
+require gnu [ suffix=tar.xz ]
+
+SUMMARY="General-purpose parser generator for LALR(1) or GLR parsers"
+
+LICENCES="GPL-3"
+SLOT="0"
+PLATFORMS="~amd64 ~arm ~armv7 ~armv8 ~x86"
+MYOPTIONS="
+    ( linguas: ca da de el eo es et fi fr ga hr id it ja ms nb nl pt pt_BR ro ru sr sv tr uk vi
+               zh_CN zh_TW )
+"
+
+DEPENDENCIES="
+    build+run:
+        sys-devel/gettext[>=0.19]
+        sys-devel/m4[>=1.4.16]
+"
+
+DEFAULT_SRC_CONFIGURE_PARAMS=(
+    --enable-nls
+    --enable-yacc
+    # disable java based tests (fail because javac output changed)
+    ac_cv_prog_HAVE_JAVA_IN_PATH=''
+    ac_cv_prog_DC=''
+)
+

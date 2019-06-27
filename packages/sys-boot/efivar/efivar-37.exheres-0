@@ -1,0 +1,41 @@
+# Copyright 2013 Ankur Kothari <ankz.kothari@gmail.com>
+# Distributed under the terms of the GNU General Public License v2
+
+require github [ user=rhinstaller ]
+
+SUMMARY="Tools and library to manipulate EFI variables"
+DESCRIPTION="
+* efivar provides a simple command line interface to the UEFI variable facility
+* Library to allow for the simple manipulation of UEFI variables
+"
+
+LICENCES="LGPL-2.1"
+SLOT="0"
+PLATFORMS="~amd64 ~x86"
+MYOPTIONS=""
+
+# reads and sets EFI variables
+RESTRICT="test"
+
+DEPENDENCIES="
+    build:
+        virtual/pkg-config
+    build+run:
+        dev-libs/popt
+"
+
+DEFAULT_SRC_PREPARE_PATCHES=(
+    "${FILES}"/${PN}-34-Fix-flags-to-enable-strdupa.patch
+)
+
+DEFAULT_SRC_COMPILE_PARAMS=(
+    CROSS_COMPILE="$(exhost --tool-prefix)"
+    CC_FOR_BUILD=${CC}
+)
+
+DEFAULT_SRC_INSTALL_PARAMS=(
+    bindir=/usr/$(exhost --target)/bin
+    libdir=/usr/$(exhost --target)/lib
+    includedir=/usr/$(exhost --target)/include
+)
+

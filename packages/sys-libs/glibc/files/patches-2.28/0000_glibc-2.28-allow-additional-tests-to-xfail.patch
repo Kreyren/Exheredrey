@@ -1,0 +1,183 @@
+Source: Timo Gurr <tgurr@exherbo.org>
+Upstream: No
+Reason: Allow additional tests to (x-)fail
+
+diff -Naur glibc-2.28/debug/Makefile glibc-2.28.new/debug/Makefile
+--- glibc-2.28/debug/Makefile	2018-08-01 07:10:47.000000000 +0200
++++ glibc-2.28.new/debug/Makefile	2018-08-01 19:55:51.049820568 +0200
+@@ -181,6 +181,9 @@
+ endif
+ generated += catchsegv xtrace
+ 
++# Exherbo
++test-xfail-tst-longjmp_chk = yes
++
+ include ../Rules
+ 
+ ifeq ($(run-built-tests),yes)
+diff -Naur glibc-2.28/elf/Makefile glibc-2.28.new/elf/Makefile
+--- glibc-2.28/elf/Makefile	2018-08-01 07:10:47.000000000 +0200
++++ glibc-2.28.new/elf/Makefile	2018-08-01 19:56:40.147035958 +0200
+@@ -404,6 +404,9 @@
+ endif
+ endif
+ 
++# Exherbo
++test-xfail-check-cet = yes
++
+ include ../Rules
+ 
+ ifeq (yes,$(build-shared))
+diff -Naur glibc-2.28/gmon/Makefile glibc-2.28.new/gmon/Makefile
+--- glibc-2.28/gmon/Makefile	2018-08-01 07:10:47.000000000 +0200
++++ glibc-2.28.new/gmon/Makefile	2018-08-01 19:55:51.049820568 +0200
+@@ -81,6 +81,11 @@
+ endif
+ 
+ 
++# Exherbo
++test-xfail-tst-gmon-gprof = yes
++test-xfail-tst-gmon-pie-gprof = yes
++test-xfail-tst-gmon-static-gprof = yes
++
+ include ../Rules
+ 
+ # We cannot compile mcount.c with -pg because that would
+diff -Naur glibc-2.28/io/Makefile glibc-2.28.new/io/Makefile
+--- glibc-2.28/io/Makefile	2018-08-01 07:10:47.000000000 +0200
++++ glibc-2.28.new/io/Makefile	2018-08-01 19:55:51.050820573 +0200
+@@ -85,6 +85,9 @@
+ tests-special += $(objpfx)ftwtest.out
+ endif
+ 
++# Exherbo
++test-xfail-tst-open-tmpfile = yes
++
+ include ../Rules
+ 
+ CFLAGS-open.c += -fexceptions -fasynchronous-unwind-tables
+diff -Naur glibc-2.28/misc/Makefile glibc-2.28.new/misc/Makefile
+--- glibc-2.28/misc/Makefile	2018-08-01 07:10:47.000000000 +0200
++++ glibc-2.28.new/misc/Makefile	2018-08-01 19:55:51.050820573 +0200
+@@ -129,6 +129,9 @@
+ CFLAGS-brk.o = $(no-stack-protector)
+ CFLAGS-brk.op = $(no-stack-protector)
+ 
++# Exherbo
++test-xfail-tst-clone3 = yes
++
+ include ../Rules
+ 
+ $(objpfx)libg.a: $(dep-dummy-lib); $(make-dummy-lib)
+diff -Naur glibc-2.28/nptl/Makefile glibc-2.28.new/nptl/Makefile
+--- glibc-2.28/nptl/Makefile	2018-08-01 07:10:47.000000000 +0200
++++ glibc-2.28.new/nptl/Makefile	2018-08-01 19:55:51.051820577 +0200
+@@ -333,6 +333,29 @@
+ # 18435 - pthread_once hangs when init routine throws an exception.
+ test-xfail-tst-once5 = yes
+ 
++# Exherbo
++test-xfail-tst-cancel24 = yes
++test-xfail-tst-cancelx11 = yes
++test-xfail-tst-cancelx12 = yes
++test-xfail-tst-cancelx13 = yes
++test-xfail-tst-cancelx14 = yes
++test-xfail-tst-cancelx15 = yes
++test-xfail-tst-cancelx16 = yes
++test-xfail-tst-cancelx17 = yes
++test-xfail-tst-cancelx18 = yes
++test-xfail-tst-cancelx20 = yes
++test-xfail-tst-cancelx21 = yes
++test-xfail-tst-cancelx4 = yes
++test-xfail-tst-cancelx5 = yes
++test-xfail-tst-cancelx9 = yes
++test-xfail-tst-cleanupx0 = yes
++test-xfail-tst-cleanupx1 = yes
++test-xfail-tst-cleanupx3 = yes
++test-xfail-tst-cleanupx4 = yes
++test-xfail-tst-oncex3 = yes
++test-xfail-tst-oncex4 = yes
++test-xfail-tst-thread-exit-clobber = yes
++
+ # Files which must not be linked with libpthread.
+ tests-nolibpthread = tst-unload
+ 
+diff -Naur glibc-2.28/posix/Makefile glibc-2.28.new/posix/Makefile
+--- glibc-2.28/posix/Makefile	2018-08-01 07:10:47.000000000 +0200
++++ glibc-2.28.new/posix/Makefile	2018-08-01 19:55:51.051820577 +0200
+@@ -150,6 +150,10 @@
+ xtests-special += $(objpfx)bug-ga2-mem.out
+ endif
+ 
++# Exherbo
++test-xfail-test-errno = yes
++test-xfail-tst-dir = yes
++
+ include ../Rules
+ 
+ ifeq ($(run-built-tests),yes)
+diff -Naur glibc-2.28/resolv/Makefile glibc-2.28.new/resolv/Makefile
+--- glibc-2.28/resolv/Makefile	2018-08-01 07:10:47.000000000 +0200
++++ glibc-2.28.new/resolv/Makefile	2018-08-01 19:55:51.052820582 +0200
+@@ -135,6 +135,22 @@
+ 	     mtrace-tst-leaks2.out tst-leaks2.mtrace \
+ 	     mtrace-tst-resolv-res_ninit.out tst-resolv-res_ninit.mtrace \
+ 
++# Exherbo
++test-xfail-tst-bug18665-tcp = yes
++test-xfail-tst-res_use_inet6 = yes
++test-xfail-tst-resolv-ai_idn = yes
++test-xfail-tst-resolv-ai_idn-latin1 = yes
++test-xfail-tst-resolv-ai_idn-nolibidn2 = yes
++test-xfail-tst-resolv-basic = yes
++test-xfail-tst-resolv-binary = yes
++test-xfail-tst-resolv-canonname = yes
++test-xfail-tst-resolv-edns = yes
++test-xfail-tst-resolv-network = yes
++test-xfail-tst-resolv-res_init = yes
++test-xfail-tst-resolv-res_init-thread = yes
++test-xfail-tst-resolv-search = yes
++test-xfail-tst-resolv-threads = yes
++
+ include ../Rules
+ 
+ LOCALES := en_US.UTF-8 en_US.ISO-8859-1
+diff -Naur glibc-2.28/rt/Makefile glibc-2.28.new/rt/Makefile
+--- glibc-2.28/rt/Makefile	2018-08-01 07:10:47.000000000 +0200
++++ glibc-2.28.new/rt/Makefile	2018-08-01 19:55:51.052820582 +0200
+@@ -58,6 +58,9 @@
+ extra-libs := librt
+ extra-libs-others := $(extra-libs)
+ 
++# Exherbo
++test-xfail-tst-mqueue8x = yes
++
+ include ../Rules
+ 
+ CFLAGS-aio_suspend.c += -fexceptions
+diff -Naur glibc-2.28/sunrpc/Makefile glibc-2.28.new/sunrpc/Makefile
+--- glibc-2.28/sunrpc/Makefile	2018-08-01 07:10:47.000000000 +0200
++++ glibc-2.28.new/sunrpc/Makefile	2018-08-01 19:55:51.052820582 +0200
+@@ -127,6 +127,11 @@
+ extra-objs += $(addsuffix .os,$(rpc-compat-routines))
+ endif
+ 
++# Exherbo
++test-xfail-bug20790 = yes
++test-xfail-tst-udp-nonblocking = yes
++test-xfail-tst-udp-timeout = yes
++
+ include ../Rules
+ 
+ ifeq (yes,$(build-shared))
+diff -Naur glibc-2.28/support/Makefile glibc-2.28.new/support/Makefile
+--- glibc-2.28/support/Makefile	2018-08-01 07:10:47.000000000 +0200
++++ glibc-2.28.new/support/Makefile	2018-08-01 19:55:51.052820582 +0200
+@@ -176,4 +176,7 @@
+ 
+ $(objpfx)tst-support_format_dns_packet: $(common-objpfx)resolv/libresolv.so
+ 
++# Exherbo
++test-xfail-tst-support-namespace = yes
++
+ include ../Rules

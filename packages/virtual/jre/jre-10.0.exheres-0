@@ -1,0 +1,13 @@
+# Copyright 2014-2017 Wulf C. Krueger <philantrop@exherbo.org>
+# Distributed under the terms of the GNU General Public License v2
+
+SUMMARY="Virtual for Java Runtime Environments"
+
+SLOT="10.0"
+PLATFORMS="~amd64 ~x86"
+
+DEPENDENCIES="
+    run:
+        virtual/jdk:10.0
+"
+

@@ -1,0 +1,36 @@
+# Copyright 2010 Paul Seidler
+# Distributed under the terms of the GNU General Public License v2
+
+require python-build
+
+PLATFORMS="~amd64 ~arm ~armv7 ~armv8 ~x86"
+
+DEPENDENCIES+="
+    build+run:
+        !dev-lang/python:2.6[<2.6.8-r3] [[
+            description = [ File collision of a man page ]
+        ]]
+"
+
+DEFAULT_SRC_CONFIGURE_OPTION_WITHS+=(
+    'tk tcltk-libs'
+    'tk tcltk-includes'
+)
+
+src_test() {
+    local DISABLE_TESTS
+    # test_install_lib (test_distuils) has problems with path resolution
+    # test_gdb: fails under sydbox (scm, a1f1106)
+    # the rest wants to bind to 0.0.0.0/::, test_uuid: socket.gethostname() name->resolution
+    DISABLE_TESTS=( test_argparse test_distutils test_ftplib test_gdb test_httplib test_httpservers
+                    test_pydoc test_pyexpat test_robotparser test_socket test_ssl test_uuid
+                    test_urllib2 test_urllib2net test_urllib2_localnet )
+
+    # for test_ssl
+    esandbox allow_net --connect "inet:127.0.0.1@0"
+
+    python-build_src_test
+
+    esandbox disallow_net --connect "inet:127.0.0.1@0"
+}
+

@@ -1,0 +1,11 @@
+[Unit]
+Description=ACPI Event Daemon
+Documentation=man:acpid(8)
+Requires=acpid.socket
+
+[Service]
+StandardInput=socket
+ExecStart=/usr/host/bin/acpid -f
+
+[Install]
+Also=acpid.socket

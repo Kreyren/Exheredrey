@@ -1,0 +1,142 @@
+# Copyright 2008, 2009 Ingmar Vanhassel <ingmar@exherbo.org>
+# Distributed under the terms of the GNU General Public License v2
+# Based in part upon 'ghostscript-8.62.ebuild' from Gentoo, which is:
+#     Copyright 1999-2008 Gentoo Foundation.
+
+require github [ user=ArtifexSoftware project=ghostpdl-downloads release=gs$(ever delete_all) suffix=tar.xz ] \
+    autotools [ supported_autoconf=[ 2.5 ] supported_automake=[ 1.16 ] ]
+
+SUMMARY="An interpreter for the PostScript language and for PDF"
+HOMEPAGE+=" https://${PN}.com"
+
+LICENCES="AGPL-3"
+SLOT="0"
+PLATFORMS="~amd64 ~armv8 ~x86"
+MYOPTIONS="
+    cups
+    dbus
+    gtk [[ requires = [ X ] ]]
+    idn
+    tiff
+    X
+    ( providers: ijg-jpeg jpeg-turbo ) [[ number-selected = exactly-one ]]
+"
+
+DEPENDENCIES="
+    build:
+        virtual/pkg-config
+        X? ( x11-proto/xorgproto )
+    build+run:
+        dev-libs/expat
+        dev-libs/libpaper
+        media-libs/OpenJPEG:2[>=2.2.0]
+        media-libs/fontconfig
+        media-libs/freetype:2[>=2.4.2]
+        media-libs/jbig2dec[>=0.16]
+        media-libs/lcms2[>=2.8]
+        media-libs/libpng:=[>=1.6.26]
+        sys-libs/zlib
+        cups? ( net-print/cups )
+        dbus? ( sys-apps/dbus )
+        gtk? ( x11-libs/gtk+:3 )
+        idn? ( net-dns/libidn )
+        providers:ijg-jpeg? ( media-libs/jpeg:= )
+        providers:jpeg-turbo? ( media-libs/libjpeg-turbo )
+        tiff? ( media-libs/tiff )
+        X? (
+            x11-libs/libXext
+            x11-libs/libXt
+        )
+    run:
+        app-text/poppler-data[>=0.4.4] [[ note = [ CMap encoding data ] ]]
+        fonts/urw-fonts[>=20170801] [[ note = [ PostScript standard fonts ] ]]
+"
+
+src_prepare() {
+    edo rm -r ./{cups/libs,freetype,jbig2dec,jpeg,lcms2mt,libpng,openjpeg,tiff,zlib}
+
+    # remove internal CMaps (CMaps from poppler-data are used instead)
+    edo rm -r ./Resource/CMap
+
+    # remove bundled URW fonts (fonts/urw-fonts are used instead)
+    edo rm -r ./Resource/Font
+
+    if option !gtk; then
+        edo sed -e 's:\$(GSSOX)::' \
+                -e 's:.*\$(GSSOX_XENAME)$::' \
+                -i base/unix-dll.mak
+    fi
+
+    default
+    eautoreconf
+    nonfatal edo automake -afi
+
+    edo cd ./ijs
+    eautoreconf
+    edo cp -a install-sh ..
+}
+
+src_configure() {
+    local FONTPATH
+    for path in \
+        /usr/share/fonts/X11/urw-fonts \
+        /usr/share/fonts/X11/Type1 \
+        /usr/share/fonts/X11 \
+        /usr/share/poppler/cMap/Adobe-CNS1 \
+        /usr/share/poppler/cMap/Adobe-GB1 \
+        /usr/share/poppler/cMap/Adobe-Japan1 \
+        /usr/share/poppler/cMap/Adobe-Japan2 \
+        /usr/share/poppler/cMap/Adobe-Korea1
+    do
+        FONTPATH="$FONTPATH${FONTPATH:+:}$path"
+    done
+
+    econf \
+        --enable-dynamic \
+        --enable-freetype \
+        --enable-fontconfig \
+        --enable-openjpeg \
+        --enable-threading \
+        --disable-compile-inits \
+        --with-drivers=ALL \
+        --with-fontpath="$FONTPATH" \
+        --with-ijs \
+        --with-jbig2dec \
+        --with-libpaper \
+        --without-luratech \
+        --without-versioned-path \
+        $(option_enable cups) \
+        $(option_enable dbus) \
+        $(option_enable gtk) \
+        $(option_with cups pdftoraster) \
+        $(option_with idn libidn) \
+        $(option_with tiff system-libtiff) \
+        $(option_with X x)
+
+    edo cd ./ijs
+    econf \
+        --enable-shared \
+        --disable-static
+}
+
+src_compile() {
+    emake so all
+
+    edo cd ./ijs
+    emake
+}
+
+src_install() {
+    emake -j1 DESTDIR="${IMAGE}" install-so install
+
+    edo cd ./ijs
+    default
+
+    if option !X && option !gtk; then
+        rmdir "${IMAGE}"/usr/$(exhost --target)/lib/${PN}{/${PV},}
+    fi
+
+    # use gsc which links to libgs
+    edo mv -f "${IMAGE}"/usr/$(exhost --target)/bin/gs{c,}
+}
+

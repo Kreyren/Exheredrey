@@ -1,0 +1,28 @@
+# Copyright 2009-2017 Wulf C. Krueger <philantrop@exherbo.org>
+# Distributed under the terms of the GNU General Public License v2
+
+require sourceforge [ suffix=tar.gz ]
+
+SUMMARY="A command line password recovery tool for PDF files"
+DESCRIPTION="
+PDFCrack is a GNU/Linux (other POSIX-compatible systems should work too) tool for
+recovering passwords and content from PDF files. It is small, command line driven
+without external dependencies.
+PDFCrack features both a dictionary and brute-force mode.
+"
+
+BUGS_TO="philantrop@exherbo.org"
+
+LICENCES="GPL-2"
+SLOT="0"
+PLATFORMS="~amd64"
+MYOPTIONS=""
+DEPENDENCIES=""
+
+src_install() {
+    emagicdocs
+
+    dobin pdfcrack
+    doman pdfcrack.1
+}
+

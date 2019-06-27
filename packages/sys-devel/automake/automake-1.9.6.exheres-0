@@ -1,0 +1,8 @@
+# Copyright 2007 Bryan Østergaard
+# Distributed under the terms of the GNU General Public License v2
+
+require automake
+
+SLOT="${APIVERSION}"
+PLATFORMS="~amd64 ~arm ~x86"
+

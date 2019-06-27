@@ -1,0 +1,63 @@
+# Copyright 2009-2017 Wulf C. Krueger <philantrop@exherbo.org>
+# Distributed under the terms of the GNU General Public License v2
+# Based in part upon 'cdrdao-1.2.2-r2.ebuild' from Gentoo, which is:
+#     Copyright 1999-2008 Gentoo Foundation
+
+require github [ release=rel_$(ever replace_all _) suffix=tar.bz2 ] flag-o-matic
+
+export_exlib_phases src_configure src_prepare
+
+SUMMARY="${PN} records CDs DAO-mode based on a toc-file"
+DESCRIPTION="
+Recording in disk-at-once mode writes the complete disc, i.e. lead-in, one or more
+tracks and lead-out, in a single step. The commonly used track-at-once (TAO) mode
+writes each track independently which requires link blocks between two tracks.
+With TAO it is generally not possible to define the data that is written in pre-gaps.
+But exactly this feature makes audio CD recording interesting, e.g. by creating
+hidden bonus tracks or track intros in pre-gaps like it is common habit on commercial
+CDs. Finally, DAO recording is the only way to write data to the unused R-W sub-channels
+for e.g. CD-G or CD-TEXT.
+Most importantly, though, ${PN} is a dependency of k3b.
+"
+
+LICENCES="GPL-2"
+SLOT="0"
+MYOPTIONS=""
+
+DEPENDENCIES=""
+
+DEFAULT_SRC_CONFIGURE_PARAMS=(
+    --hates=datarootdir
+    --hates=docdir
+    --without-gcdmaster
+    --without-lame
+    --without-linux-qnx-sched
+    --without-mp3-support
+    --without-ogg-support
+    --without-scglib
+)
+
+DEFAULT_SRC_COMPILE_PARAMS=( COPTOPT="${CFLAGS}" )
+
+cdrdao_src_prepare() {
+    # build system sucks, needs this or fails with unprefixed tools
+    edo ln -s /usr/host/bin/$(exhost --tool-prefix)cc gcc
+    export PATH="${PWD}:${PATH}"
+
+    # Display better SCSI messages (advice from Bug 43003)
+    edo sed -e 's:HAVE_SCANSTACK:NO_FRIGGING_SCANSTACK:g' \
+            -i scsilib/include/{x,}mconfig.h
+
+    # Multiarch
+    edo sed -e 's:$(XCCCOM):${CC}:g' \
+            -i scsilib/RULES/rules.cnf
+
+    default
+}
+
+cdrdao_src_configure() {
+    default
+
+    emake CC="${CC}" -C scsilib config
+}
+

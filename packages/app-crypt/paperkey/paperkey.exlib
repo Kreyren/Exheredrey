@@ -1,0 +1,22 @@
+# Copyright 2016 Heiko Becker <heirecka@exherbo.org>
+# Distributed under the terms of the GNU General Public License v2
+
+SUMMARY="An OpenPGP key archiver"
+DESCRIPTION="
+Paperkey extracts the secret bytes of a private key and prints them. To
+reconstruct, you re-enter those bytes (whether by hand, OCR, QR code, or the
+like) and paperkey can use them to transform your existing public key into a
+secret key.
+"
+
+HOMEPAGE="http://www.jabberwocky.com/software/paperkey/"
+DOWNLOADS="${HOMEPAGE}${PNV}.tar.gz"
+
+LICENCES="GPL-2"
+SLOT="0"
+MYOPTIONS=""
+
+DEPENDENCIES=""
+
+BUGS_TO="heirecka@exherbo.org"
+

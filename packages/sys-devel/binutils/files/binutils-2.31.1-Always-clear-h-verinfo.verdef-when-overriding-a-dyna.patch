@@ -1,0 +1,192 @@
+Upstream: yes
+Reason: Fix erros like "-ld: ... _end: invalid version 21 (max 0)"
+
+From 76db6c1ac2cb4102e5551ab822afd84d88bb37aa Mon Sep 17 00:00:00 2001
+From: "H.J. Lu" <hjl.tools@gmail.com>
+Date: Fri, 10 Aug 2018 12:21:58 -0700
+Subject: [PATCH 1/2] Always clear h->verinfo.verdef when overriding a dynamic
+ definition
+
+When linker defines a symbol to override a dynamic definition, it should
+always clear h->verinfo.verdef so that the symbol won't be associated
+with the version information from the dynamic object.  This happened to
+the symbol "_edata" when creating an unversioned dynamic object linking
+against:
+
+1. libKF5ConfigCore.so.5.49.0
+2. libKF5CoreAddons.so.5.49.0
+3. libKF5I18n.so.5.49.0
+4. libKF5DBusAddons.so.5.49.0
+5. libQt5Xml.so.5.11.1
+6. libQt5DBus.so.5.11.1
+7. libQt5Core.so.5.11.1
+
+Among them
+
+libQt5Xml.so.5.11.1
+   299: 000000000003e000     0 NOTYPE  GLOBAL DEFAULT   18 _edata@@Qt_5
+libQt5DBus.so.5.11.1
+   597: 0000000000092018     0 NOTYPE  GLOBAL DEFAULT   18 _edata@@Qt_5
+libQt5Core.so.5.11.1
+  2292: 00000000004df640     0 NOTYPE  GLOBAL DEFAULT   21 _edata@Qt_5
+  2293: 00000000004df640     0 NOTYPE  GLOBAL DEFAULT   21 _edata@Qt_5
+
+The problem is triggered by 2 duplicated entries of _edata@Qt_5 in
+libQt5Core.so.5.11.1 which was created by gold.  Before this commit,
+ld created the dynamic object with "_edata" in its dynamic symbol table
+which was linker defined and associated with the version information
+from libQt5Core.so.5.11.1.  The code in question was there when the
+binutils source was imported to sourceware.org.  When such a dynamic
+object was used later, we got:
+
+/usr/bin/ld: bin/libKF5Service.so.5.49.0: _edata: invalid version 21 (max 0)
+/usr/bin/ld: bin/libKF5Service.so.5.49.0: error adding symbols: bad value
+
+Tested with many ELF targets.
+
+	PR ld/23499
+	* elflink.c (bfd_elf_record_link_assignment): Always clear
+	h->verinfo.verdef when overriding a dynamic definition.
+
+(cherry picked from commit 48e30f5238c70e738f44474d595c476ef4e4ec38)
+---
+ bfd/elflink.c | 12 +++++-------
+ 1 file changed, 5 insertions(+), 7 deletions(-)
+
+diff --git a/bfd/elflink.c b/bfd/elflink.c
+index b24fb95848..02618bed8f 100644
+--- a/bfd/elflink.c
++++ b/bfd/elflink.c
+@@ -686,13 +686,11 @@ bfd_elf_record_link_assignment (bfd *output_bfd,
+       && !h->def_regular)
+     h->root.type = bfd_link_hash_undefined;
+ 
+-  /* If this symbol is not being provided by the linker script, and it is
+-     currently defined by a dynamic object, but not by a regular object,
+-     then clear out any version information because the symbol will not be
+-     associated with the dynamic object any more.  */
+-  if (!provide
+-      && h->def_dynamic
+-      && !h->def_regular)
++  /* If this symbol is currently defined by a dynamic object, but not
++     by a regular object, then clear out any version information because
++     the symbol will not be associated with the dynamic object any
++     more.  */
++  if (h->def_dynamic && !h->def_regular)
+     h->verinfo.verdef = NULL;
+ 
+   /* Make sure this symbol is not garbage collected.  */
+-- 
+2.19.2
+
+
+From edd27c67f5f4d04331394d295806e697e606bbdb Mon Sep 17 00:00:00 2001
+From: "H.J. Lu" <hjl.tools@gmail.com>
+Date: Sat, 25 Aug 2018 06:17:52 -0700
+Subject: [PATCH 2/2] elf: Check for corrupt symbol version info
+
+The BFD linker with PR ld/23499 may generate shared libraries with
+corrupt symbol version info which leads to linker error when the
+corrupt shared library is used:
+
+/usr/bin/ld: bin/libKF5Service.so.5.49.0: _edata: invalid version 21 (max 0)
+/usr/bin/ld: bin/libKF5Service.so.5.49.0: error adding symbols: bad value
+
+Add check for corrupt symbol version info to objdump:
+
+00000000000af005 g    D  .data	0000000000000000  <corrupt>   _edata
+
+and readelf:
+
+   728: 00000000000af005     0 NOTYPE  GLOBAL DEFAULT   25 _edata@<corrupt> (5)
+
+bfd/
+
+	PR ld/23499
+	* elf.c (_bfd_elf_get_symbol_version_string): Return
+	_("<corrupt>") for corrupt symbol version info.
+
+binutils/
+
+	PR ld/23499
+	* readelf.c (get_symbol_version_string): Return _("<corrupt>")
+	for corrupt symbol version info.
+
+(cherry picked from commit 7a815dd566f3dd32435ac73aa0a0cc948d525e06)
+---
+ bfd/elf.c          | 2 +-
+ binutils/ChangeLog | 6 ++++++
+ binutils/readelf.c | 9 +++++++++
+ 3 files changed, 16 insertions(+), 1 deletion(-)
+
+diff --git a/bfd/elf.c b/bfd/elf.c
+index 0f75375128..80410575b0 100644
+--- a/bfd/elf.c
++++ b/bfd/elf.c
+@@ -1877,7 +1877,7 @@ _bfd_elf_get_symbol_version_string (bfd *abfd, asymbol *symbol,
+ 	{
+ 	  Elf_Internal_Verneed *t;
+ 
+-	  version_string = "";
++	  version_string = _("<corrupt>");
+ 	  for (t = elf_tdata (abfd)->verref;
+ 	       t != NULL;
+ 	       t = t->vn_nextref)
+diff --git a/binutils/ChangeLog b/binutils/ChangeLog
+index 32f47d5e07..6ef8592ff2 100644
+--- a/binutils/ChangeLog
++++ b/binutils/ChangeLog
+@@ -1,3 +1,9 @@
++2018-09-12  H.J. Lu  <hongjiu.lu@intel.com>
++
++	PR ld/23499
++	* readelf.c (get_symbol_version_string): Return _("<corrupt>")
++	for corrupt symbol version info.
++
+ 2018-07-18  Nick Clifton  <nickc@redhat.com>
+ 
+ 	2.31.1 Release point.
+diff --git a/binutils/readelf.c b/binutils/readelf.c
+index 1b50ba7631..f4df697a7d 100644
+--- a/binutils/readelf.c
++++ b/binutils/readelf.c
+@@ -11252,6 +11252,7 @@ get_symbol_version_string (Filedata *                   filedata,
+   unsigned char data[2];
+   unsigned short vers_data;
+   unsigned long offset;
++  unsigned short max_vd_ndx;
+ 
+   if (!is_dynsym
+       || version_info[DT_VERSIONTAGIDX (DT_VERSYM)] == 0)
+@@ -11269,6 +11270,8 @@ get_symbol_version_string (Filedata *                   filedata,
+   if ((vers_data & VERSYM_HIDDEN) == 0 && vers_data == 0)
+     return NULL;
+ 
++  max_vd_ndx = 0;
++
+   /* Usually we'd only see verdef for defined symbols, and verneed for
+      undefined symbols.  However, symbols defined by the linker in
+      .dynbss for variables copied from a shared library in order to
+@@ -11311,6 +11314,9 @@ get_symbol_version_string (Filedata *                   filedata,
+ 	      ivd.vd_flags = BYTE_GET (evd.vd_flags);
+ 	    }
+ 
++	  if ((ivd.vd_ndx & VERSYM_VERSION) > max_vd_ndx)
++	    max_vd_ndx = ivd.vd_ndx & VERSYM_VERSION;
++
+ 	  off += ivd.vd_next;
+ 	}
+       while (ivd.vd_ndx != (vers_data & VERSYM_VERSION) && ivd.vd_next != 0);
+@@ -11402,6 +11408,9 @@ get_symbol_version_string (Filedata *                   filedata,
+ 	  return (ivna.vna_name < strtab_size
+ 		  ? strtab + ivna.vna_name : _("<corrupt>"));
+ 	}
++      else if ((max_vd_ndx || (vers_data & VERSYM_VERSION) != 1)
++	       && (vers_data & VERSYM_VERSION) > max_vd_ndx)
++	return _("<corrupt>");
+     }
+   return NULL;
+ }
+-- 
+2.19.2
+

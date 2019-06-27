@@ -1,0 +1,71 @@
+# Copyright 2009 Saleem Abdulrasool <compnerd@compnerd.org>
+# Copyright 2010 Brett Witherspoon <spoonb@exherbo.org>
+# Distributed under the terms of the GNU General Public License v2
+
+require gnome.org [ suffix=tar.xz ] alternatives
+
+export_exlib_phases src_test src_install
+
+SUMMARY="A modern C#-like language for GNOME development"
+HOMEPAGE="http://live.gnome.org/Vala"
+
+LICENCES="LGPL-2.1"
+MYOPTIONS=""
+
+# gobject-introspection - /gir/bug651773
+DEPENDENCIES="
+    build:
+        dev-libs/libxslt
+        sys-apps/help2man
+        sys-devel/bison
+        sys-devel/flex
+        virtual/pkg-config[>=0.21]
+    test:
+        gnome-desktop/gobject-introspection:1
+        sys-apps/dbus
+"
+
+DEFAULT_SRC_CONFIGURE_PARAMS=( '--disable-unversioned' )
+
+vala_build_src_test() {
+    unset DISPLAY
+
+    esandbox allow_net 'unix-abstract:/tmp/dbus-*'
+    default
+    esandbox disallow_net 'unix-abstract:/tmp/dbus-*'
+}
+
+vala_build_src_install() {
+    local src target alternatives=()
+
+    default
+
+    edo pushd "${IMAGE}"
+
+    edo mkdir usr/share/aclocal/
+    edo cp "${WORK}"/vala.m4 usr/share/aclocal/vala-${SLOT##*.}.m4
+    edo cp "${WORK}"/vapigen/vapigen.m4 usr/share/aclocal/vapigen-${SLOT}.m4
+    ever at_least 0.38 || edo mkdir usr/share/vala/
+    edo cp "${WORK}"/vapigen/Makefile.vapigen usr/share/vala/Makefile.vapigen-${SLOT}
+
+    alternatives+=( /usr/$(exhost --target)/bin/vala valac-${SLOT} )
+    for src in usr/$(exhost --target)/bin/{valac,vala-gen-introspect,vapigen,vapicheck}-${SLOT} \
+               usr/share/man/man1/*-${SLOT}.1 ; do
+        target=${src/-${SLOT}}
+        alternatives+=( /${target} ${src##*/} )
+    done
+    for src in usr/share/aclocal/vapigen-${SLOT}.m4 usr/share/vala/Makefile.vapigen-${SLOT} ; do
+        alternatives+=( /${src/-${SLOT}} ${src##*/} )
+    done
+    alternatives+=( /usr/$(exhost --target)/lib/pkgconfig/vapigen.pc vapigen-${SLOT}.pc )
+    if ever at_least 0.38; then
+        alternatives+=(
+            /usr/share/valadoc valadoc-${SLOT}
+            /usr/$(exhost --target)/lib/valadoc valadoc-${SLOT}
+        )
+    fi
+    edo popd
+
+    alternatives_for ${PN} ${SLOT} ${SLOT} "${alternatives[@]}"
+}
+

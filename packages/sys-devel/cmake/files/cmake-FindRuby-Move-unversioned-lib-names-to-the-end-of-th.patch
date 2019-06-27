@@ -1,0 +1,37 @@
+Upstream: report got closed with the comment that it needs to be revised,
+          https://gitlab.kitware.com/cmake/cmake/merge_requests/343
+
+From 86c0d55e96ffc6920d688e91e2470364b3032ff5 Mon Sep 17 00:00:00 2001
+From: Heiko Becker <heirecka@exherbo.org>
+Date: Mon, 19 Dec 2016 16:53:30 +0100
+Subject: [PATCH] FindRuby: Move unversioned lib names to the end of the list
+
+My distro has tooling to select a ruby version via symlinks for
+ruby's binaries, libraries and man-pages. When ruby-2.2 is selected
+find_package(Ruby 2.3) sets all variables but RUBY_LIBRARY to
+correct, versioned values. RUBY_LIBRARY holds libruby.so, which is
+a symlink to libruby-2.2.so, leading to errors because of
+incompatible ruby versions later on.
+Even if I ignore our tooling, it seems wrong to find the unversioned
+libraries first, when asked for a specific version. Thus move them
+to the end of the list.
+---
+ Modules/FindRuby.cmake | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/Modules/FindRuby.cmake b/Modules/FindRuby.cmake
+index b0e9b4739..a8daf5fee 100644
+--- a/Modules/FindRuby.cmake
++++ b/Modules/FindRuby.cmake
+@@ -203,7 +203,7 @@ endif()
+ 
+ 
+ # Determine the list of possible names for the ruby library
+-set(_RUBY_POSSIBLE_LIB_NAMES ruby ruby-static ruby${_RUBY_VERSION_SHORT} ruby${_RUBY_VERSION_SHORT_NODOT} ruby-${_RUBY_VERSION_SHORT} ruby-${RUBY_VERSION})
++set(_RUBY_POSSIBLE_LIB_NAMES ruby${_RUBY_VERSION_SHORT} ruby${_RUBY_VERSION_SHORT_NODOT} ruby-${_RUBY_VERSION_SHORT} ruby-${RUBY_VERSION} ruby ruby-static)
+ 
+ if(WIN32)
+    set( _RUBY_MSVC_RUNTIME "" )
+-- 
+2.11.0
+

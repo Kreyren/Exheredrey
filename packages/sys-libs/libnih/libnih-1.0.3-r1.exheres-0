@@ -1,0 +1,55 @@
+# Copyright 2010 Alex Elsayed
+# Distributed under the terms of the GNU General Public License v2
+
+require launchpad autotools [ supported_autoconf=[ 2.5 ] supported_automake=[ 1.15 ] ]
+
+SUMMARY="Small library of C functions that are not implemented elsewhere in the standard library set"
+DESCRIPTION="
+libnih is roughly equivalent to other C libraries such as glib, except that its
+focus is on a small size and intended for applications that sit very low in the
+software stack, especially outside of /usr. It expressly does not reimplement
+functions that already exist in libraries ordinarily shipped in /lib such libc6,
+and does not do foolish things like invent arbitrary typedefs for perfectly good
+C types.
+"
+
+LICENCES="GPL-2"
+SLOT="0"
+PLATFORMS="~amd64"
+MYOPTIONS=""
+
+# tests access e.g. /var/run
+RESTRICT="test"
+
+DEPENDENCIES="
+    build:
+        sys-devel/gettext[>=0.17]
+        virtual/pkg-config[>=0.22]
+    build+run:
+        dev-libs/expat[>=2.0.0]
+        sys-apps/dbus[>=1.2.16]
+"
+
+DEFAULT_SRC_PREPARE_PATCHES=(
+    -p0 "${FILES}"/${PNV}-musl.patch
+)
+
+DEFAULT_SRC_CONFIGURE_PARAMS=(
+    --enable-nls
+    --disable-static
+    gt_cv_func_gnugettext{1,2}_libc=yes
+)
+
+src_prepare() {
+    edo sed \
+        -e 's:$(prefix)/lib/pkgconfig:$(libdir)/pkgconfig:' \
+        -i nih{,-dbus}/Makefile.am
+
+    autotools_src_prepare
+}
+
+src_install() {
+    default
+    edo rm -f "${IMAGE}"/usr/$(exhost --target)/lib/charset.alias
+}
+

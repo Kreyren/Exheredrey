@@ -1,0 +1,62 @@
+# Copyright 2008 Santiago M. Mola
+# Distributed under the terms of the GNU General Public License v2
+# Based in part upon 'libxslt-1.1.23.ebuild', which is:
+#   Copyright 1999-2008 Gentoo Foundation
+
+require autotools [ supported_autoconf=[ 2.5 ] supported_automake=[ 1.16 1.15 ] ]
+require python [ with_opt=true blacklist=3 multibuild=false ]
+
+SUMMARY="XSLT libraries and tools"
+HOMEPAGE="http://www.xmlsoft.org/XSLT"
+DOWNLOADS="ftp://xmlsoft.org/${PN}/${PNV}.tar.gz"
+
+LICENCES="MIT"
+SLOT="0"
+PLATFORMS="~amd64 ~arm ~armv7 ~armv8 ~x86"
+MYOPTIONS="crypt debug examples python"
+
+DEPENDENCIES="
+    build+run:
+        dev-libs/libxml2:2.0[>=2.6.27]
+        crypt? ( dev-libs/libgcrypt[>=1.1.92] )
+        python? ( dev-lang/python:=[>=2&<3] )
+"
+
+DEFAULT_SRC_PREPARE_PATCHES=(
+    "${FILES}"/${PN}-1.1.26-fix-python-paths.patch
+    "${FILES}"/${PN}-1.1.27-m4.patch
+    "${FILES}"/e03553605b45c88f0b4b2980adfbbb8f6fca2fd6.patch
+)
+
+DEFAULT_SRC_CONFIGURE_PARAMS=(
+    --disable-static
+    # Always pass --with-debugger. It is required by third parties (see
+    # e.g. Gentoo bug #98345)
+    --with-debugger
+)
+DEFAULT_SRC_CONFIGURE_OPTION_WITHS=(
+    "crypt crypto"
+    "debug"
+    "debug mem-debug"
+    "python python /usr/$(exhost --target)/bin/python2"
+)
+
+DEFAULT_SRC_INSTALL_EXTRA_DOCS=( FEATURES )
+
+src_configure() {
+    # Use the target's libgcrypt-config. This is safe because libgcrypt-config is a standalone shell
+    # script with /bin/sh as shebang.
+    LIBGCRYPT_CONFIG=/usr/$(exhost --target)/bin/libgcrypt-config \
+        default
+}
+
+src_install() {
+    default
+
+    keepdir /usr/$(exhost --target)/lib/${PN}-plugins
+
+    if ! option examples; then
+        edo rm -rf "${IMAGE}"/usr/share/doc/${PN}-python-${PV}/examples
+    fi
+}
+

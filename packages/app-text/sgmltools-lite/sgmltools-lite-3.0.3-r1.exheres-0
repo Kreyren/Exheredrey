@@ -1,0 +1,105 @@
+# Copyright 2008 Santiago M. Mola
+# Distributed under the terms of the GNU General Public License v2
+# Based in part upon 'sgmltools-lite-3.0.3-r10.ebuild', which is:
+#   Copyright 1999-2006 Gentoo Foundation
+
+require python sgml-catalog sourceforge [ suffix=tar.gz ]
+
+SUMMARY="Python interface to SGML software in a DocBook/OpenJade env"
+DOWNLOADS+=" mirror://sourceforge/${PN}/nw-eps-icons-0.0.1.tar.gz"
+
+LICENCES="GPL-2"
+SLOT="0"
+PLATFORMS="~amd64"
+MYOPTIONS="
+    ( providers:
+        w3m
+        lynx
+    ) [[
+        *description = [ HTML to Text conversion tool ]
+        number-selected = at-least-one
+    ]]
+"
+
+DEPENDENCIES="
+    build:
+        app-text/sgml-common
+        app-text/docbook-sgml-dtd:3.1
+        app-text/docbook-dsssl-stylesheets
+        app-text/openjade
+    build+run:
+        providers:w3m?  ( net-www/w3m  )
+        providers:lynx? ( net-www/lynx )
+"
+#    tetex? ( app-text/jadetex )
+
+
+DEFAULT_SRC_CONFIGURE_PARAMS=( --hates=docdir --hates=datarootdir )
+SGML_CATALOG=( "/etc/sgml/sgml-lite.cat
+    /usr/share/sgml/stylesheets/sgmltools/sgmltools.cat" )
+
+src_prepare() {
+    # Remove CVS directories from the tree
+    edo find . -name CVS | xargs rm -rf || die "rm -rf failed"
+}
+
+src_install() {
+    #FIXME: Patch to support DESTDIR, it's no longer actively developed though.
+    emake -j1 \
+        etcdir="${IMAGE}"/etc/sgml \
+        bindir="${IMAGE}"/usr/$(exhost --target)/bin \
+        datadir="${IMAGE}"/usr/share \
+        mandir="${IMAGE}"/usr/share/man \
+        install
+
+    emagicdocs
+    dodoc POSTINSTALL
+    #TODO
+    # dohtml -r .
+
+    edo cd "${WORKBASE}"/nw-eps-icons-0.0.1/images
+    insinto /usr/share/sgml/docbook/dsssl-stylesheets/images
+    doins *.eps
+
+    edo cd callouts
+    insinto /usr/share/sgml/docbook/dsssl-stylesheets/images/callouts
+    doins *.eps
+
+    edo rm "${IMAGE}"/etc/sgml/catalog.{suse,rh62}
+
+    # Remove file provided by sgml-common
+    edo rm "${IMAGE}"/usr/$(exhost --target)/bin/sgmlwhich
+
+    # Remove the backends that require tetex
+    # option tetex || \
+    edo rm "${IMAGE}"/usr/share/sgml/misc/sgmltools/python/backends/{Dvi,Ps,Pdf,JadeTeX}.py
+
+    # List of backends to alias with sgml2*
+    # Do not provide sgml2{txt,rtf,html} anymore, they are part of
+    # linuxdoc-tools
+    local BACKENDS=""
+    #option tetex && BACKENDS="ps dvi pdf"
+
+    # Create simple alias scripts that people are used to
+    # And make the manpages for those link to the sgmltools-lite manpage
+    ScripTEXT="#!/bin/sh\n/usr/bin/sgmltools --backend="
+    for back in ${BACKENDS} ; do
+        edo echo -e ${ScripTEXT}${back} '$*' > sgml2${back}
+        exeinto /usr/bin
+        doexe sgml2${back}
+
+        dosym sgmltools-lite.1.gz /usr/share/man/man1/sgml2${back}.1.gz
+    done
+
+    keepdir /usr/share/sgml/misc/sgmltools/site-backends
+    keepdir /etc/sgml/catalog.d
+}
+
+pkg_postinst() {
+    sgml-catalog_pkg_postinst
+}
+
+pkg_postrm() {
+    sgml-catalog_pkg_postrm
+}
+

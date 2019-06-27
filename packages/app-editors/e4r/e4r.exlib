@@ -1,0 +1,17 @@
+# Copyright 2009 Ciaran McCreesh
+# Distributed under the terms of the GPLv2
+
+SUMMARY="A very simple editor"
+HOMEPAGE="https://exherbo.org/"
+DOWNLOADS="https://dev.exherbo.org/distfiles/${PN}/${PNV}.tar.bz2"
+
+LICENCES="GPL-2"
+SLOT="0"
+
+DEPENDENCIES="
+    run:
+        app-editors/vim"
+MYOPTIONS=""
+
+DEFAULT_SRC_INSTALL_PARAMS=( BINDIR=/usr/$(exhost --target)/bin DATADIR=/usr/share )
+

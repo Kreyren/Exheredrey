@@ -1,0 +1,48 @@
+# Copyright 2009 Saleem Abdulrasool <compnerd@compnerd.org>
+# Distributed under the terms of the GNU General Public License v2
+
+require autotools [ supported_autoconf=[ 2.5 ] supported_automake=[ 1.16 ] ]
+
+export_exlib_phases src_install
+
+SUMMARY="USB enumeration utilities"
+DESCRIPTION="
+usbutils is a utility for displaying information about USB buses in the system and the devices
+connected to them.
+"
+HOMEPAGE="http://www.linux-usb.org"
+DOWNLOADS="mirror://kernel/linux/utils/usb/${PN}/${PNV}.tar.xz"
+
+LICENCES="GPL-2"
+SLOT="0"
+MYOPTIONS="
+    python
+    ( providers: eudev systemd ) [[ number-selected = exactly-one ]]
+"
+
+DEPENDENCIES="
+    build:
+        virtual/pkg-config[>=0.9.0]
+    build+run:
+        dev-libs/libusb:1[>=1.0.14]
+        providers:eudev? ( sys-apps/eudev )
+        providers:systemd? ( sys-apps/systemd[>=196] )
+    run:
+        python? (
+            dev-lang/python:*[>=3]
+            sys-apps/usbutils-data [[ note = [ only lsusb.py reads usb.ids, the compiled tools use udev-hwdb ] ]]
+        )
+"
+
+DEFAULT_SRC_CONFIGURE_PARAMS=(
+    --datarootdir=/usr/share
+    --datadir=/usr/share/misc
+    --disable-static
+)
+
+usbutils_src_install() {
+    default
+
+    option python || edo rm "${IMAGE}"/usr/$(exhost --target)/bin/lsusb.py
+}
+

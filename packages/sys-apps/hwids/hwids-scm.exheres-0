@@ -1,0 +1,60 @@
+# Copyright 2016 Kylie McClain <somasis@exherbo.org>
+# Distributed under the terms of the GNU General Public License v2
+
+# They have tags, but we use scm for other data packages, so we use scm for this too
+
+require github [ user='gentoo' ]
+require udev-rules
+
+SUMMARY="Combined hardware identification databases - pci.ids, usb.ids, OUI, IAB, udev hwdb"
+DESCRIPTION="
+Repackaged PCI ID, USB ID, OUI, and IAB databases, as well as a hwdb generation script.
+Since we have sys-apps/pciutils-data and usbutils-data, only OUI, IAB, and the hwdb are installed.
+"
+
+SLOT="0"
+LICENCES="|| ( BSD-3 GPL-2 ) public-domain"
+
+MYOPTIONS=""
+
+PLATFORMS="~amd64 ~armv7 ~armv8"
+
+DEPENDENCIES="
+    build:
+        dev-lang/perl:*
+    run:
+        sys-apps/eudev[>=3.1.5-r1]
+        !sys-apps/systemd [[
+            description = [ systemd's own hwdb is used. ]
+            resolution = manual
+        ]]
+"
+
+MAKE_PARAMS=(
+    GZIP=no
+    PCI=no
+    USB=no
+    NET=yes
+    UDEV=yes
+    DOCDIR=/usr/share/doc/${PNVR}
+    HWDBDIR="${UDEVHWDBDIR}"
+    DESTDIR="${IMAGE}"
+)
+
+src_prepare() {
+    # Makefile attempts to update hwdb after install
+    edo sed -e '/udevadm /d' -i Makefile
+}
+
+src_compile() {
+    emake ${MAKE_PARAMS[@]}
+}
+
+src_install() {
+    emake ${MAKE_PARAMS[@]} install
+}
+
+pkg_postinst() {
+    nonfatal edo /usr/$(exhost --target)/bin/udevadm hwdb --root="${ROOT}" --update
+}
+

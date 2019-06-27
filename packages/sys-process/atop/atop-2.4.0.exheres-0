@@ -1,0 +1,36 @@
+# Copyright 2015 Ingmar Vanhassel
+# Distributed under the terms of the GNU General Public License v2
+
+SUMMARY="An ASCII full-screen performance monitor"
+HOMEPAGE="https://www.atoptool.nl"
+DOWNLOADS="${HOMEPAGE}/download/${PNV}.tar.gz"
+
+LICENCES="GPL-2"
+SLOT="0"
+PLATFORMS="~amd64"
+MYOPTIONS=""
+
+DEPENDENCIES="
+    build+run:
+        sys-apps/systemd [[ note = [ optional, see Makefile ] ]]
+"
+
+src_prepare() {
+    edo sed \
+        -e "/BINPATH/s#/usr/bin#/usr/$(exhost --target)/bin#" \
+        -e "/SBINPATH/s#/usr/sbin#/usr/$(exhost --target)/bin#" \
+        -e "/SYSDPATH/s#/usr/lib/systemd/system#/usr/$(exhost --target)/lib/systemd/system#" \
+        -e "/PMPATH1/s#/usr/lib#/usr/$(exhost --target)/lib#" \
+        -e "/PMPATH2/s#/usr/lib#/usr/$(exhost --target)/lib#" \
+        -e "/PMPATHD/s#/usr/lib#/usr/$(exhost --target)/lib#" \
+        -i Makefile
+}
+
+src_compile() {
+    emake CC="${CC}"
+}
+
+src_install() {
+    emake -j1 DESTDIR="${IMAGE}" CC="${CC}" systemdinstall
+}
+

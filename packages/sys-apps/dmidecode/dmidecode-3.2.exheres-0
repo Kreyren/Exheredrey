@@ -1,0 +1,32 @@
+# Copyright 2008 Saleem Abdulrasool <compnerd@compnerd.org>
+# Distributed under the terms of the GNU General Public License v2
+# Based in part upon 'dmidecode-2.9.ebuild' from Gentoo which is:
+#    Copyright 1999-2008 Gentoo Foundation
+
+SUMMARY="DMI (Desktop Management Interface) table related utilities"
+HOMEPAGE="https://www.nongnu.org/dmidecode/"
+DOWNLOADS="mirror://savannah/${PN}/${PNV}.tar.xz"
+
+LICENCES="GPL-2"
+SLOT="0"
+PLATFORMS="~amd64 ~x86"
+MYOPTIONS=""
+
+DEPENDENCIES=""
+
+DEFAULT_SRC_COMPILE_PARAMS=( CC="${CC}" CFLAGS="${CFLAGS}" LDFLAGS="${LDFLAGS}" )
+
+DEFAULT_SRC_INSTALL_PARAMS=(
+    prefix=/usr
+    sbindir=/usr/$(exhost --target)/bin
+    docdir=/usr/share/doc/${PNVR}
+)
+
+src_prepare() {
+    edo sed \
+        -e '/^CFLAGS/s/-O2//' \
+        -i Makefile
+
+    default
+}
+

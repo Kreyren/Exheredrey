@@ -1,0 +1,42 @@
+# Copyright 2007 Bryan Østergaard <kloeri@exherbo.org>
+# Copyright 2008 Richard Brown <rbrown@exherbo.org>
+# Distributed under the terms of the GNU General Public License v2
+# Based in part upon 'debianutils-2.28.5.ebuild' from Gentoo, which is:
+#     Copyright 1999-2008 Gentoo Foundation
+
+require debian-upstream [ suffix=tar.xz ] alternatives
+
+SUMMARY="Miscellaneous utilities specific to Debian"
+DESCRIPTION="
+* installkernel: install a new kernel image
+* run-parts: run scripts or programs in a directory
+* savelog: save a log file
+* tempfile: create a temporary file in a safe manner
+"
+HOMEPAGE="https://packages.debian.org/${PN}"
+
+LICENCES="
+    GPL-2
+    SMAIL [[ note = [ savelog ] ]]
+"
+SLOT="0"
+PLATFORMS="~amd64 ~arm ~armv7 ~armv8 ~x86"
+MYOPTIONS=""
+
+DEPENDENCIES=""
+
+WORK=${WORKBASE}/${PN}
+
+src_install() {
+    dobin tempfile run-parts installkernel savelog
+
+    # needed by run-parts (Gentoo bug #352326)
+    keepdir /etc/kernel/postinst.d
+
+    doman "${WORK}"/{tempfile.1,run-parts.8,savelog.8,installkernel.8}
+    dodoc "${WORK}"/debian/{changelog,control}
+
+    alternatives_for installkernel ${PN} 1000 \
+        /usr/$(exhost --target)/bin/installkernel installkernel.debianutils
+}
+

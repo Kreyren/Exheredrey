@@ -1,0 +1,18 @@
+# Copyright 2012 Elias Pipping <pipping@exherbo.org>
+# Distributed under the terms of the GNU General Public License v2
+
+SCM_BRANCH="release_70"
+SCM_llvm_BRANCH="release_70"
+SCM_tools_extra_BRANCH="release_70"
+require clang
+
+PLATFORMS="~amd64 ~x86"
+
+src_prepare() {
+    clang_src_prepare
+
+    # ld tests will fail because of Exherbo's non-standard path for ld
+    edo sed -e '/-dynamic-linker/d' \
+            -i "${CMAKE_SOURCE}"/test/Driver/riscv32-toolchain.c
+}
+

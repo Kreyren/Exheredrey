@@ -1,0 +1,37 @@
+# Copyright 2016 Timo Gurr <tgurr@exherbo.org>
+# Distributed under the terms of the GNU General Public License v2
+
+require github [ user=graeme-hill tag=8f399e8bd4252be9952f3dfa8199924cc8487ca4 ]
+
+SUMMARY="Lightweight cross platform C++ GUID/UUID library"
+
+LICENCES="MIT"
+SLOT="0"
+PLATFORMS="~amd64"
+MYOPTIONS=""
+
+DEPENDENCIES="
+    build+run:
+        sys-apps/util-linux [[ note = [ libuuid ] ]]
+"
+
+src_configure() {
+    :
+}
+
+src_compile() {
+    edo ${CC} ${CFLAGS} ${LDFLAGS} \
+        -std=c++11 \
+        -c guid.cpp -o guid.o \
+        -DGUID_LIBUUID
+
+    edo ${AR} rs libcrossguid.a guid.o
+}
+
+src_install() {
+    insinto /usr/$(exhost --target)/include
+    doins guid.h
+
+    dolib libcrossguid.a
+}
+

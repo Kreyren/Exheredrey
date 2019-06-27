@@ -1,0 +1,250 @@
+# Copyright 2007 Bryan Østergaard
+# Copyright 2012 Saleem Abdulrasool <compnerd@compnerd.org>
+# Distributed under the terms of the GNU General Public License v2
+
+require gnu [ suffix=tar.xz ] alternatives flag-o-matic
+
+export_exlib_phases src_prepare src_configure src_compile src_test_expensive src_install
+
+SUMMARY="Collection of binary tools including ld and as"
+
+REMOTE_IDS="freecode:${PN}"
+
+LICENCES="GPL-3 LGPL-3"
+SLOT="0"
+CROSS_COMPILE_TARGETS="
+    aarch64-unknown-linux-gnueabi
+    aarch64-unknown-linux-musleabi
+    armv4-unknown-linux-gnueabi
+    armv4-unknown-linux-gnueabihf
+    armv4-unknown-linux-musleabi
+    armv4-unknown-linux-musleabihf
+    armv5-unknown-linux-gnueabi
+    armv5-unknown-linux-gnueabihf
+    armv5-unknown-linux-musleabi
+    armv5-unknown-linux-musleabihf
+    armv6-unknown-linux-gnueabi
+    armv6-unknown-linux-gnueabihf
+    armv6-unknown-linux-musleabi
+    armv6-unknown-linux-musleabihf
+    armv7-unknown-linux-gnueabi
+    armv7-unknown-linux-musleabi
+    armv7-unknown-linux-gnueabihf
+    armv7-unknown-linux-musleabihf
+    i686-pc-linux-gnu
+    i686-pc-linux-musl
+    i686-unknown-windows-gnu
+    ia64-unknown-linux-gnu
+    x86_64-pc-linux-gnu
+    x86_64-pc-linux-musl
+    powerpc64-unknown-linux-gnu
+"
+
+MYOPTIONS="
+    ( targets: ${CROSS_COMPILE_TARGETS} ) [[ number-selected = at-least-one ]]
+"
+
+RESTRICT="test"
+
+DEPENDENCIES="
+    build:
+        sys-devel/gnuconfig[>=20160211-r1]
+    build+run:
+        sys-libs/zlib
+        !sys-devel/gdb[<=7.8.1] [[
+            description = [ gdb and binutils both installed libbfd and libiberty ]
+            resolution = uninstall-blocked-after
+        ]]
+    test-expensive:
+        dev-tcl/expect
+        sys-apps/bc
+"
+
+ECONF_SOURCE="${WORK}"
+
+binutils_src_prepare() {
+    if [[ -d ${FILES}/patches-${PV} ]]; then
+        expatch -p1 "${FILES}"/patches-${PV}
+    fi
+
+    # fixup broken locale install paths
+    edo sed -e '/^localedir = /clocaledir = /usr/share/locale'          \
+            -e '/^gnulocaledir = /cgnulocaledir = /usr/share/locale'    \
+            -i "${WORK}/bfd/po/Make-in"                                 \
+            -i "${WORK}/binutils/po/Make-in"                            \
+            -i "${WORK}/gas/po/Make-in"                                 \
+            -i "${WORK}/gold/po/Make-in"                                \
+            -i "${WORK}/gprof/po/Make-in"                               \
+            -i "${WORK}/ld/po/Make-in"                                  \
+            -i "${WORK}/opcodes/po/Make-in"
+
+    default
+}
+
+binutils_src_configure() {
+    local host=$(exhost --target) target=
+
+    export CC_FOR_BUILD=$(exhost --build)-cc
+    export CFLAGS_FOR_BUILD=$(print-build-flags CFLAGS)
+    export LDFLAGS_FOR_BUILD=$(print-build-flags LDFLAGS)
+
+    for target in ${CROSS_COMPILE_TARGETS} ; do
+        local libpath=/${target}/lib:/usr/${target}/lib
+
+        if option !targets:${target} ; then
+            echo "    Cross-Compile Target: ${target} (disabled)"
+            continue
+        fi
+
+        echo "    Cross-Compile Target: ${target}"
+
+        edo mkdir -p "${WORKBASE}/build/${target}"
+        edo cd "${WORKBASE}/build/${target}"
+
+        # NOTE(compnerd) explicitly disable gdb incase we are building from scm.  Upstream bundles
+        # gdb and binutils and this will otherwise build gdb which is packaged separately.
+        local myconf=( --target=${target} --disable-werror --disable-gdb --enable-ld --enable-lto )
+        case "${target}" in
+        i686-unknown-windows-gnu|i686-unknown-windows-msvc|i686-unknown-windows-cygnus) ;;
+        *) myconf+=( --enable-gold ) ;;
+        esac
+
+        myconf+=( --enable-compressed-debug-sections=all --with-system-zlib )
+
+        # NOTE(compnerd) BFD options
+        myconf+=( --enable-plugins --enable-64-bit-bfd --enable-secureplt --with-mmap )
+        # TODO(compnerd) determine the debug location from paludis and pass that along
+        # myconf+=( --wih-separate-debug-dir=/usr/${target}/lib/debug )
+        myconf+=( --with-system-zlib )
+
+        # NOTE(compnerd) binutils options
+        myconf+=( --with-system-zlib )
+
+        # TODO(compnerd) disable installation of libiberty and libbfd
+        # TODO(compnerd) this is not the default behaviour, determine why so we can nix it
+        myconf+=( --enable-shared --enable-install-libbfd --enable-install-libiberty )
+
+        # NOTE(compnerd) gas options
+        myconf+=( --with-system-zlib )
+        # NOTE(compnerd) glibc has supported this since 2007, if you have an older glibc, we should
+        # conditionalise this on the libc target version
+        myconf+=( --enable-elf-stt-common )
+
+        # NOTE(compnerd) gold options
+        myconf+=( --with-sysroot='""' --enable-threads --enable-plugins --with-lib-path=${libpath} )
+
+        # NOTE(compnerd) ld options
+        myconf+=( --with-lib-path=${libpath} --enable-64-bit-bfd --with-sysroot='""' )
+
+        # NOTE(somasis) default to creating archives deterministically; good for reproducible building
+        myconf+=( --enable-deterministic-archives )
+
+        [[ "${target}" == "${host}" ]] && myconf+=( --program-prefix=${host}- )
+
+        econf "${myconf[@]}"
+    done
+}
+
+binutils_src_compile() {
+    local target=
+
+    for target in ${CROSS_COMPILE_TARGETS} ; do
+        if option !targets:${target} ; then
+            echo "    Cross-Compile Target: ${target} (disabled)"
+            continue
+        fi
+
+        echo "    Cross-Compile Target: ${target}"
+        edo cd "${WORKBASE}/build/${target}"
+        default
+    done
+}
+
+binutils_src_test_expensive() {
+    local target=
+
+    for target in ${CROSS_COMPILE_TARGETS} ; do
+        if option !targets:${target} ; then
+            echo "    Cross-Compile Target; ${target} (disabled)"
+            continue
+        fi
+
+        echo "    Cross-Compile Target: ${target}"
+        edo cd "${WORKBASE}/build/${target}"
+        emake "${DEFAULT_SRC_TEST_PARAMS[@]}" check
+    done
+}
+
+linkers_for_target() {
+    case "${1}" in
+    i686-unknown-windows-gnu|i686-unknown-windows-msvc|i686-unknown-windows-cygnus) echo bfd ;;
+    *) echo bfd gold ;;
+    esac
+}
+
+binutils_src_install() {
+    local host=$(exhost --target) target=
+
+    for target in ${CROSS_COMPILE_TARGETS} ; do
+        local m symbols
+        # eclectic managed files
+        local em=( /usr/${host}/bin/${target}-ld /usr/${host}/bin/ld /usr/${host}/${target}/bin/ld "${BANNEDDIR}"/ld )
+
+        if option !targets:${target} ; then
+            echo "    Cross-Compile Target: ${target} (disabled)"
+            continue
+        fi
+
+        echo "    Cross-Compile Target: ${target}"
+
+        edo cd "${WORKBASE}/build/${target}"
+
+        # default installation
+        default
+
+        # don't install everything twice
+        for f in "${IMAGE}"/usr/${host}/${target}/bin/* ; do
+            local t=${f#${IMAGE}/usr/${host}}
+            local name=${f##*/}
+
+            dosym ..${t} /usr/${host}/bin/${target}-${name}
+        done
+
+        # provided by alternatives
+        for m in "${em[@]}" ; do
+            edo rm -f "${IMAGE}${m}"
+        done
+
+        # alternatives setup
+        for provider in $(linkers_for_target ${target}) ; do
+            local priority=
+            local alternatives=()
+
+            case "${provider}" in
+            bfd)  priority=100 ;;
+            gold) priority=10  ;;
+            esac
+
+            alternatives=( ld ${provider} ${priority} )
+            for m in "${em[@]}" ; do
+                alternatives+=( "${m}" "${m##*/}".${provider} )
+            done
+            alternatives_for "${alternatives[@]}"
+        done
+    done
+
+    # install unprefixed tools for the native target
+    for f in "${IMAGE}"/usr/${host}/bin/${host}-*; do
+        local name=${f##*/${host}-}
+
+        dosym ${host}-${name} /usr/${host}/bin/${name}
+        dobanned ${name}
+    done
+
+    # install unprefixed man pages
+    for f in "${IMAGE}"/usr/share/man/man1/${host}-*.1; do
+        t=${f##${IMAGE}}
+        dosym ${f##*/} ${t/${host}-/}
+    done
+}
+

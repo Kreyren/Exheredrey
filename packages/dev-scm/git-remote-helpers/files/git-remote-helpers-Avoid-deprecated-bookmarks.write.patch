@@ -1,0 +1,47 @@
+Upstream: yes
+Reason: Compatibility with newer mercurial versions
+
+From 822c6e4b03d9e66df8261f323caded716e8d8b8d Mon Sep 17 00:00:00 2001
+From: Felipe Contreras <felipe.contreras@gmail.com>
+Date: Tue, 17 May 2016 21:26:18 -0500
+Subject: [PATCH] Avoid deprecated bookmarks.write()
+
+Signed-off-by: Felipe Contreras <felipe.contreras@gmail.com>
+---
+ git-remote-hg | 19 ++++++++++++++++---
+ 1 file changed, 16 insertions(+), 3 deletions(-)
+
+diff --git a/git-remote-hg b/git-remote-hg
+index 87dc8f3..1749d43 100755
+--- a/git-remote-hg
++++ b/git-remote-hg
+@@ -373,10 +373,23 @@ def updatebookmarks(repo, peer):
+     for k, v in remotemarks.iteritems():
+         localmarks[k] = hgbin(v)
+ 
+-    if hasattr(localmarks, 'write'):
+-        localmarks.write()
++    if check_version(3, 6):
++        lock = tr = None
++        try:
++            lock = repo.lock()
++            tr = repo.transaction('bookmark')
++            localmarks.recordchange(tr)
++            tr.close()
++        finally:
++            if tr is not None:
++                tr.release()
++            if lock is not None:
++                lock.release()
+     else:
+-        bookmarks.write(repo)
++        if hasattr(localmarks, 'write'):
++            localmarks.write()
++        else:
++            bookmarks.write(repo)
+ 
+ def get_repo(url, alias):
+     global peer
+-- 
+2.10.2
+

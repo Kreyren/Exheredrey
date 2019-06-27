@@ -1,0 +1,43 @@
+# Copyright 2008-2012 Wulf C. Krueger <philantrop@exherbo.org>
+# Copyright 2010 Ingmar Vanhassel <ingmar@exherbo.org>
+# Distributed under the terms of the GNU General Public License v2
+# Based in part upon 'kbd-1.14.1-r1.ebuild' from Gentoo, which is:
+#     Copyright 1999-2008 Gentoo Foundation
+
+SUMMARY="Keyboard and console utilities"
+HOMEPAGE="http://www.${PN}-project.org"
+DOWNLOADS="mirror://kernel/linux/utils/${PN}/${PNV}.tar.xz"
+
+REMOTE_IDS="freecode:${PN}"
+
+LICENCES="GPL-2"
+SLOT="0"
+PLATFORMS="~amd64 ~arm ~armv7 ~armv8 ~x86"
+MYOPTIONS=""
+
+DEPENDENCIES="
+    build:
+        sys-devel/gettext[>=0.14.1]
+        virtual/pkg-config[>=0.9.0]
+    build+run:
+        sys-libs/pam [[ note = [ required for vlock ] ]]
+    test:
+        dev-libs/check[>=0.9.4]
+"
+
+DEFAULT_SRC_CONFIGURE_PARAMS=(
+    --enable-nls
+    --disable-static
+)
+
+DEFAULT_SRC_CONFIGURE_TESTS=(
+    "--enable-tests --disable-tests"
+)
+
+src_install() {
+    default
+
+    insinto /usr/share/doc/${PNVR}/html
+    doins docs/doc/*.html
+}
+

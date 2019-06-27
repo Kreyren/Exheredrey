@@ -1,0 +1,249 @@
+# Copyright 2007-2007 Bryan Østergaard
+# Copyright 2008 Ali Polatel
+# Copyright 2009, 2010 Ingmar Vanhassel
+# Copyright 2013 Benedikt Morbach <moben@exherbo.org>
+# Distributed under the terms of the GNU General Public License v2
+# Based in part upon 'python-2.5.2-r4.ebuild' from Gentoo, which is:
+#  Copyright 1999-2008 Gentoo Foundation
+
+MY_PV=${PV/_beta/b}
+MY_PV=${MY_PV/_rc/rc}
+MY_PNV="Python-${MY_PV}"
+# Alpha/Beta tarballs are in the same directory as the first actual release tarball
+MY_DIR_PV=${PV/_beta*}
+MY_DIR_PV=${MY_DIR_PV/_rc*}
+
+# python: no has_lib or multibuild as it needs only the pyc part of the exlib
+require flag-o-matic python [ has_lib=false multibuild=false blacklist=none ] alternatives
+require autotools [ supported_autoconf=[ 2.5 ] supported_automake=[ 1.16 1.15 1.13 1.12 1.11 1.10 ] ]
+
+export_exlib_phases pkg_pretend src_prepare src_configure src_test src_install
+
+SUMMARY="Python interpreter"
+HOMEPAGE="https://www.${PN}.org"
+DOWNLOADS="${HOMEPAGE}/ftp/${PN}/${MY_DIR_PV}/${MY_PNV}.tar.xz"
+
+UPSTREAM_DOCUMENTATION="https://docs.${PN}.org/$(ever range 1-2)/"
+
+LICENCES="PSF-2.2"
+SLOT="$(ever range 1-2)"
+MYOPTIONS="dbm examples readline sqlite tk
+    ( berkdb gdbm ) [[ requires = dbm ]]
+    dbm? ( ( berkdb gdbm ) [[ number-selected = exactly-one ]] )
+    ( providers: libressl openssl ) [[ number-selected = exactly-one ]]
+"
+
+DEPENDENCIES="
+    build:
+        virtual/pkg-config
+    build+run:
+        app-arch/bzip2
+        dev-libs/expat
+        dev-libs/libffi
+        sys-libs/ncurses
+        sys-libs/zlib[>=1.1.3]
+        berkdb? ( sys-libs/db:=[>=4.6.21&<5.4] )
+        gdbm? ( sys-libs/gdbm )
+        readline? ( sys-libs/readline:=[>=4.1] )
+        sqlite? ( dev-db/sqlite:3[>=3.0.8] )
+        tk? ( dev-lang/tk[>=8.0] )
+    post:
+        app-admin/eclectic-python:$(ever major)
+"
+
+# >= 3.7.0 needs X509_VERIFY_PARAM_set1_host() provided by libressl >=2.7/openssl >=1.0.2
+if ever at_least 3.7.0; then
+    DEPENDENCIES+="
+        build+run:
+            providers:libressl? ( dev-libs/libressl:=[>=2.7] )
+            providers:openssl? ( dev-libs/openssl[>=1.0.2] )
+    "
+else
+    DEPENDENCIES+="
+        providers:libressl? ( dev-libs/libressl:= )
+        providers:openssl? ( dev-libs/openssl )
+    "
+fi
+
+WORK="${WORKBASE}/${MY_PNV}"
+
+DEFAULT_SRC_CONFIGURE_PARAMS=(
+    --enable-ipv6
+    --enable-shared
+    $(ever at_least 3 || echo --enable-unicode=ucs4)
+    --with-system-expat
+    --with-system-ffi
+    ac_cv_file__dev_ptc=no
+    ac_cv_file__dev_ptmx=yes
+)
+
+if ever at_least 3; then
+    DEFAULT_SRC_CONFIGURE_PARAMS+=( --without-ensurepip )
+fi
+
+DEFAULT_SRC_COMPILE_PARAMS=(
+    # We consider them as arch-dependent
+    SCRIPTDIR='$(LIBDIR)'
+)
+
+DEFAULT_SRC_INSTALL_PARAMS=(
+    # We consider them as arch-dependent
+    SCRIPTDIR='$(LIBDIR)'
+)
+
+PYTHON_BYTECOMPILE_EXCLUDES=( bad_coding badsyntax lib2to3/tests/data site-packages )
+
+python-build_pkg_pretend() {
+    # for native builds, the version we are about to build does the .pyc compiling
+    if ! exhost --is-native -q && [[ ! -x /usr/$(exhost --build)/bin/python${SLOT} ]] ; then
+        ewarn "You need to install python:${SLOT} for $(exhost --build) if "
+        ewarn "you want to build python:${SLOT} for $(exhost --target)"
+        die "install python:${SLOT} !"
+    fi
+}
+
+python-build_src_prepare() {
+    # linux-3 support, applied upstream, python-3.3+ only has `plat-linux`
+    ever at_least 3 || edo cp -r Lib/plat-linux2 Lib/plat-linux3
+
+    expatch "${FILES}/${SLOT}/"
+
+    edo cp "${FILES}"/"${PN}"-config.py .
+
+    edo sed -i -e "s:@@SLOT@@:${SLOT}:g" \
+               -e "s:@@EXHERBO_TARGET@@:$(exhost --target):g" \
+               -e "s:@@EXHERBO_TOOL_PREFIX@@:$(exhost --tool-prefix):g" \
+        "${PN}"-config.py
+
+    # Needs to run `host` code to regen this
+    edo touch Include/graminit.h Python/graminit.c
+
+    eautoreconf
+}
+
+python-build_src_configure() {
+    # dbm module can link to berkdb or gdbm.
+    # default to gdbm when both are enabled.
+    local disable="ndbm" # not available
+
+    # Avoid sneaky linking to libtirpc
+    disable+=" nis"
+
+    option berkdb   || disable+=" _bsddb"
+    if ever at_least 3 ; then
+        option dbm  || disable+=" _dbm"
+        option gdbm || disable+=" _gdbm"
+    else
+        option dbm  || disable+=" dbm"
+        option gdbm || disable+=" gdbm"
+    fi
+    option readline || disable+=" readline"
+    option sqlite   || disable+=" _sqlite3"
+    option tk       || disable+=" _tkinter"
+    export PYTHON_DISABLE_MODULES="${disable}"
+
+    # -fwrapv: http://bugs.python.org/issue11149
+    export OPT="-fwrapv"
+    export CPPFLAGS="$($(exhost --tool-prefix)pkg-config --cflags-only-I libffi) ${CPPFLAGS}"
+
+    default
+}
+
+python-build_src_test() {
+    unset DISPLAY
+
+    python_enable_pyc
+
+    # needed for 32bit tests
+    esandbox allow_net --connect "inet:127.0.0.1@1024-65535"
+    esandbox allow_net --connect "inet6:::1@1024-65535"
+
+    # for test_multiprocessing
+    esandbox allow_net "unix:${TEMP%/}/pymp-*/listener-*"
+
+    # rerun failed tests in verbose mode (regrtest -w)
+    # disable tests (regrtest -x)
+    EXTRATESTOPTS="-w -x ${DISABLE_TESTS[@]}" emake test
+
+    esandbox disallow_net "unix:${TEMP%/}/pymp-*/listener-*"
+    esandbox disallow_net --connect "inet:127.0.0.1@1024-65535"
+    esandbox disallow_net --connect "inet6:::1@1024-65535"
+
+    python_disable_pyc
+}
+
+python-build_src_install() {
+    default
+
+    target=$(exhost --target)
+    # alternatives handling
+    eval ALTERNATIVES_python$(ever major)_DESCRIPTION="Default\ python$(ever major)\ version"
+    alternatives=("${PN}$(ever major)" "${SLOT}" "${SLOT}")
+
+    # for backward compatibility, have plat-linux3 and plat-linux2 folders
+    # as long as they are identical, this shouldn't be a problem
+    pushd "${IMAGE}"/usr/${target}/lib/python${SLOT}/
+    if [[ -d plat-linux2 ]]; then
+        edo cp -r plat-linux2 plat-linux3
+    elif [[ -d plat-linux3 ]]; then
+        edo cp -r plat-linux3 plat-linux2
+    fi
+    popd
+
+    edo rm "${IMAGE}"/usr/${target}/bin/python$(ever major)
+    edo rm "${IMAGE}"/usr/${target}/bin/python$(ever major)-config
+    edo rm "${IMAGE}"/usr/${target}/lib/pkgconfig/python$(ever major).pc
+    edo rm "${IMAGE}"/usr/share/man/man1/python$(ever major).1
+
+    if [[ $(ever major) == 2 ]]; then
+        edo rm "${IMAGE}"/usr/${target}/bin/python
+        edo rm "${IMAGE}"/usr/${target}/bin/python-config
+        edo rm "${IMAGE}"/usr/${target}/bin/smtpd.py
+        edo rm "${IMAGE}"/usr/${target}/lib/pkgconfig/python.pc
+        edo rm "${IMAGE}"/usr/share/man/man1/python.1
+
+        edo mv "${IMAGE}"/usr/${target}/bin/2to3{,-${SLOT}}
+        edo mv "${IMAGE}"/usr/${target}/bin/idle{,${SLOT}}
+        edo mv "${IMAGE}"/usr/${target}/bin/pydoc{,${SLOT}}
+        edo mv "${IMAGE}"/usr/${target}/lib/{python${SLOT}/config,}/libpython${SLOT}.a
+    else
+        edo rm "${IMAGE}"/usr/${target}/bin/python${SLOT}-config
+        edo rm "${IMAGE}"/usr/${target}/bin/{2to3,idle3,pydoc3,python${SLOT}m,pyvenv}
+
+        edo mv "${IMAGE}"/usr/${target}/bin/python${SLOT}{m,}-config
+        edo mv "${IMAGE}"/usr/${target}/lib/libpython$(ever major){,-${SLOT}}.so
+        edo mv "${IMAGE}"/usr/${target}/lib/{python${SLOT}/config-${SLOT}m*,}/libpython${SLOT}m.a
+
+        alternatives+=(
+            /usr/${target}/lib/libpython$(ever major).so libpython$(ever major)-${SLOT}.so
+            /usr/${target}/bin/pyvenv-$(ever major) pyvenv-${SLOT}
+        )
+    fi
+
+    alternatives+=(
+        /usr/${target}/lib/pkgconfig/python$(ever major).pc python-${SLOT}.pc
+        /usr/${target}/bin/2to3-$(ever major) 2to3-${SLOT}
+        /usr/${target}/bin/idle$(ever major) idle${SLOT}
+        /usr/${target}/bin/pydoc$(ever major) pydoc${SLOT}
+        /usr/${target}/bin/python$(ever major) python${SLOT}
+        /usr/${target}/bin/python$(ever major)-config python${SLOT}-config
+        /usr/share/man/man1/python$(ever major).1 python${SLOT}.1
+    )
+
+    alternatives_for "${alternatives[@]}"
+
+    if ever at_least 3; then
+        edo pushd "${IMAGE}"/usr/${target}/bin
+        edo ln -s python${SLOT} python${SLOT}m
+        edo ln -s python${SLOT}-config python${SLOT}m-config
+        edo popd
+    fi
+
+    # The Makefile also does this but tries to use `build` python with `target` python modules
+    if ! exhost --is-native -q ; then
+        PYTHON_ABIS=${SLOT} python_bytecompile
+        edo python${SLOT} -m lib2to3.pgen2.driver "${IMAGE}"/usr/${target}/lib/python${SLOT}/lib2to3/Grammar.txt
+        edo python${SLOT} -m lib2to3.pgen2.driver "${IMAGE}"/usr/${target}/lib/python${SLOT}/lib2to3/PatternGrammar.txt
+    fi
+}
+

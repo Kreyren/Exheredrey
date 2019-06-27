@@ -1,0 +1,36 @@
+# Copyright 2009 Daniel Mierswa <impulze@impulze.org>
+# Copyright 2012 Wouter van Kesteren <woutershep@gmail.com>
+# Distributed under the terms of the GNU General Public License v2
+
+export_exlib_phases src_prepare
+
+SUMMARY="A new nl80211 based CLI configuration utility for wireless devices"
+DESCRIPTION="
+The future replacement for wireless-tools. It contains an utility to configure
+wireless devices from the command line.
+"
+HOMEPAGE="http://wireless.kernel.org/en/users/Documentation/${PN}/"
+DOWNLOADS="mirror://kernel/software/network/${PN}/${PNV}.tar.xz"
+
+LICENCES="ISC"
+SLOT="0"
+MYOPTIONS=""
+
+DEPENDENCIES="
+    build:
+        virtual/pkg-config
+    build+run:
+        net-libs/libnl:3.0
+"
+
+DEFAULT_SRC_COMPILE_PARAMS=( V=1 )
+
+iw_src_prepare() {
+    default
+
+    # don't install a compressed manfile
+    edo sed -e 's/iw\.8\.gz/iw.8/' -i Makefile
+
+    export SBINDIR=/usr/$(exhost --target)/bin
+}
+

@@ -1,0 +1,42 @@
+Upstream: no. next to impossible to contact. possibly dead.
+There have been no commits to neon since september 2014.
+
+From d07077531021edb2ad58bc163d92e06290744c97 Mon Sep 17 00:00:00 2001
+From: Wouter van Kesteren <woutershep@gmail.com>
+Date: Wed, 24 Jun 2015 21:08:07 +0200
+Subject: [PATCH] pkg-config is a tool
+
+---
+ configure.ac   | 2 +-
+ macros/neon.m4 | 2 +-
+ 2 files changed, 2 insertions(+), 2 deletions(-)
+
+diff --git a/configure.ac b/configure.ac
+index 37b14ec..30a59e0 100644
+--- a/configure.ac
++++ b/configure.ac
+@@ -129,7 +129,7 @@ fi
+ 
+ AC_SUBST(TEST_LDFLAGS)
+ 
+-AC_PATH_PROG(PKG_CONFIG, pkg-config, no)
++AC_PATH_TOOL(PKG_CONFIG, pkg-config, no)
+ if test "$PKG_CONFIG" != "no"; then
+    # pkg-config >= 0.18 will use "Libs.private" iff necessary,
+    # older versions which don't recognize that field may always
+diff --git a/macros/neon.m4 b/macros/neon.m4
+index 92f76bf..3e5defe 100644
+--- a/macros/neon.m4
++++ b/macros/neon.m4
+@@ -856,7 +856,7 @@ AC_DEFUN([NE_PKG_CONFIG], [
+ 
+ m4_define([ne_cvar], m4_translit(ne_cv_pkg_[$2], [.-], [__]))dnl
+ 
+-AC_PATH_PROG(PKG_CONFIG, pkg-config, no)
++AC_PATH_TOOL(PKG_CONFIG, pkg-config, no)
+ if test "$PKG_CONFIG" = "no"; then
+    : Not using pkg-config
+    $4
+-- 
+2.4.4
+

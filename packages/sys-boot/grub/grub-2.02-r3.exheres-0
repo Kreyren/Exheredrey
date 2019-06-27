@@ -1,0 +1,13 @@
+# Copyright 2015 Ivan Diorditsa <ivan.diorditsa@gmail.com>
+# Distributed under the terms of the GNU General Public License v2
+
+require grub
+
+SLOT="0"
+PLATFORMS="~amd64 ~armv7 ~armv8 ~x86"
+
+DEFAULT_SRC_PREPARE_PATCHES=(
+    "${FILES}"/a698240df0c43278b2d1d7259c8e7a6926c63112.patch
+    "${FILES}"/cda0a857dd7a27cd5d621747464bfe71e8727fff.patch
+    "${FILES}"/2c65cb78a5d53b4c165d39bf27e6f62a1718c085.patch
+)

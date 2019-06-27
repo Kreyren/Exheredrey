@@ -1,0 +1,44 @@
+# Copyright 2008-2014 Wulf C. Krueger <philantrop@exherbo.org>
+# Distributed under the terms of the GNU General Public License v2
+
+require sourceforge [ suffix=tar.gz project=xmlstar ]
+
+export_exlib_phases src_install
+
+SUMMARY="Command line tools to transform, query, validate, and edit XML documents"
+DESCRIPTION="
+XMLStarlet is a set of command line XML utilities which can be used to transform,
+query, validate, and edit XML documents and files using a simple set of shell
+commands, similar to the way it is done for plain text files using grep/sed/awk/
+tr/diff/patch.
+"
+
+BUGS_TO="philantrop@exherbo.org"
+REMOTE_IDS="freecode:${PN}"
+
+UPSTREAM_DOCUMENTATION="${HOMEPAGE}/docs.php [[ lang = en ]]"
+
+LICENCES="MIT"
+SLOT="0"
+MYOPTIONS=""
+
+DEPENDENCIES="
+    build:
+        virtual/pkg-config
+    build+run:
+        dev-libs/libgcrypt[>=1.4.5]
+        dev-libs/libxml2:2.0[>=2.6.12]
+        dev-libs/libxslt[>=1.1.9][crypt]
+"
+
+DEFAULT_SRC_CONFIGURE_PARAMS=(
+    --with-libxml-prefix=/usr/$(exhost --target)
+    --with-libxslt-prefix=/usr/$(exhost --target)
+)
+
+xmlstarlet_src_install() {
+    default
+
+    edo mv "${IMAGE}"/usr/$(exhost --target)/bin/xml "${IMAGE}"/usr/$(exhost --target)/bin/xmlstarlet
+}
+

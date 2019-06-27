@@ -1,0 +1,119 @@
+# Copyright 2007 Bryan Østergaard <kloeri@exherbo.org>
+# Distributed under the terms of the GNU General Public License v2
+
+require flag-o-matic alternatives
+
+TZCODE_PV="${PV}"
+TZDATA_PV="${PV}"
+
+SUMMARY="Timezone data"
+HOMEPAGE="https://www.iana.org/time-zones"
+DOWNLOADS="
+    mirror://timezone-data/tzcode${TZCODE_PV}.tar.gz
+    mirror://timezone-data/tzdata${TZDATA_PV}.tar.gz
+"
+
+BUGS_TO="philantrop@exherbo.org"
+
+# We don't install anything which uses BSD licensed code
+# BSD licensed: date.c, newstrftime.c, strftime.c
+LICENCES="public-domain"
+SLOT="0"
+PLATFORMS="~amd64 ~arm ~armv7 ~armv8 ~x86"
+MYOPTIONS=""
+
+# TODO: Fix !!! Exheres bug: 'cc' banned by distribution
+RESTRICT="test"
+
+DEPENDENCIES=""
+
+WORK="${WORKBASE}"
+
+DEFAULT_SRC_INSTALL_PARAMS=(
+    $(exhost --is-native -q || echo zic=build-$(exhost --build)/zic)
+    TZDIR=/usr/share/zoneinfo
+    BINDIR=/usr/$(exhost --target)/bin
+    ZDUMPDIR=/usr/$(exhost --target)/bin
+    ZICDIR=/usr/$(exhost --target)/bin
+    LIBDIR=/usr/$(exhost --target)/lib
+    MANDIR=/usr/share/man
+    USRSHAREDIR=/usr/share
+    DATAFORM=main
+)
+DEFAULT_SRC_INSTALL_EXTRA_DOCS=( Theory )
+
+pkg_preinst() {
+    if [[ -d ${ROOT}/usr/share/zoneinfo/posix ]]; then
+        edo rm -r "${ROOT}"/usr/share/zoneinfo/posix
+    fi
+}
+
+pkg_postinst() {
+    if [[ -d ${ROOT}/usr/share/zoneinfo ]]; then
+        edo rm -r "${ROOT}"/usr/share/zoneinfo
+    fi
+
+    alternatives_pkg_postinst
+}
+
+src_unpack() {
+    default
+
+    if ! exhost --is-native -q; then
+        edo mkdir build-$(exhost --build)
+        edo pushd build-$(exhost --build)
+        default
+        edo popd
+    fi
+}
+
+src_compile() {
+    # build native zic, it's needed in `make install`
+    if ! exhost --is-native -q; then
+        emake \
+            cc=$(exhost --build)-cc \
+            AR=$(exhost --build)-ar \
+            RANLIB=$(exhost --build)-ranlib \
+            CFLAGS="$(print-build-flags CFLAGS)" \
+            CPPFLAGS="$(print-build-flags CPPFLAGS)" \
+            LDFLAGS="$(print-build-flags LDFLAGS)" \
+            TZDIR="/usr/share/zoneinfo" \
+            DATAFORM="main" \
+            -C build-$(exhost --build) \
+            zic
+    fi
+
+    emake \
+        cc="${CC}" \
+        AR="${AR}" \
+        RANLIB="${RANLIB}" \
+        CFLAGS="${CFLAGS}" \
+        CPPFLAGS="${CPPFLAGS}" \
+        LDFLAGS="${LDFLAGS}" \
+        TZDIR="/usr/share/zoneinfo" \
+        DATAFORM="main"
+}
+
+src_test() {
+    # Don't validate webpages as that requires dependencies on open{jade,sp}
+    edo sed -i -e 's: check_web::' Makefile
+
+    emake AWK=awk check
+}
+
+src_install() {
+    default
+
+    edo rm "${IMAGE}"/etc/localtime
+
+    edo rm "${IMAGE}"/usr/share/zoneinfo-posix
+    edo mv "${IMAGE}"/usr/share/zoneinfo{,-posix}
+
+    # Make the posix and leaps zoneinfo files switchable. See hwclock(8) for why this is done this
+    # way.
+    alternatives_for zoneinfo posix 2 \
+        /usr/share/zoneinfo /usr/share/zoneinfo-posix
+    alternatives_for zoneinfo leaps 1 \
+        /usr/share/zoneinfo /usr/share/zoneinfo-leaps
+}
+

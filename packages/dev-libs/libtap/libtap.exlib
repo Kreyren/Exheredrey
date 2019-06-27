@@ -1,0 +1,33 @@
+# Copyright 2018 Heiko Becker <heirecka@exherbo.org>
+# Distributed under the terms of the GNU General Public License v2
+
+require cmake [ api=2 ]
+
+export_exlib_phases src_prepare
+
+SUMMARY="A library to implement the Test Anything Protocol for C"
+DESCRIPTION="
+TAP, the Test Anything Protocol, is a simple text-based interface between
+testing modules in a test harness. TAP started life as part of the test
+harness for Perl but now has implementations for various other languages.
+"
+
+HOMEPAGE="https://www.shlomifish.org/open-source/projects/${PN}/"
+DOWNLOADS="https://web-cpan.shlomifish.org/downloads/${PNV}.tar.xz"
+
+LICENCES="BSD-2"
+SLOT="0"
+MYOPTIONS=""
+
+DEPENDENCIES="
+    build:
+        dev-lang/perl:*
+"
+
+libtap_src_prepare() {
+    cmake_src_prepare
+
+    edo sed -e "s|\(share/man/man\)|/usr/\1|" \
+        -i cmake/Shlomif_Common.cmake
+}
+

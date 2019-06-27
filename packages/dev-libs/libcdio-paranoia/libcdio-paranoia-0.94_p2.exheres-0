@@ -1,0 +1,36 @@
+# Copyright 2014-2017 Timo Gurr <tgurr@exherbo.org>
+# Distributed under the terms of the GNU General Public License v2
+
+MY_PN=${PN/-paranoia/}
+MY_PNV=${PN}-10.2+${PV/_p/+}
+
+require gnu [ pnv=${MY_PNV} suffix=tar.gz ]
+
+SUMMARY="Extracts CDDA in a jitter- and error-tolerant way"
+DESCRIPTION="
+This CDDA reader distribution ('libcdio-cdparanoia') reads audio from the
+CDROM directly as data, with no analog step between, and writes the
+data to a file or pipe as .wav, .aifc or as raw 16 bit linear PCM.
+"
+
+LICENCES="GPL-3"
+SLOT="0"
+PLATFORMS="~amd64"
+MYOPTIONS=""
+
+DEPENDENCIES="
+    build:
+        virtual/pkg-config[>=0.9.0]
+    build+run:
+        dev-libs/libcdio[>=0.90]
+"
+
+DEFAULT_SRC_CONFIGURE_PARAMS=(
+    --enable-cxx
+    --enable-ld-version-script
+    --disable-cpp-progs
+    --disable-example-progs
+    --disable-static
+    --with-cd-paranoia-name=libcdio-paranoia
+)
+

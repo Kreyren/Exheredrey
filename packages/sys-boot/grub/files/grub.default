@@ -1,0 +1,6 @@
+# After making any changes to this file you need to regenerate your grub
+# configuration:
+#     'grub-mkconfig -o /boot/grub/grub.cfg'
+
+GRUB_DISTRIBUTOR="exherbo"
+

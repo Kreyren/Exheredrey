@@ -1,0 +1,130 @@
+# Copyright 2008 Thomas Anderson
+# Distributed under the terms of the GNU General Public License v2
+# Based in part upon 'ntp-4.2.4_p4.ebuild' which is:
+#   Copyright 1999-2008 Gentoo Foundation
+
+require systemd-service alternatives
+
+export_exlib_phases src_compile src_install
+
+MY_PNV=${PNV/_p/p}
+SUMMARY="Network Time Protocol suite/programs"
+DESCRIPTION="
+The Network Time Protocol (NTP) is used to synchronize the time of a computer
+client or server to another server or reference time source, such as a radio or
+satellite receiver or modem. It provides client accuracies typically within a
+millisecond on LANs and up to a few tens of milliseconds on WANs relative to a
+primary server synchronized to Coordinated Universal Time (UTC) via a Global
+Positioning Service (GPS) receiver, for example.
+"
+HOMEPAGE="http://www.${PN}.org"
+DOWNLOADS="
+    https://www.eecis.udel.edu/~${PN}/${PN}_spool/${PN}$(ever major)/${PN}-${PV:0:3}/${MY_PNV}.tar.gz
+"
+
+UPSTREAM_RELEASE_NOTES="https://www.eecis.udel.edu/~${PN}/${PN}_spool/${PN}4/NEWS"
+
+LICENCES="BSD-3 BSD-4 GPL-2 MIT"
+SLOT="0"
+MYOPTIONS="
+    caps
+    debug
+    parse-clocks
+
+    ( providers: libressl openssl ) [[ number-selected = exactly-one ]]
+"
+
+DEPENDENCIES="
+    build:
+        dev-libs/libxslt [[ description = [ for generating manpages ] ]]
+    build+run:
+        sys-libs/ncurses[>=5.2]
+        sys-libs/readline:=[>=4.1]
+        caps? ( sys-libs/libcap )
+        providers:libressl? ( dev-libs/libressl:= )
+        providers:openssl? ( dev-libs/openssl )
+        group/${PN}
+        user/${PN}
+    recommendation:
+        dev-perl/IO-Socket-SSL[>=1.56] [[ description = [ Required for the update-leap command ] ]]
+        dev-perl/Net-SSLeay[>=1.49] [[ description = [ Required for the update-leap command ] ]]
+"
+
+DEFAULT_SRC_CONFIGURE_PARAMS=(
+    --enable-autokey
+    --enable-ipv6
+    --enable-shared
+    --enable-threads
+    --disable-dynamic-interleave
+    # considered experimental
+    --disable-libseccomp
+    --disable-static
+    --with-crypto
+    --with-sntp
+    --without-net-snmp-config
+    --without-ntpsnmpd
+)
+
+DEFAULT_SRC_CONFIGURE_OPTION_ENABLES=(
+    "caps linuxcaps"
+    "debug debugging"
+    parse-clocks
+)
+
+DEFAULT_SRC_INSTALL_EXTRA_DOCS=( WHERE-TO-START )
+
+WORK=${WORKBASE}/${MY_PNV}
+
+ntp_src_compile() {
+    default
+
+    # generate manpages; based off genmans.sh
+    edo mkdir man
+    for f in ntp{date,dc,d,q,time,trace,dsim} keygen tickadj;do
+        edo sed -e "s:<csobj.*<:csobj>/:" ./html/"$f".html > ./."$f".html
+        edo xsltproc --html --stringparam version "${PV}" "${FILES}"/ntp.xsl ./."$f".html > ./man/"$f".8
+    done
+}
+
+ntp_src_install() {
+    local host=$(exhost --target)
+
+    default
+
+    doman man/*.[58]
+    insinto /usr/share/doc/${PNVR}/
+    doins -r html/
+
+    insinto /usr/share/ntp
+    doins "${FILES}"/ntp.conf
+    doins -r scripts/*
+    edo chmod -R go-wx "${IMAGE}"/usr/share/ntp
+    edo find "${IMAGE}"/usr/share/ntp \
+        '(' \
+        -name '*.in' -o \
+        -name 'Makefile*' -o \
+        -name support \
+        ')' \
+        -exec rm -r {} \;
+
+    keepdir /var/lib/ntp
+    edo chown ntp:ntp "${IMAGE}"/var/lib/ntp
+
+    install_systemd_files
+
+    # As of ntp-4.2.4_p7-RC1 ntp will only drop privileges if linuxcaps is enabled
+    if option !caps ; then
+        edo sed -i -e 's/ -u ntp:ntp//' "${IMAGE}"/"${SYSTEMDSYSTEMUNITDIR}"/ntpd.service
+    fi
+
+    insinto /usr/${host}/lib/systemd/ntp-units.d
+    hereins 60-ntpd.list <<EOF
+ntpd.service
+EOF
+
+    edo find "${IMAGE}"/usr/ -type d -empty -delete
+
+    alternatives_for ntpd ${PN} 1 /usr/${host}/bin/ntpd ${PN}-ntpd
+    alternatives_for ntpd ${PN} 1 /usr/share/man/man8/ntpd.8 ${PN}-ntpd
+}
+

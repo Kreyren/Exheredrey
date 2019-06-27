@@ -1,0 +1,23 @@
+# Copyright 2014 Quentin "Sardem FF7" Glidic <sardemff7@exherbo.org>
+# Distributed under the terms of the GNU General Public License v2
+
+SUMMARY="Virtual: DHCP client providers"
+HOMEPAGE=""
+
+SLOT="0"
+PLATFORMS="~amd64 ~x86"
+MYOPTIONS="
+    ( providers:
+        dhcpcd
+        dhcp
+    ) [[
+        *description = [ DHCP client provider ]
+        number-selected = at-least-one
+    ]]
+"
+
+DEPENDENCIES="
+    providers:dhcpcd? ( net-misc/dhcpcd )
+    providers:dhcp? ( net-misc/dhcp )
+"
+

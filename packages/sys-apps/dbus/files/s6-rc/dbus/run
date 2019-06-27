@@ -1,0 +1,3 @@
+#!/bin/execlineb -P
+if -n { ls -d /run/dbus } mkdir /run/dbus
+dbus-daemon --system --nofork --nopidfile

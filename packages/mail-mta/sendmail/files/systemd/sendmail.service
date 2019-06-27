@@ -1,0 +1,13 @@
+# Copyright 2010-2015 Wulf C. Krueger <philantrop@exherbo.org>
+# Distributed under the terms of the GNU General Public License v2
+
+[Unit]
+Description=sendmail server
+
+[Service]
+ExecStartPre=-/usr/bin/newaliases > /dev/null 2>&1
+ExecStartPre=/usr/bin/rm -f /var/spool/mqueue/xf*
+ExecStart=/usr/sbin/sendmail -bD -q30m -L sm-mta
+
+[Install]
+WantedBy=multi-user.target

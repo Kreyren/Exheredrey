@@ -1,0 +1,19 @@
+# Copyright 2019 Timo Gurr <tgurr@exherbo.org>
+# Distributed under the terms of the GNU General Public License v2
+
+require github [ user=Tessil tag=v${PV} ] \
+    cmake [ api=2 ]
+
+SUMMARY="C++ implementation of a fast hash map and hash set using robin hood hashing"
+
+LICENCES="MIT"
+SLOT="0"
+PLATFORMS="~amd64"
+MYOPTIONS=""
+
+DEPENDENCIES=""
+
+CMAKE_SRC_CONFIGURE_PARAMS=(
+    -DCMAKE_BUILD_TYPE:STRING=Release
+)
+

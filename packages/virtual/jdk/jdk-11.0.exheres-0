@@ -1,0 +1,26 @@
+# Copyright 2014-2017 Wulf C. Krueger <philantrop@exherbo.org>
+# Distributed under the terms of the GNU General Public License v2
+
+SUMMARY="Virtual for Java Development Kits"
+
+SLOT="11.0"
+PLATFORMS="~amd64"
+
+MYOPTIONS="
+    ( providers:
+        openjdk
+        openjdk-bin
+        oraclejdk
+    ) [[
+        *description = [ jdk provider ]
+        number-selected = at-least-one
+    ]]
+"
+
+DEPENDENCIES="
+    run:
+        providers:openjdk? ( dev-lang/openjdk11:${SLOT} )
+        providers:openjdk-bin? ( dev-lang/openjdk-bin:${SLOT} )
+        providers:oraclejdk? ( dev-lang/oracle-jdk-bin:${SLOT} )
+"
+

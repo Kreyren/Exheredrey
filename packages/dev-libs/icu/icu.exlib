@@ -1,0 +1,160 @@
+# Copyright 2008 Saleem Abdulrasool <compnerd@compnerd.org>
+# Distributed under the terms of the GNU General Public License v2
+
+MY_PV="${PV//./_}"
+MY_PNV="${PN}4c-${MY_PV}-src"
+
+require github [ user=unicode-org release=release-${MY_PV//_/-} suffix="tgz" ] alternatives
+
+export_exlib_phases src_prepare src_configure src_install src_test pkg_postinst
+
+SLOT="$(ever major).1"
+
+SUMMARY="International Components for Unicode"
+HOMEPAGE="http://site.${PN}-project.org"
+
+UPSTREAM_CHANGELOG="${HOMEPAGE}/download/$(ever major) [[ lang = en ]]"
+
+LICENCES="icu"
+MYOPTIONS="parts: binaries development documentation libraries"
+
+DEPENDENCIES="
+    !dev-libs/icu:0 [[
+        description = [ Uninstall dev-libs/icu:0 after switching to the slotted version ]
+        resolution = uninstall-blocked-after ]]
+"
+
+if ever at_least 64.1 ; then
+    DEPENDENCIES+="
+        build:
+            dev-lang/python:*
+    "
+fi
+
+WORK=${WORKBASE}/${PN}/source
+WORK_HOST=${WORKBASE}/${PN}-host/source
+
+icu_src_prepare() {
+    default
+
+    # Fix bug compiling on Raspberry Pi - https://www.raspberrypi.org/forums/viewtopic.php?f=33&t=50181
+    edo sed -e '/LDFLAGSICUDT=/d' -i "config/mh-linux"
+
+    # Used in Makefile
+    edo unset TARGET
+}
+
+icu_src_configure() {
+    args=()
+
+    # NOTE: musl does not support strtod_l and does not include xlocale.h
+    [[ $(exhost --target) == *-musl* ]] && args+=( ac_cv_func_strtod_l=no )
+
+    if exhost --is-native -q; then
+        econf "${args[@]}"
+    else
+        edo mkdir -p "${WORK_HOST}"/config
+        edo cp "${FILES}"/icucross.{inc,mk} "${WORK_HOST}"/config
+        edo echo "CROSS_ICU_VERSION=${SLOT}" >> "${WORK_HOST}"/config/icucross.mk
+
+        econf "${args[@]}" --with-cross-build="${WORK_HOST}"
+    fi
+}
+
+icu_src_install() {
+    local host=$(exhost --target)
+
+    default
+
+    edo pushd "${IMAGE}"/usr/${host}/lib
+    if optionq parts:libraries; then
+        for library in *.so ; do
+            edo mv "${IMAGE}"/usr/${host}/lib/{${library},${library:0:-3}${SLOT}.so}
+            alternatives_for _${host}_${PN} ${SLOT} ${SLOT} /usr/${host}/lib/${library} ${library:0:-3}${SLOT}.so
+        done
+    fi
+
+    if optionq parts:development; then
+        edo pushd pkgconfig
+        for pc_file in *.pc ; do
+            edo mv "${IMAGE}"/usr/${host}/lib/pkgconfig/{${pc_file},${pc_file:0:-3}${SLOT}.pc}
+            alternatives_for _${host}_${PN} ${SLOT} ${SLOT} /usr/${host}/lib/pkgconfig/${pc_file} ${pc_file:0:-3}${SLOT}.pc
+        done
+        edo popd
+
+        # icu makes some symlinks at /usr/host/lib/icu/{Makefile.inc,current,pkgdata.inc};
+        # current points to the latest installed slot, Makefile.inc and pkgdata.inc point to current/'s copies of the files
+        edo rm "${IMAGE}"/usr/${host}/lib/${PN}/{current,Makefile.inc,pkgdata.inc}
+        alternatives_for _${host}_${PN} ${SLOT} ${SLOT} \
+            /usr/${host}/lib/${PN}/current /usr/${host}/lib/${PN}/${PV}
+    fi
+    edo popd
+
+    # Rename to allow slotting with alternatives
+    if optionq parts:binaries; then
+        edo pushd "${IMAGE}"/usr/${host}/bin
+        for binary in * ; do
+            edo mv "${IMAGE}"/usr/${host}/bin/${binary}{,${SLOT}}
+            alternatives_for _${host}_${PN} ${SLOT} ${SLOT} /usr/${host}/bin/${binary} ${binary}${SLOT}
+        done
+        edo popd
+    fi
+
+    if optionq parts:development; then
+        edo pushd "${IMAGE}"/usr/${host}/include
+        for header in * ; do
+            edo mv "${IMAGE}"/usr/${host}/include/${header}{,${SLOT}}
+            alternatives_for _${host}_${PN} ${SLOT} ${SLOT} /usr/${host}/include/${header} ${header}${SLOT}
+        done
+        edo popd
+    fi
+
+    if optionq parts:documentation; then
+        for section in {1,8} ; do
+            edo pushd "${IMAGE}"/usr/share/man/man${section}
+            for man_page in *.${section} ; do
+                edo mv "${IMAGE}"/usr/share/man/man${section}/{${man_page},${man_page:0:-2}${SLOT}.${section}}
+                alternatives_for _${PN} ${SLOT} ${SLOT} /usr/share/man/man${section}/${man_page} ${man_page:0:-2}${SLOT}.${section}
+            done
+            edo popd
+        done
+    fi
+
+    expart binaries {,${ALTERNATIVES_DIR}/_${host}_${PN}/${SLOT}}/usr/$(exhost --target)/bin
+    expart development {,${ALTERNATIVES_DIR}/_${host}_${PN}/${SLOT}}/usr/$(exhost --target)/include
+    expart documentation {,${ALTERNATIVES_DIR}/_${PN}/${SLOT}}/usr/share/{doc,man}
+    expart libraries {,${ALTERNATIVES_DIR}/_${host}_${PN}/${SLOT}}/usr/$(exhost --target)/lib
+    expart development {,${ALTERNATIVES_DIR}/_${host}_${PN}/${SLOT}}/usr/$(exhost --target)/lib/pkgconfig
+    expart development {,${ALTERNATIVES_DIR}/_${host}_${PN}/${SLOT}}/usr/$(exhost --target)/lib/${PN}
+}
+
+icu_src_test() {
+    emake VERBOSE=1 check
+}
+
+icu_pkg_postinst() {
+    local host=$(exhost --target)
+
+    # We can't force alternatives to overwrite files with symlinks
+    if has_version --root "dev-libs/icu:0"; then
+        local files=(
+            "${ROOT}"/usr/${host}/bin/{derb,genbrk,gencfu,gencnval,gendict,genrb,icu-config,icuinfo,makeconv,pkgdata,uconv,genccode,gencmn,gennorm2,gensprep,icupkg}
+            "${ROOT}"/usr/${host}/include/{layout,unicode}
+            "${ROOT}"/usr/${host}/lib{,32,64}/pkgconfig/icu-{i18n,io,le,lx,uc}.pc
+            "${ROOT}"/usr/share/man/man1/{derb,genbrk,gencfu,gencnval,gendict,genrb,icu-config,makeconv,pkgdata,uconv}.1
+            "${ROOT}"/usr/share/man/man8/{genccode,gencmn,gensprep,icupkg}.8
+        )
+        for f in "${files[@]}" ; do
+            [[ -e ${f} && ! -L ${f} ]] && ( nonfatal edo rm -r "${f}" || eerror "rm -r ${f}" );
+        done
+    fi
+
+    for f in "${ROOT}"/usr/${host}/lib/${PN}/{Makefile.inc,pkgdata.in};do
+        if [[ "$(readlink "${f}" 2>/dev/null)" != current/* ]];then
+            nonfatal edo rm "${f}" && nonfatal ln -s current/${f##*/} "${f}"
+        fi
+    done
+
+    alternatives_pkg_postinst
+}
+

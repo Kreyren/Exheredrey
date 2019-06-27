@@ -1,0 +1,29 @@
+# Copyright 2015 Kylie McClain <somasis@exherbo.org>
+# Distributed under the terms of the GNU General Public License v2
+
+require option-renames [ renames=[ 'providers:gawk providers:gnu' ] ]
+
+SUMMARY="Virtual: awk providers"
+HOMEPAGE=""
+
+SLOT="0"
+PLATFORMS="~amd64 ~armv7 ~armv8 ~x86"
+MYOPTIONS="
+    ( providers:
+        busybox
+        gnu
+        lok
+        mawk
+    ) [[
+        *description = [ awk provider ]
+        number-selected = at-least-one
+    ]]
+"
+
+DEPENDENCIES="
+    providers:busybox? ( sys-apps/busybox )
+    providers:gnu? ( sys-apps/gawk )
+    providers:lok? ( sys-apps/lok )
+    providers:mawk? ( sys-apps/mawk )
+"
+

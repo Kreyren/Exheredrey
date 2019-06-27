@@ -1,0 +1,36 @@
+# Copyright 2010 Elias Pipping <pipping@exherbo.org>
+# Distributed under the terms of the GNU General Public License v2
+
+require ruby [ multiunpack=true ]
+require github [ user=ricardochimal ]
+
+SUMMARY="Ruby FileMagic Library Bindings"
+
+LICENCES="as-is"
+SLOT="0"
+PLATFORMS="~amd64 ~armv8"
+MYOPTIONS=""
+
+DEPENDENCIES="
+    build+run:
+        sys-apps/file[>=5.22]
+"
+
+# work around hardcoded absolute paths
+DEFAULT_SRC_INSTALL_PARAMS=(
+    MAKEDIRS="mkdir -p"
+    INSTALL="install"
+)
+
+unpack_one_multibuild() {
+    scm_src_unpack
+}
+
+configure_one_multibuild() {
+    edo ${RUBY} extconf.rb
+}
+
+test_one_multibuild() {
+    edo ${RUBY} -I . test/regress.rb
+}
+

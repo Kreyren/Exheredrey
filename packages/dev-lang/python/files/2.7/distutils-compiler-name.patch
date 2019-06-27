@@ -1,0 +1,16 @@
+Source: written by Calvin Walton <calvin.walton@kepstin.ca>
+Upstream: http://bugs.python.org/issue25229
+Reason: distutils checks for 'gcc' in compiler name, but Exherbo uses 'cc'
+
+diff -ru Python-2.7.10.orig/Lib/distutils/unixccompiler.py Python-2.7.10/Lib/distutils/unixccompiler.py
+--- Python-2.7.10.orig/Lib/distutils/unixccompiler.py	2015-09-24 17:42:29.775318611 -0400
++++ Python-2.7.10/Lib/distutils/unixccompiler.py	2015-09-24 17:43:27.515078288 -0400
+@@ -234,7 +234,7 @@
+             return ["+s", "-L" + dir]
+         elif sys.platform[:7] == "irix646" or sys.platform[:6] == "osf1V5":
+             return ["-rpath", dir]
+-        elif self._is_gcc(compiler):
++        elif sys.platform[:5] == "linux" or self._is_gcc(compiler):
+             return "-Wl,-R" + dir
+         else:
+             return "-R" + dir

@@ -1,0 +1,114 @@
+# Copyright 2008 Bo Ørsted Andresen
+# Distributed under the terms of the GNU General Public License v2
+# Based in part upon 'gdb-6.7.1.ebuild' from Gentoo, which is:
+#     Copyright 1999-2007 Gentoo Foundation
+
+require flag-o-matic
+
+export_exlib_phases src_configure src_test_expensive src_install
+
+SUMMARY="The GNU Project Debugger"
+HOMEPAGE="https://sourceware.org/${PN}"
+DOWNLOADS="mirror://sourceware/${PN}/releases/${PNV}.tar.xz"
+
+REMOTE_IDS="freecode:${PN}"
+
+UPSTREAM_DOCUMENTATION="${HOMEPAGE}/documentation/ [[ lang = en ]]"
+UPSTREAM_RELEASE_NOTES="${HOMEPAGE}/download/ANNOUNCEMENT [[ lang = en ]]"
+
+LICENCES="GPL-3 LGPL-3"
+SLOT="0"
+MYOPTIONS="
+    guile [[ description = [ Extend gdb with guile, an implementation of the Scheme language ] ]]
+    python
+    source-highlight [[ description = [ Changes gdb to highlight source using GNU Source Highlight ] ]]
+    ( linguas:
+        da de es fi fr ga id it ja nl pt_BR ro ru rw sv tr uk vi zh_CN
+    )
+"
+
+RESTRICT="test"
+
+DEPENDENCIES="
+    build:
+        sys-devel/gettext
+        source-highlight? ( virtual/pkg-config )
+    test-expensive:
+        dev-util/dejagnu
+    build+run:
+        dev-libs/expat
+        dev-libs/gmp:=[>=4.3.2]
+        dev-libs/mpc:=[>=0.8.1]
+        dev-libs/mpfr:=[>=2.4.2]
+        sys-libs/ncurses[>=5.2]
+        sys-libs/readline:=
+        guile? ( dev-lang/guile:=[>=2.0] )
+        python? ( dev-lang/python:= )
+        source-highlight? ( app-text/source-highlight )
+        !sys-devel/binutils[<=2.25] [[
+            description = [ gdb and binutils both installed libbfd and libiberty ]
+            resolution = upgrade-blocked-before
+        ]]
+"
+
+DEFAULT_SRC_CONFIGURE_PARAMS=(
+    --prefix=/usr
+    --exec-prefix=/usr/$(exhost --target)
+    --includedir=/usr/$(exhost --target)/include
+    --enable-nls
+    --enable-tui
+    --disable-gold
+    --disable-objc-gc
+    --disable-werror
+    --with-curses
+    --with-expat
+    --with-system-readline
+    --with-system-zlib
+    # These are already installed by binutils:
+    --disable-install-libbfd
+    --disable-install-libiberty
+)
+DEFAULT_SRC_CONFIGURE_OPTION_ENABLES=(
+    source-highlight
+)
+DEFAULT_SRC_CONFIGURE_OPTION_WITHS=(
+    guile
+    python
+)
+
+# People reported parallel build failures ( 7.9.1 )
+DEFAULT_SRC_COMPILE_PARAMS=(
+    -j1
+    pkg_config_prog_path=/usr/$( exhost --target )/bin/$( exhost --tool-prefix )pkg-config
+)
+
+DEFAULT_SRC_INSTALL_EXTRA_SUBDIRS=( gdb sim )
+DEFAULT_SRC_INSTALL_EXTRA_DOCS=( CONTRIBUTE )
+
+gdb_src_configure() {
+    CC_FOR_BUILD=$(exhost --build)-cc \
+    CFLAGS_FOR_BUILD=$(print-build-flags CFLAGS) \
+        default
+}
+
+gdb_src_test_expensive() {
+    if [[ -n "${PALUDIS_DO_NOTHING_SANDBOXY}" ]]; then
+        # make --dry-run check fails
+        emake check
+    else
+        elog "Not running tests because gdb doesn't work under sydbox"
+        elog "set PALUDIS_DO_NOTHING_SANDBOXY=1 if you want to run the tests"
+    fi
+}
+
+gdb_src_install() {
+    default
+
+    # sys-devel/binutils installs opcodes.mo, bfd.mo and bfd.info
+    edo find "${IMAGE}" -name opcodes.mo -delete
+    edo find "${IMAGE}" -name bfd.mo -delete
+    edo find "${IMAGE}" -name bfd.info -delete
+
+    edo find "${IMAGE}" -depth -type d -empty -delete
+}
+

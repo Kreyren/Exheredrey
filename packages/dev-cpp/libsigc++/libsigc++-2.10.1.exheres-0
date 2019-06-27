@@ -1,0 +1,9 @@
+# Copyright 2008 Ingmar Vanhassel <ingmar@exherbo.org>
+# Distributed under the terms of the GNU General Public License v2
+
+require libsigc++
+
+DOWNLOADS="mirror://gnome/sources/${PN}/$(ever range 1-2)/${PNV}.tar.xz"
+
+PLATFORMS="~amd64 ~x86"
+

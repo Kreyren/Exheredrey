@@ -1,0 +1,92 @@
+From 3ecd7ac659d56f8522009b7ae017095ffb7403c1 Mon Sep 17 00:00:00 2001
+From: Paul Seidler <pl.seidler@gmail.com>
+Date: Sun, 26 Jun 2011 01:57:45 +0000
+Subject: [PATCH] use localhost for tests where possible
+Upstream: no
+
+Signed-off-by: Marc-Antoine Perennou <Marc-Antoine@Perennou.com>
+---
+ Lib/test/test_httplib.py     | 4 ++--
+ Lib/test/test_httpservers.py | 2 +-
+ Lib/test/test_socket.py      | 8 ++++----
+ Lib/test/test_ssl.py         | 2 +-
+ 4 files changed, 8 insertions(+), 8 deletions(-)
+
+diff --git a/Lib/test/test_httplib.py b/Lib/test/test_httplib.py
+index 7e8b058e8b..f252ca5568 100644
+--- a/Lib/test/test_httplib.py
++++ b/Lib/test/test_httplib.py
+@@ -729,7 +729,7 @@ class TestServerMixin:
+ class SourceAddressTest(TestServerMixin, TestCase):
+     def testHTTPConnectionSourceAddress(self):
+         self.conn = httplib.HTTPConnection(HOST, self.port,
+-                source_address=('', self.source_port))
++                source_address=('localhost', self.source_port))
+         self.conn.connect()
+         self.assertEqual(self.conn.sock.getsockname()[1], self.source_port)
+ 
+@@ -737,7 +737,7 @@ class SourceAddressTest(TestServerMixin, TestCase):
+                      'httplib.HTTPSConnection not defined')
+     def testHTTPSConnectionSourceAddress(self):
+         self.conn = httplib.HTTPSConnection(HOST, self.port,
+-                source_address=('', self.source_port))
++                source_address=('localhost', self.source_port))
+         # We don't test anything here other than the constructor not barfing as
+         # this code doesn't deal with setting up an active running SSL server
+         # for an ssl_wrapped connect() to actually return from.
+diff --git a/Lib/test/test_socket.py b/Lib/test/test_socket.py
+index 2b20a79150..6fac4bdae2 100644
+--- a/Lib/test/test_socket.py
++++ b/Lib/test/test_socket.py
+@@ -302,7 +302,7 @@ class GeneralModuleTests(unittest.TestCase):
+         # Testing that sendto doesn't mask failures. See #10169.
+         s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+         self.addCleanup(s.close)
+-        s.bind(('', 0))
++        s.bind(('localhost', 0))
+         sockname = s.getsockname()
+         # 2 args
+         with self.assertRaises(UnicodeEncodeError):
+@@ -563,7 +563,7 @@ class GeneralModuleTests(unittest.TestCase):
+ 
+     # XXX The following don't test module-level functionality...
+ 
+-    def _get_unused_port(self, bind_address='0.0.0.0'):
++    def _get_unused_port(self, bind_address='localhost'):
+         """Use a temporary socket to elicit an unused ephemeral port.
+ 
+         Args:
+@@ -694,7 +694,7 @@ class GeneralModuleTests(unittest.TestCase):
+         socket.getaddrinfo(HOST, None, 0, 0, 0, socket.AI_PASSIVE)
+         # a server willing to support both IPv4 and IPv6 will
+         # usually do this
+-        socket.getaddrinfo(None, 0, socket.AF_UNSPEC, socket.SOCK_STREAM, 0,
++        socket.getaddrinfo(HOST, 0, socket.AF_UNSPEC, socket.SOCK_STREAM, 0,
+                            socket.AI_PASSIVE)
+ 
+         # Issue 17269: test workaround for OS X platform bug segfault
+@@ -1396,7 +1396,7 @@ class NetworkConnectionAttributesTest(SocketTCPTest, ThreadableTest):
+     testSourceAddress = _justAccept
+     def _testSourceAddress(self):
+         self.cli = socket.create_connection((HOST, self.port), timeout=30,
+-                source_address=('', self.source_port))
++                source_address=('localhost', self.source_port))
+         self.addCleanup(self.cli.close)
+         self.assertEqual(self.cli.getsockname()[1], self.source_port)
+         # The port number being used is sufficient to show that the bind()
+diff --git a/Lib/test/test_ssl.py b/Lib/test/test_ssl.py
+index a17d6131a6..c3c87c60de 100644
+--- a/Lib/test/test_ssl.py
++++ b/Lib/test/test_ssl.py
+@@ -369,7 +369,7 @@
+             self.assertRaises(socket.error, ss.recvfrom, 1)
+             self.assertRaises(socket.error, ss.recvfrom_into, bytearray(b'x'), 1)
+             self.assertRaises(socket.error, ss.send, b'x')
+-            self.assertRaises(socket.error, ss.sendto, b'x', ('0.0.0.0', 0))
++            self.assertRaises(socket.error, ss.sendto, b'x', ('127.0.0.1', 0))
+             self.assertRaises(NotImplementedError, ss.dup)
+ 
+     def test_timeout(self):
+-- 
+2.11.0
+

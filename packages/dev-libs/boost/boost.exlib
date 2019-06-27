@@ -1,0 +1,221 @@
+# Copyright 2008, 2009, 2010, 2012 Ingmar Vanhassel <ingmar@exherbo.org>
+# Copyright 2013 Wouter van Kesteren <woutershep@gmail.com>
+# Copyright 2013-2015 Wulf C. Krueger <philantrop@exherbo.org>
+# Distributed under the terms of the GNU General Public License v2
+
+MY_PNV=${PN}_${PV//./_}
+
+require flag-o-matic toolchain-funcs
+require python [ blacklist=none multiunpack=false with_opt=true ]
+
+export_exlib_phases src_configure src_compile src_install
+
+SUMMARY="Boost Libraries for C++"
+HOMEPAGE="https://www.${PN}.org"
+DOWNLOADS="https://dl.bintray.com/boostorg/release/${PV}/source/${MY_PNV}.tar.bz2"
+
+UPSTREAM_CHANGELOG="${HOMEPAGE}/users/history/version_${PV//./_}.html [[ lang = en ]]"
+UPSTREAM_DOCUMENTATION="${HOMEPAGE}/doc/libs/${PV//./_} [[ lang = en ]]"
+
+LICENCES="Boost-1.0"
+SLOT="0"
+MYOPTIONS="debug doc"
+
+DEPENDENCIES="
+    build:
+        dev-lang/python:2.7
+    build+run:
+        dev-libs/expat
+        dev-libs/icu:=
+        python? (
+            dev-python/numpy[python_abis:*(-)?] [[ note = [ Automagic dependency of Boost.Python ] ]]
+        )
+"
+
+if ever at_least 1.70.0; then
+    DEPENDENCIES+="
+        build+run:
+            dev-libs/icu:=
+    "
+fi
+
+if ever at_least 1.69.0; then
+    DEPENDENCIES+="
+        build+run:
+            app-arch/zstd [[ note = [ Used by Boost.Iostreams ] ]]
+    "
+fi
+
+WORK=${WORKBASE}/${MY_PNV}
+BUILD_DIR="${WORKBASE}"/build
+
+global_conf=(
+    -d+2
+    -j${EXJOBS:-1}
+    -q
+    --build-dir="${BUILD_DIR}"
+    --layout=system
+    --without-mpi
+    link=shared
+    pch=off
+    runtime-link=shared
+    threading=multi
+)
+
+boost_src_configure() {
+    # TODO: right now, boost only uses python2. boost can support python 3
+    # as well, though, so we should be providing python_abis for the separate
+    # versions that it can use; for now, we use python2 specifically so the user
+    # can safely use python 3 as their python provider, though.
+    #
+    # do note that there's an issue in bootstrap.sh that arises when using python 3
+    # which can be easily fixed; s/print sys.prefix/print (sys.prefix)/
+
+    # Work around Qt4's moc failing to do proper macro substitution. We can
+    # drop this when we remove Qt4 because Qt5 implemented it. See
+    # https://bugreports.qt.io/browse/QTBUG-22829 for details.
+    edo sed -e '1 i#ifndef Q_MOC_RUN' \
+            -e '$ a#endif' \
+            -i boost/type_traits/detail/has_binary_operator.hpp
+
+    # boost's buildsystem runs python code which imports numpy in order
+    # to figure out the correct include directory. This does not work
+    # when cross-compiling, so we create a template which the multiple
+    # `compile_one_multibuild` invocations can modify
+    edo cp libs/python/build/Jamfile{,.template}
+    edo sed -e "s:<include>\$(numpy-include):<include>@PYTHON_SITEDIR@/numpy/core/include:" \
+            -i libs/python/build/Jamfile.template
+
+    edo env \
+    CC=$(exhost --build)-cc \
+    CFLAGS="$(print-build-flags CFLAGS)" \
+    ./bootstrap.sh \
+        $(ever at_least 1.70.0 && echo '--with-icu') \
+        --with-python=/usr/$(exhost --build)/bin/python2 \
+        --with-toolset=cc
+
+    easy-multibuild_src_configure
+}
+
+_create_project_config() {
+    local compiler=gcc
+    if cxx-is-clang; then
+        compiler=clang
+    fi
+
+    cat <<EOF > project-config.jam
+using ${compiler} : cross : $(exhost --target)-c++ :
+    <cflags>"${CFLAGS}"
+    <cxxflags>"${CXXFLAGS}"
+    <linkflags>"${LDFLAGS}"
+    <archiver>"${AR}"
+    <ranlib>"${RANLIB}"
+    ;
+
+using python
+    : $(python_get_abi)
+    : python$(python_get_abi)
+    : $(python_get_incdir)
+    : $(python_get_libdir)
+    ;
+EOF
+
+    global_conf+=( toolset=${compiler}-cross )
+}
+
+compile_one_multibuild() {
+    edo pushd "${ECONF_SOURCE}"
+
+    # Overwrite the config the bootstrap script created with our own
+    # FIXME: need to do this here because of python version
+    _create_project_config
+
+    # Set ABI specific python path in order to pick up correct numpy headers
+    edo cp libs/python/build/Jamfile{.template,}
+    edo sed -e "s:@PYTHON_SITEDIR@:$(python_get_sitedir):" \
+            -i libs/python/build/Jamfile
+
+    edo ./b2 \
+        "${global_conf[@]}" \
+        $(optionq debug && echo variant=debug) \
+        $(optionq !python && echo --without-python)
+
+    # Move build artifacts out of the way so they don't get re-used by
+    # the next compilation
+    option python && edo mv "${BUILD_DIR}"/boost/bin.v2/libs/python{,-$(python_get_abi)}
+
+    edo popd
+}
+
+boost_src_compile() {
+    easy-multibuild_src_compile
+}
+
+install_one_multibuild() {
+    edo pushd "${ECONF_SOURCE}"
+
+    _create_project_config
+
+    # Move artifacts for this ABI back into place
+    edo pushd "${BUILD_DIR}"/boost
+    edo rm -fr bin.v2/libs/python
+    option python && edo mv bin.v2/libs/python{-$(python_get_abi),}
+    edo popd
+
+    # Careful: The IMAGE-prefixed paths *must* precede global_conf
+    edo ./b2 \
+        --prefix="${IMAGE}"/usr \
+        --libdir="${IMAGE}"/usr/$(exhost --target)/lib \
+        --includedir="${IMAGE}"/usr/$(exhost --target)/include \
+        "${global_conf[@]}" \
+        $(optionq debug && echo variant=debug) \
+        $(optionq !python && echo --without-python) \
+        install
+
+    # boost used to install a library named `libboost_python` when using
+    # Python 2 and changed the naming in 1.67.0 to include the Python version
+    # as suffix like `libboost_python27`. The FindBoost CMake module was
+    # adjusted in version 3.11.0 to handle to new naming and allowing users
+    # to find a specific Boost.Python version using
+    #   `find_package(Boost COMPONENTS pythonXY)`
+    # in order to keep the old way
+    #   `find_package(Boost COMPONENTS python)`
+    # working, we need to provide `libboost_python` to give projects time
+    # to update their code
+    if option python && [[ $(python_get_abi) == 2.7 ]]; then
+        dosym libboost_python27.so /usr/$(exhost --target)/lib/libboost_python.so
+    fi
+
+    edo popd
+}
+
+boost_src_install() {
+    local lib
+
+    easy-multibuild_src_install
+
+    # Install compatibility symlinks to get -mt-suffixed libs
+    edo pushd "${IMAGE}"/usr/$(exhost --target)/lib
+    for lib in *.so; do
+        dosym ${lib} /usr/$(exhost --target)/lib/${lib/.so/-mt.so}
+    done
+    edo popd
+
+    if option doc ; then
+        # FIXME Handled by the build system originally but seems to be broken
+        local f
+        edo find doc/ libs/ -depth -iname 'test' -o -iname 'src' -o -iname 'CMakeLists.txt' -o -iname '*.cmake' -o -iname 'Jamfile.v2' -o -iname 'proj' -o -iname '*.vcproj' | while read f ; do
+            edo rm -r "${f}"
+        done
+
+        insinto /usr/share/doc/${PNVR}/html
+        doins -r doc libs more
+
+        dosym /usr/$(exhost --target)/include/${PN} /usr/share/doc/${PNVR}/html/${PN}
+    fi
+
+    if ! option python ; then
+        edo rm -r "${IMAGE}"/usr/$(exhost --target)/include/boost/{python,python.hpp}
+    fi
+}
+

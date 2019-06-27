@@ -1,0 +1,26 @@
+# Copyright 2017 Timo Gurr <tgurr@exherbo.org>
+# Distributed under the terms of the GNU General Public License v2
+
+require sourceforge [ suffix=zip ]
+
+SUMMARY="Fast Base64 Encoding/Decoding Routines"
+
+LICENCES="CC-PublicDomain"
+SLOT="0"
+PLATFORMS="~amd64"
+MYOPTIONS=""
+
+DEPENDENCIES=""
+
+src_compile() {
+    emake -C src CFLAGS="${CFLAGS} -I../include"
+}
+
+src_install() {
+    dolib src/libb64.a
+    insinto /usr/$(exhost --target)/include
+    doins -r include/b64
+
+    emagicdocs
+}
+

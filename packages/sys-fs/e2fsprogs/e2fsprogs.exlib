@@ -1,0 +1,88 @@
+# Copyright 2009 Wulf C. Krueger <philantrop@exherbo.org>
+# Distributed under the terms of the GNU General Public License v2
+# Based in part upon 'e2fsprogs-1.40.9.ebuild' from Gentoo, which is:
+#     Copyright 1999-2008 Gentoo Foundation
+
+require sourceforge [ suffix=tar.gz ] \
+    systemd-service \
+    udev-rules
+
+export_exlib_phases src_configure src_test
+
+SUMMARY="Utilities for managing ext2/ext3/ext4 filesystems"
+DOWNLOADS+=" mirror://kernel/linux/kernel/people/tytso/${PN}/v${PV}/${PNV}.tar.gz"
+
+LICENCES="
+    GPL-2
+    LGPL-2  [[ note = [ ext2fs and e2p libraries ] ]]
+    MIT [[ note = [ et and ss libraries ] ]]
+"
+SLOT="0"
+MYOPTIONS="
+    fuse [[ description = [ FUSE file system client for ext2/ext3/ext4 file systems ] ]]
+    ( linguas: ca cs da de eo es fi fr hu id it ms nl pl sr sv tr uk vi zh_CN )
+"
+
+DEPENDENCIES="
+    build:
+        sys-apps/texinfo
+        sys-devel/gettext[>=0.14.1]
+        virtual/pkg-config[>=0.20]
+    build+run:
+        sys-apps/util-linux[>=2.16.2] [[ note = [ to ensure that libblkid and libuuid from util-linux is used ] ]]
+        fuse? ( sys-fs/fuse:0[>=2.9] )
+"
+
+DEFAULT_SRC_CONFIGURE_PARAMS=(
+    --enable-bmap-stats
+    --enable-elf-shlibs
+    --enable-mmp
+    --enable-nls
+    --enable-symlink-install
+    --enable-tls
+    --enable-verbose-makecmds
+    --disable-addrsan
+    --disable-bmap-stats-ops
+    --disable-fsck
+    --disable-libblkid
+    --disable-libuuid
+    --disable-lto
+    --disable-tdb
+    --disable-threadsan
+    --disable-ubsan
+    --disable-uuidd
+    --with-crond-dir=/etc/cron.d
+    --with-systemd-unit-dir=${SYSTEMDSYSTEMUNITDIR}
+    --with-udev-rules-dir=${UDEVRULESDIR}
+)
+DEFAULT_SRC_CONFIGURE_OPTION_ENABLES=(
+    'fuse fuse2fs'
+)
+
+DEFAULT_SRC_INSTALL_EXTRA_DOCS=( RELEASE-NOTES )
+DEFAULT_SRC_INSTALL_PARAMS=( install-libs )
+
+e2fsprogs_src_configure() {
+    # Keep the package from doing silly things
+    export ac_cv_path_LDCONFIG=:
+    export STRIP=:
+
+    local myconf=(
+        "${DEFAULT_SRC_CONFIGURE_PARAMS[@]}" \
+        $(for s in "${DEFAULT_SRC_CONFIGURE_OPTION_ENABLES[@]}" ; do \
+            option_enable ${s} ; \
+        done )
+    )
+
+    BUILD_CC=$(exhost --build)-cc \
+        econf ${myconf[@]}
+}
+
+e2fsprogs_src_test() {
+    # test fails with ENAMETOOLONG on some filesystems
+    edo rm -rf tests/f_extent_htree
+
+    # The test script uses $IMAGE for its own purposes.
+    IMAGE= default
+}
+

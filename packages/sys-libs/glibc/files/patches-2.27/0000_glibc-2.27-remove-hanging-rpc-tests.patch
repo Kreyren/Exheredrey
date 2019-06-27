@@ -1,0 +1,25 @@
+Source: Timo Gurr <tgurr@exherbo.org>
+Upstream: No
+Reason: Leave hanging test processes around with sydbox
+
+diff -Naur glibc-2.27/sunrpc/Makefile glibc-2.27.new/sunrpc/Makefile
+--- glibc-2.27/sunrpc/Makefile	2018-08-01 07:10:47.000000000 +0200
++++ glibc-2.27.new/sunrpc/Makefile	2018-08-01 18:09:22.900899374 +0200
+@@ -94,8 +94,7 @@
+ others += rpcgen
+ endif
+ 
+-tests = tst-xdrmem tst-xdrmem2 test-rpcent tst-udp-error tst-udp-timeout \
+-  tst-udp-nonblocking
++tests = tst-xdrmem tst-xdrmem2 test-rpcent tst-udp-error
+ xtests := tst-getmyaddr
+ 
+ ifeq ($(have-thread-library),yes)
+@@ -242,7 +241,5 @@
+ 	$(evaluate-test)
+ endif
+ 
+-$(objpfx)tst-udp-timeout: $(common-objpfx)linkobj/libc.so
+-$(objpfx)tst-udp-nonblocking: $(common-objpfx)linkobj/libc.so
+ $(objpfx)tst-udp-garbage: \
+   $(common-objpfx)linkobj/libc.so $(shared-thread-library)

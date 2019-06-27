@@ -1,0 +1,50 @@
+Upstream: submitted: https://bugs.ruby-lang.org/issues/15594
+From 467ee266404249e95227d41698354eb1afe142fb Mon Sep 17 00:00:00 2001
+From: Marc-Antoine Perennou <Marc-Antoine@Perennou.com>
+Date: Sat, 2 Feb 2019 20:14:15 +0100
+Subject: [PATCH] net/imap: support SNI
+
+This fixes connecting using TLS 1.3 to imap.gmail.com
+
+See https://github.com/ruby/openssl/issues/238
+
+Signed-off-by: Marc-Antoine Perennou <Marc-Antoine@Perennou.com>
+---
+ lib/net/imap.rb | 7 +++++--
+ 1 file changed, 5 insertions(+), 2 deletions(-)
+
+diff --git a/lib/net/imap.rb b/lib/net/imap.rb
+index fa9b19071a..29acadfed4 100644
+--- a/lib/net/imap.rb
++++ b/lib/net/imap.rb
+@@ -1089,7 +1089,7 @@ def initialize(host, port_or_options = {},
+       @sock = tcp_socket(@host, @port)
+       begin
+         if options[:ssl]
+-          start_tls_session(options[:ssl])
++          start_tls_session(options[:ssl], @host)
+           @usessl = true
+         else
+           @usessl = false
+@@ -1511,7 +1511,7 @@ def create_ssl_params(certs = nil, verify = true)
+       return params
+     end
+ 
+-    def start_tls_session(params = {})
++    def start_tls_session(params = {}, hostname = nil)
+       unless defined?(OpenSSL::SSL)
+         raise "SSL extension not installed"
+       end
+@@ -1530,6 +1530,9 @@ def start_tls_session(params = {})
+       end
+       @sock = SSLSocket.new(@sock, context)
+       @sock.sync_close = true
++      unless hostname.nil?
++        @sock.hostname = hostname
++      end
+       ssl_socket_connect(@sock, @open_timeout)
+       if context.verify_mode != VERIFY_NONE
+         @sock.post_connection_check(@host)
+-- 
+2.20.1
+

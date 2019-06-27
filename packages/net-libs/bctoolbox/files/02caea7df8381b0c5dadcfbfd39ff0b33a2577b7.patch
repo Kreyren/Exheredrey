@@ -1,0 +1,32 @@
+From 02caea7df8381b0c5dadcfbfd39ff0b33a2577b7 Mon Sep 17 00:00:00 2001
+From: =?UTF-8?q?Fran=C3=A7ois=20Grisez?=
+ <francois.grisez@belledonne-communications.com>
+Date: Tue, 29 Aug 2017 11:21:43 +0200
+Subject: [PATCH] Fix preceding commit
+
+---
+ src/crypto/mbedtls.c | 4 ++--
+ 1 file changed, 2 insertions(+), 2 deletions(-)
+
+diff --git a/src/crypto/mbedtls.c b/src/crypto/mbedtls.c
+index c3a5afa..0cab26f 100644
+--- a/src/crypto/mbedtls.c
++++ b/src/crypto/mbedtls.c
+@@ -28,7 +28,7 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
+ #include <mbedtls/timing.h>
+ #include <mbedtls/error.h>
+ #include <mbedtls/base64.h>
+-
++#include <mbedtls/version.h>
+ #include <mbedtls/pem.h>
+ #include <mbedtls/x509.h>
+ #include <mbedtls/entropy.h>
+@@ -39,7 +39,7 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
+ #include <mbedtls/sha512.h>
+ #include <mbedtls/gcm.h>
+ 
+-#if MBEDTLS_VERSION_NUMBER > 0x02040000 // v2.4.0
++#if MBEDTLS_VERSION_NUMBER >= 0x02040000 // v2.4.0
+ #include <mbedtls/net_sockets.h>
+ #else
+ #include <mbedtls/net.h>

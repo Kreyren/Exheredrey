@@ -1,0 +1,29 @@
+Source: Timo Gurr <tgurr@exherbo.org>
+Upstream: No
+Reason: Don't try to detect a 64bit OS and install to lib64 instead of lib
+
+diff -Naur sysstat-11.1.4/configure.in sysstat-11.1.4.new/configure.in
+--- sysstat-11.1.4/configure.in	2015-04-07 21:57:41.000000000 +0200
++++ sysstat-11.1.4.new/configure.in	2015-05-04 13:13:15.114762500 +0200
+@@ -208,21 +208,6 @@
+ fi
+ 
+ SADC_DIR=$AuxPrefix/lib
+-if test -d $AuxPrefix/lib64; then
+-    # Verify that this OS is really 64 bit
+-    BITS=$(getconf LONG_BIT 2>/dev/null)
+-    if test $? = 0; then
+-        if test $BITS = 64; then
+-            SADC_DIR=$AuxPrefix/lib64
+-        fi
+-    else
+-        # Fallback: look for lm (long mode) flag to know if CPU is 64 bit
+-        grep " lm " /proc/cpuinfo >/dev/null 2>&1
+-        if test $? = 0; then
+-            SADC_DIR=$AuxPrefix/lib64
+-        fi
+-    fi
+-fi
+ 
+ AC_MSG_CHECKING(sadc directory)
+ AC_ARG_VAR([sa_lib_dir],[sadc directory])

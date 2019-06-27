@@ -1,0 +1,18 @@
+From: http://rpm5.org/cvs/chngview?cn=14336
+Reason: Allow the user to specify the pkgconfig directory, e.g. to install into lib64 instead of lib.
+Upstream: Fixed in trunk
+
+Index: popt/Makefile.am
+RCS File: /v/rpm/cvs/popt/Makefile.am,v
+rcsdiff -q -kk '-r1.68' '-r1.69' -u '/v/rpm/cvs/popt/Makefile.am,v' 2>/dev/null
+--- Makefile.am	2010/07/26 16:46:32	1.68
++++ Makefile.am	2010/07/28 14:00:49	1.69
+@@ -46,7 +46,7 @@
+ libpopt_la_SOURCES = popt.c poptparse.c poptconfig.c popthelp.c poptint.c
+ libpopt_la_LDFLAGS = -no-undefined @LTLIBINTL@ @LTLIBICONV@ $(AM_LDFLAGS)
+ 
+-pkgconfigdir = $(prefix)/lib/pkgconfig
++pkgconfigdir = $(libdir)/pkgconfig
+ pkgconfig_DATA = popt.pc
+ 
+ if HAVE_LD_VERSION_SCRIPT

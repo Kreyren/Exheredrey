@@ -1,0 +1,13 @@
+# Copyright Arnaud Lefebvre <a.lefebvre@outlook.fr>
+# Distributed under the terms of the GNU General Public License v2
+
+require node
+
+SUMMARY="Evented I/O for V8 Javascript (latest current release)"
+
+PLATFORMS="~amd64 ~x86"
+
+DEFAULT_SRC_PREPARE_PATCHES=(
+     "${FILES}"/${PN}-11.6.0-llhttp.patch
+)
+

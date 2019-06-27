@@ -1,0 +1,186 @@
+# Copyright 2008 Saleem Abdulrasool <compnerd@compnerd.org>
+# Copyright 2011 Elias Pipping <pipping@exherbo.org>
+# Distributed under the terms of the GNU General Public License v2
+
+require autotools [ supported_autoconf=[ 2.5 ] supported_automake=[ 1.16 ] ]
+
+export_exlib_phases src_prepare src_test
+
+SUMMARY="A communications library implementing the SSL, TLS and DTLS protocols"
+HOMEPAGE="https://www.${PN}.org/"
+DOWNLOADS="https://www.gnupg.org/ftp/gcrypt/${PN}/v$(ever range 1-2)/${PNV}.tar.xz"
+
+LICENCES="LGPL-2.1"
+SLOT="0"
+MYOPTIONS="
+    doc
+    dane   [[ description = [ DNSSEC DANE support for validating certificates ] ]]
+    pkcs11 [[ description = [ Use p11-kit to support multiple external pkcs11 providers ] ]]
+"
+ever at_least 3.5.19 && MYOPTIONS+=" idn"
+
+DEPENDENCIES="
+    build:
+        dev-libs/gmp:=
+        sys-devel/automake:*[>=1.11.4]
+        doc? ( dev-doc/gtk-doc[>=1.1] )
+    build+run:
+        dane? ( net-dns/unbound )
+"
+
+if ever at_least 3.5.19 ; then
+    DEPENDENCIES+="
+        build:
+            sys-devel/gettext[>=0.19]
+            virtual/pkg-config
+        build+run:
+            dev-libs/libtasn1[>=4.3]
+            dev-libs/libunistring
+            dev-libs/nettle[>=3.1]
+            idn? ( net-dns/libidn2:= )
+            pkcs11? ( dev-libs/p11-kit[>=0.23.1] )
+        test:
+            dev-util/cmocka
+            dev-util/datefudge
+    "
+else
+    DEPENDENCIES+="
+        build+run:
+            dev-libs/libtasn1[>=3.1]
+            dev-libs/nettle[>=2.7&<3.0]
+            pkcs11? ( dev-libs/p11-kit[>=0.20.0] )
+    "
+fi
+
+if ever at_least 3.6 ; then
+    DEPENDENCIES+="
+        build+run:
+            dev-libs/nettle[>=3.4.1]
+    "
+else
+    DEPENDENCIES+="
+        build+run:
+            sys-libs/zlib[>=1.2.3]
+    "
+fi
+
+DEFAULT_SRC_CONFIGURE_PARAMS=(
+    --enable-local-libopts # else the build fails with autogen installed
+    --disable-guile
+    --disable-valgrind-tests
+    --without-tpm
+)
+DEFAULT_SRC_CONFIGURE_OPTION_ENABLES=(
+    'dane libdane'
+    'doc gtk-doc'
+)
+DEFAULT_SRC_CONFIGURE_OPTION_WITHS=( 'pkcs11 p11-kit' )
+
+if ever at_least 3.5.19 ; then
+    DEFAULT_SRC_CONFIGURE_OPTION_WITHS+=(
+        idn
+    )
+    DEFAULT_SRC_CONFIGURE_PARAMS+=(
+        --enable-manpages
+        --disable-openssl-compatibility
+        --disable-seccomp-tests
+        --disable-static
+        --without-included-unistring
+    )
+else
+    DEFAULT_SRC_CONFIGURE_PARAMS+=(
+        --disable-crywrap
+    )
+fi
+
+if ever at_least 3.5.19 && ! ever at_least 3.6 ; then
+    DEFAULT_SRC_CONFIGURE_OPTION_WITHS+=(
+        "idn libidn2"
+    )
+fi
+
+if ! ever at_least 3.6 ; then
+    DEFAULT_SRC_CONFIGURE_PARAMS=(
+        --with-zlib
+    )
+fi
+
+AT_M4DIR=( m4 )
+
+if ! ever at_least 3.6 ; then
+    AT_M4DIR+=( gl/m4 src/gl/m4 src/libopts/m4/ )
+fi
+
+if ever at_least 3.5.19 && ! ever at_least 3.6 ; then
+    AT_M4DIR+=( lib/unistring/m4 )
+fi
+
+gnutls_src_prepare() {
+    # Source: Trond A Ekseth <troeks@gmail.com>
+    # Upstream: No
+    # Reason: Binding to 0.0.0.0 creates access violations under sydbox.
+    # made into a sed invocation
+    edo sed \
+        -e '/sa_serv\.sin_addr\.s_addr/s:INADDR_ANY:htonl(INADDR_LOOPBACK):' \
+        -i tests/*.c
+
+    if ! ever at_least 3.5.19 ; then
+        # gnutls-serv will always run on 0.0.0.0 and these tests use it
+        edo sed -e '/TESTS =/s:testdsa::' -i tests/dsa/Makefile.am
+        edo sed -e '/TESTS +=/s:testcerts::' -i tests/openpgp-certs/Makefile.am
+    fi
+
+    if ! ever at_least 3.6 ; then
+        # TODO: Disable a failing test when building a stage on Jenkins
+        # e.g. https://galileo.mailstation.de/jenkins/job/stage_amd64/1227/
+        edo sed -e 's/ dtls / /' -i tests/Makefile.am
+    fi
+
+    if ever at_least 3.5.19 && ! ever at_least 3.6 ; then
+        # last checked: 3.5.19
+        edo sed \
+            -e 's:fastopen.sh::g' \
+            -e 's:pkgconfig.sh::g' \
+            -e 's:sni-hostname.sh \\::g' \
+            -e 's:gnutls-cli-save-data.sh::g' \
+            -e 's:dist_check_SCRIPTS += gnutls-cli-self-signed.sh::g' \
+            -e 's: simple::g' \
+            -e 's: priorities::g' \
+            -i tests/Makefile.am
+        # gnutls-serv will always run on 0.0.0.0 and these tests use it
+        edo sed \
+            -e 's:ocsp-tls-connection::g' \
+            -e 's:ocsp-must-staple-connection::g' \
+            -i tests/ocsp-tests/Makefile.am
+        edo sed \
+            -e 's:TESTS += dsa::g' \
+            -i tests/key-tests/Makefile.am
+        # we don't want to rely on openssl
+        edo sed \
+            -e 's:TESTS += test-ciphers-openssl.sh::g' \
+            -i tests/slow/Makefile.am
+        # gnutls-serv will always run on 0.0.0.0 and these tests use it
+        edo sed \
+            -e 's:openpgp-certs::g' \
+            -i tests/cert-tests/Makefile.am
+    fi
+
+    autotools_src_prepare
+}
+
+gnutls_src_test() {
+    esandbox allow_net "LOOPBACK@80"
+    esandbox allow_net "LOOPBACK@5559"
+    esandbox allow_net --connect "LOOPBACK@5557"
+    esandbox allow_net --connect "LOOPBACK@5559"
+    esandbox allow_net --connect "inet:127.0.0.1@80"
+
+    emake check
+
+    esandbox disallow_net "LOOPBACK@80"
+    esandbox disallow_net "LOOPBACK@5559"
+    esandbox disallow_net --connect "LOOPBACK@5557"
+    esandbox disallow_net --connect "LOOPBACK@5559"
+    esandbox disallow_net --connect "inet:127.0.0.1@80"
+}
+

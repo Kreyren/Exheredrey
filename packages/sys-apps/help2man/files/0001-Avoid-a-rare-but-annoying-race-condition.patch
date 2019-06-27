@@ -1,0 +1,28 @@
+Upstream: no
+
+From cb9915e75e49db6743e6eabc37300ae99dca3452 Mon Sep 17 00:00:00 2001
+From: "Wulf C. Krueger" <philantrop@exherbo.org>
+Date: Tue, 17 Jun 2014 19:46:13 +0200
+Subject: [PATCH] Avoid a rare but annoying race condition
+
+---
+ Makefile.in | 3 ++-
+ 1 file changed, 2 insertions(+), 1 deletion(-)
+
+diff --git a/Makefile.in b/Makefile.in
+index 8c0da43..a6e45c9 100644
+--- a/Makefile.in
++++ b/Makefile.in
+@@ -127,7 +127,8 @@ $(preload).so: $(srcdir)/$(preload).c
+ man: $(target).1
+ $(target).1: $(srcdir)/$(target).PL $(srcdir)/$(target).h2m.PL
+ 	$(MAKE) $(target) $(target).h2m
+-	./$(target) --include=$(target).h2m --output=$@ ./$(target)
++	touch $@
++#	./$(target) --include=$(target).h2m --output=$@ ./$(target)
+ 
+ msg_l10n: $(addprefix po/,$(addsuffix .gmo,$(LINGUAS)))
+ po/%.gmo: $(srcdir)/po/%.po
+-- 
+1.9.4
+

@@ -1,0 +1,79 @@
+Upstream: no, upstream appears dead
+
+From 4c0914bb9fde4810bb64acfea71c18bada402474 Mon Sep 17 00:00:00 2001
+From: Kylie McClain <somasis@exherbo.org>
+Date: Sat, 7 Nov 2015 02:27:03 -0500
+Subject: [PATCH] Don't assume glibc is the only libc for linux
+
+---
+ libutempter/utempter.c | 14 +++++++-------
+ 1 file changed, 7 insertions(+), 7 deletions(-)
+
+diff --git a/libutempter/utempter.c b/libutempter/utempter.c
+index b79af97..af37a64 100644
+--- a/libutempter/utempter.c
++++ b/libutempter/utempter.c
+@@ -34,13 +34,13 @@
+ #include <sys/stat.h>
+ #include <utmp.h>
+ 
+-#ifdef __GLIBC__
++#ifdef linux
+ # include <pty.h>
+ #elif defined(__FreeBSD__)
+ # include <libutil.h>
+ #else
+ # error Unsupported platform
+-#endif /* __GLIBC__ || __FreeBSD__ */
++#endif /* linux || __FreeBSD__ */
+ 
+ #define	DEV_PREFIX	"/dev/"
+ #define	DEV_PREFIX_LEN	(sizeof(DEV_PREFIX)-1)
+@@ -106,7 +106,7 @@ validate_device(const char *device)
+ 
+ static int
+ write_uwtmp_record(const char *user, const char *term, const char *host,
+-#ifdef __GLIBC__
++#ifdef linux
+ 		   pid_t pid,
+ #endif
+ 		   int add)
+@@ -114,7 +114,7 @@ write_uwtmp_record(const char *user, const char *term, const char *host,
+ 	struct utmp ut;
+ 	struct timeval tv;
+ 
+-#ifdef __GLIBC__
++#ifdef linux
+ 	size_t offset;
+ #endif
+ 
+@@ -128,7 +128,7 @@ write_uwtmp_record(const char *user, const char *term, const char *host,
+ 	if (host)
+ 		strncpy(ut.ut_host, host, sizeof(ut.ut_host));
+ 
+-#ifdef __GLIBC__
++#ifdef linux
+ 
+ 	offset = (strlen(term) <= sizeof(ut.ut_id)) ? 0 :
+ 			strlen(term) - sizeof(ut.ut_id);
+@@ -175,7 +175,7 @@ write_uwtmp_record(const char *user, const char *term, const char *host,
+ 		}
+ 	}
+ 
+-#endif /* __GLIBC__ || __FreeBSD__ */
++#endif /* linux || __FreeBSD__ */
+ 
+ #ifdef	UTEMPTER_DEBUG
+ 	fprintf(stderr,
+@@ -255,7 +255,7 @@ main(int argc, const char *argv[])
+ 	validate_device(device);
+ 
+ 	return write_uwtmp_record(pw->pw_name, device + DEV_PREFIX_LEN, host,
+-#ifdef __GLIBC__
++#ifdef linux
+ 				  pid,
+ #endif
+ 				  add);
+-- 
+2.6.2
+

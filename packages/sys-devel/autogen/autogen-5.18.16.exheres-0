@@ -1,0 +1,47 @@
+# Copyright 2009 Ingmar Vanhassel
+# Distributed under the terms of the GNU General Public License v2
+
+LIBOPTS_VERSION="42.1.17"
+
+require gnu [ suffix=tar.xz subdir=rel${PV} ] \
+    autotools [ supported_autoconf=[ 2.5 ] supported_automake=[ 1.16 ] ]
+
+SUMMARY="AutoGen is a tool designed to simplify the creation and maintenance of programs that contain large amounts of repetitious text"
+
+LICENCES="GPL-3"
+SLOT="0"
+PLATFORMS="~amd64 ~arm ~x86"
+MYOPTIONS=""
+
+DEPENDENCIES="
+    build+run:
+        dev-lang/guile:=
+        dev-libs/boehm-gc     [[ note = [ additionally linked ] ]]
+        dev-libs/gmp:=        [[ note = [ additionally linked ] ]]
+        dev-libs/libffi       [[ note = [ additionally linked ] ]]
+        dev-libs/libunistring [[ note = [ additionally linked ] ]]
+        dev-libs/libxml2:2.0
+"
+
+DEFAULT_SRC_CONFIGURE_PARAMS=( --disable-static )
+
+AT_M4DIR=( config )
+
+src_prepare() {
+    # remove -Werror
+    edo sed \
+        -e 's:-Werror ::g' \
+        -i configure.ac
+
+    # Tests fails on machines that are too slow or busy
+    edo sed -e 's/usage\.test//' -i autoopts/test/Makefile.am
+
+    autotools_src_prepare
+}
+
+src_install() {
+    default
+
+    edo rm -f "${IMAGE}"/usr/share/autogen/libopts-${LIBOPTS_VERSION}.tar.gz
+}
+

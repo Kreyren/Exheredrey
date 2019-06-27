@@ -1,0 +1,16 @@
+# Copyright 2007 Alexander Færøy <ahf@exherbo.org>
+# Distributed under the terms of the GNU General Public License v2
+
+require gnu [ suffix=tar.gz ]
+
+SUMMARY="A perfect hash function generator"
+
+LICENCES="GPL-3"
+SLOT="0"
+PLATFORMS="~amd64 ~arm ~armv7 ~armv8 ~x86"
+MYOPTIONS=""
+
+DEPENDENCIES=""
+
+DEFAULT_SRC_TEST_PARAMS=( -j1 )
+

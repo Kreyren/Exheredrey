@@ -1,0 +1,143 @@
+# Copyright 2014 William Orr <will@worrbase.com>
+# Copyright 2015 Johannes Nixdorf <mixi@exherbo.org>
+# Distributed under the terms of the GNU General Public License v2
+
+LIBCRYPTO_SOVER=${LIBCRYPTO_VER%%.*}
+LIBSSL_SOVER=${LIBSSL_VER%%.*}
+LIBTLS_SOVER=${LIBTLS_VER%%.*}
+
+require alternatives
+
+export_exlib_phases src_configure src_install pkg_postinst
+
+SUMMARY="OpenBSD's portable fork of OpenSSL"
+DESCRIPTION="
+An SSL/TLS library with more ciphers, fewer bugs and much less bloat
+"
+HOMEPAGE="https://www.libressl.org/"
+DOWNLOADS="
+    https://ftp.openbsd.org/pub/OpenBSD/LibreSSL/${PNV}.tar.gz
+"
+
+LICENCES="openssl"
+
+SLOT="${LIBCRYPTO_SOVER}.${LIBSSL_SOVER}.${LIBTLS_SOVER}"
+
+# for a clean upgrade path from 2.2.0
+[[ "${SLOT}" == "33.32.3" ]] && SLOT="0"
+
+MYOPTIONS=""
+
+DEPENDENCIES="
+    build+run:
+        !dev-libs/openssl [[
+            description = [ LibreSSL is a fork of OpenSSL that provides the same libraries ]
+            resolution = uninstall-blocked-after
+        ]]
+"
+
+BUGS_TO="will@worrbase.com mixi@exherbo.org"
+
+libressl_src_configure() {
+    if [[ $(exhost --target) == i686-*-musl* ]];then
+        # NOTE(somasis) fails due to SSP, but only on i686...
+        # confirmed needed; https://github.com/voidlinux/void-packages/blob/48e4dfbd355d375d7683417d8b747e2aedc4f29e/srcpkgs/libressl/template#L18
+        econf --disable-hardening
+    else
+        econf --enable-hardening
+    fi
+}
+
+libressl_src_install() {
+    default
+
+    local lib ver sover
+
+    edo mkdir "${IMAGE}"/usr/$(exhost --target)/lib/libressl
+
+    # alternatives to support same-sover, different slot
+    for lib in {crypto,ssl,tls}; do
+        ver=LIB${lib^^}_VER
+        sover=LIB${lib^^}_SOVER
+
+        # move the .so so it's not picked up automatically by ldconfig
+        edo mv \
+            "${IMAGE}"/usr/$(exhost --target)/lib/lib${lib}.so.${!ver} \
+            "${IMAGE}"/usr/$(exhost --target)/lib/libressl/lib${lib}-${SLOT}.so
+
+        # remove the versioned dynamic libraries, we'll provide the symlinks ourselves
+        edo rm "${IMAGE}"/usr/$(exhost --target)/lib/lib${lib}.so{,.${!sover}}
+
+        # this alternative should select the hightes slot for each ver
+        alternatives_for \
+            _$(exhost --target)_${PN}_${lib}_${!ver} ${SLOT} ${SLOT} \
+            /usr/$(exhost --target)/lib/lib${lib}.so.${!ver} \
+            /usr/$(exhost --target)/lib/libressl/lib${lib}-${SLOT}.so
+
+        # this alternative should select the highest slot for each sover
+        alternatives_for \
+            _$(exhost --target)_${PN}_${lib}_${!sover} ${SLOT} ${SLOT} \
+            /usr/$(exhost --target)/lib/lib${lib}.so.${!sover} \
+            /usr/$(exhost --target)/lib/libressl/lib${lib}-${SLOT}.so
+
+        # this alternative should select the highest sover for each unsuffixed library
+        alternatives_for \
+            _$(exhost --target)_${PN}_${lib} ${!sover} ${!sover} \
+            /usr/$(exhost --target)/lib/lib${lib}.so{,.${!sover}}
+    done
+
+    dobin "${FILES}"/c_rehash
+
+    # alternatives to support multiple slots, architecture dependent files
+    alternatives_for \
+        _$(exhost --target)_${PN} ${SLOT} ${SLOT} \
+        /usr/$(exhost --target)/bin/c_rehash{,-${SLOT}} \
+        /usr/$(exhost --target)/bin/ocspcheck{,-${SLOT}} \
+        /usr/$(exhost --target)/bin/openssl{,-${SLOT}} \
+        /usr/$(exhost --target)/lib/libcrypto.a{,-${SLOT}} \
+        /usr/$(exhost --target)/lib/libcrypto.la{,-${SLOT}} \
+        /usr/$(exhost --target)/lib/libssl.a{,-${SLOT}} \
+        /usr/$(exhost --target)/lib/libssl.la{,-${SLOT}} \
+        /usr/$(exhost --target)/lib/libtls.a{,-${SLOT}} \
+        /usr/$(exhost --target)/lib/libtls.la{,-${SLOT}} \
+        /usr/$(exhost --target)/lib/pkgconfig/libcrypto.pc{,-${SLOT}} \
+        /usr/$(exhost --target)/lib/pkgconfig/libssl.pc{,-${SLOT}} \
+        /usr/$(exhost --target)/lib/pkgconfig/libtls.pc{,-${SLOT}} \
+        /usr/$(exhost --target)/lib/pkgconfig/openssl.pc{,-${SLOT}} \
+        /usr/$(exhost --target)/include/tls.h{,-${SLOT}} \
+        /usr/$(exhost --target)/include/openssl{,-${SLOT}}
+
+    # alternatives to support multiple slots, architecture independent files
+    local alternatives=()
+
+    for file in "${IMAGE}"/usr/share/man/*/*; do
+        alternatives+=(
+            ${file#${IMAGE}}
+            ${file#${IMAGE}}-${SLOT}
+        )
+    done
+
+    alternatives_for \
+        _${PN} ${SLOT} ${SLOT} \
+        "${alternatives[@]}"
+
+    emagicdocs
+    keepdir /etc/ssl/{certs,private}
+}
+
+libressl_pkg_postinst() {
+    # ca-certificates' pkg_postinst was broken with libressl for a while, redo the critical part in
+    # this place to catch the case that libressl is being updated from a broken to a fixed version
+
+    if [[ ${ROOT} == "/" ]] && has_version --root app-misc/ca-certificates; then
+        update-ca-certificates || ewarn "update-ca-certificates failed."
+    fi
+
+    # fix c_rehash slotting
+    for f in "${ROOT}"/usr/$(exhost --target)/bin/{c_rehash,ocspcheck};do
+        [[ -e "${f}" && ! -L "${f}" ]] && nonfatal edo rm "${f}"
+    done
+
+    alternatives_pkg_postinst
+}
+

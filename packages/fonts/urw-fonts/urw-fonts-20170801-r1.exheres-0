@@ -1,0 +1,51 @@
+# Copyright 2011-2018 Timo Gurr <tgurr@exherbo.org>
+# Distributed under the terms of the GNU General Public License v2
+
+MY_PN=${PN/fonts/base35-fonts}
+
+require github [ user=ArtifexSoftware pn=${MY_PN} tag=${PV} ]
+
+SUMMARY="Free versions of the 35 standard PostScript fonts"
+
+LICENCES="AGPL-3"
+SLOT="0"
+PLATFORMS="~amd64 ~armv8 ~x86"
+MYOPTIONS=""
+
+DEPENDENCIES=""
+
+DEFAULT_SRC_PREPARE_PATCHES=(
+    "${FILES}"/70aaae73a0dba9c94c001bfc464b6cb6d1f3d0f9.patch
+    "${FILES}"/766d77767fc912742f3e7236f083e2de8fdfc0e9.patch
+    "${FILES}"/15193de2d6e421af88f9a3297833530b60c40a09.patch
+)
+
+src_install() {
+    default
+
+    insinto /usr/share/fonts/X11/${PN}
+    doins fonts/*.{afm,t1}
+
+    # No use-cases for this as far as we know
+    edo rm fontconfig/urw-fallback-generics.conf
+
+    # Install the fontconfig files with correct priority for our distribution
+    local fontconfig_prio=60
+    for file in fontconfig/*.conf; do
+        # Rename
+        DISTRO_FILENAME="${fontconfig_prio}-$(basename $file)"
+        edo mv $file $DISTRO_FILENAME
+
+        # Install
+        insinto /usr/share/fontconfig/conf.avail
+        doins *.conf
+
+        # Enable by default
+        dodir /etc/fonts/conf.d
+        edo ln -sf /usr/share/fontconfig/conf.avail/$DISTRO_FILENAME "${IMAGE}"/etc/fonts/conf.d/$DISTRO_FILENAME
+    done
+
+    insinto /usr/share/metainfo
+    doins appstream/*.xml
+}
+

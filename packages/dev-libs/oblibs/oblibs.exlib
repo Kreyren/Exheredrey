@@ -1,0 +1,21 @@
+# Copyright 2018 Danilo Spinella <danyspin97@protonmail.com>
+# Distributed under the terms of the GNU General Public License v2
+
+require gitlab [ prefix='https://framagit.org' user='Obarun' tag=v${PV} ]
+
+SUMMARY="Obarun library."
+
+LICENCES="ISC"
+SLOT="0"
+MYOPTIONS=""
+
+DEPENDENCIES="
+    build+run:
+        dev-libs/skalibs[>=2.7.0.0]
+"
+
+DEFAULT_SRC_COMPILE_PARAMS=(
+    AR=$(exhost --tool-prefix)ar
+    RANLIB=$(exhost --tool-prefix)ranlib
+)
+

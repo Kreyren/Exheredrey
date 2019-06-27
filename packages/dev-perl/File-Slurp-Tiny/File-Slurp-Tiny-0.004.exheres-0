@@ -1,0 +1,13 @@
+# Copyright 2013 Denis Knauf
+# Distributed under the terms of the GNU General Public License v3
+
+require perl-module [ module_author=LEONT module_extension=.tar.gz ]
+
+SUMMARY="A simple, sane and efficient file slurper"
+LICENCES="Artistic"
+SLOT="0"
+PLATFORMS="~amd64 ~x86"
+MYOPTIONS=""
+
+DEPENDENCIES=""
+

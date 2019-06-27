@@ -1,0 +1,28 @@
+Upstream: yes
+Reason: Fixes the build with [providers:kernel-crypto]
+
+From f65b38b9317e1298cfc5877b0eed7c7badbe597a Mon Sep 17 00:00:00 2001
+From: Mikhail Efremov <sem@altlinux.org>
+Date: Mon, 25 Mar 2019 21:41:36 +0300
+Subject: [PATCH] ping6_common.c: include stddef.h
+
+Requird by offsetof().
+---
+ ping6_common.c | 1 +
+ 1 file changed, 1 insertion(+)
+
+diff --git a/ping6_common.c b/ping6_common.c
+index 4989e00..8115106 100644
+--- a/ping6_common.c
++++ b/ping6_common.c
+@@ -57,6 +57,7 @@
+  *	if -N option is used, this program has to run SUID to ROOT or
+  *	with net_cap_raw enabled.
+  */
++#include <stddef.h>
+ #include "iputils_common.h"
+ #include "iputils_ni.h"
+ #include "ping.h"
+-- 
+2.21.0
+

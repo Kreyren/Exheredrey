@@ -1,0 +1,33 @@
+# Copyright 2014-2019 Timo Gurr <tgurr@exherbo.org>
+# Distributed under the terms of the GNU General Public License v2
+
+require github [ user=ivmai release=v${PV} suffix=tar.gz ]
+
+SUMMARY="Library providing atomic memory update operations"
+DESCRIPTION="
+Provides semi-portable access to hardware-provided atomic memory update operations on a number
+architectures. These might allow you to write code:
+
+* That does more interesting things in signal handlers.
+* Makes more effective use of multiprocessors by allowing you to write clever lock-free code. Note
+  that such code is very difficult to get right, and will unavoidably be less portable than
+  lock-based code. It is also not always faster than lock-based code. But it may occasionally be a
+  large performance win.
+* To experiment with new and much better thread programming paradigms, etc.
+"
+
+LICENCES="GPL-2 MIT"
+SLOT="0"
+PLATFORMS="~amd64 ~x86"
+MYOPTIONS=""
+
+DEPENDENCIES=""
+
+DEFAULT_SRC_CONFIGURE_PARAMS=(
+    --enable-docs
+    --enable-shared
+    --disable-gcov
+    --disable-static
+    --disable-werror
+)
+

@@ -1,0 +1,22 @@
+# Copyright 2015 Kylie McClain <somasis@exherbo.org>
+# Distributed under the terms of the GNU General Public License v2
+
+require autotools [ supported_autoconf=[ 2.5 ] supported_automake=[ 1.15 ] ]
+require github [ user='pullmoll' tag=v${PV} ]
+
+SUMMARY="obstack functions and macros extracted from glibc for use with musl libc"
+SLOT="0"
+LICENCES="|| ( GPL-2 GPL-3 )"
+
+MYOPTIONS=""
+
+PLATFORMS="~amd64"
+
+DEPENDENCIES="
+    run:
+        !sys-libs/glibc [[
+            description = [ obstack is part of glibc ]
+            resolution = manual
+        ]]
+"
+

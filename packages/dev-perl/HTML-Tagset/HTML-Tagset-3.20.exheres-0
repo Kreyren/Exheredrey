@@ -1,0 +1,15 @@
+# Copyright 2008 Ingmar Vanhassel <ingmar@exherbo.org>
+# Distributed under the terms of the GNU General Public License v2
+# Based in part upon 'HTML-Tagset-3.20.ebuild' from Gentoo, which is:
+#     Copyright 1999-2008 Gentoo Foundation.
+
+require perl-module [ module_author=PETDANCE ]
+
+SUMMARY="Data tables useful in parsing HTML"
+
+SLOT="0"
+PLATFORMS="~amd64 ~armv8 ~x86"
+MYOPTIONS=""
+
+DEPENDENCIES=""
+

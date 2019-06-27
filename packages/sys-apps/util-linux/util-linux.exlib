@@ -1,0 +1,225 @@
+# Copyright 2007 Bryan Østergaard
+# Copyright 2008 Saleem Abdulrasool <compnerd@compnerd.org>
+# Distributed under the terms of the GNU General Public License v2
+
+require providers bash-completion systemd-service autotools [ supported_autoconf=[ 2.5 ] supported_automake=[ 1.16 ] ]
+
+export_exlib_phases src_prepare src_configure src_test src_install
+
+SUMMARY="Common linux utilities"
+HOMEPAGE="https://git.kernel.org/cgit/utils/${PN}/${PN}.git"
+DOWNLOADS="mirror://kernel/linux/utils/${PN}/v$(ever range 1-2)/${PNV}.tar.xz"
+
+MY_UPSTREAM="https://www.kernel.org/pub/linux/utils/${PN}/v$(ever range 1-2)/v${PV}"
+UPSTREAM_CHANGELOG="${MY_UPSTREAM}-ChangeLog"
+UPSTREAM_RELEASE_NOTES="${MY_UPSTREAM}-ReleaseNotes"
+
+LICENCES="
+    GPL-2 GPL-3
+    || ( LGPL-3 LGPL-2.1 )
+    BSD-3
+    ISC [[ note = [ some parts of rfkill ] ]]
+"
+SLOT="0"
+MYOPTIONS="
+    gtk-doc
+    hardlink [[
+        description = [ Util which consolidates duplicate files using hardlinks ]
+    ]]
+    session-management [[
+        description = [ enable utmp/wtmp record updates via libutempter ]
+    ]]
+    systemd
+    udev [[
+        description = [ Enable udev support (*only* ever disable this to break a dependency cycle) ]
+        note = [ Usually, we hard-enable udev. This option is *solely* to break
+                 a dep-cycle between udev->util-linux->udev.
+                 Do NOT introduce new udev options.
+        ]
+    ]]
+    udev? ( ( providers: eudev systemd ) [[ number-selected = exactly-one ]] )
+    ( linguas: ca cs da de es et eu fi fr gl hr hu id it ja nl pl pt_BR ru sl sv tr uk vi zh_CN
+               zh_TW )
+"
+
+DEPENDENCIES="
+    build:
+        dev-libs/libxslt
+        sys-devel/bison
+        sys-devel/gettext[>=0.18.3]
+        sys-kernel/linux-headers
+        virtual/pkg-config
+        gtk-doc? ( dev-doc/gtk-doc[>=1.10] )
+    build+run:
+        !net-wireless/rfkill [[
+            description = [ util-linux now provides rfkill ]
+            resolution = uninstall-blocked-after
+        ]]
+        !sys-apps/eject [[
+            description = [ util-linux now provides eject ]
+            resolution = uninstall-blocked-after
+        ]]
+        !sys-apps/shadow[<4.1.5.1-r2] [[
+            description = [ util-linux now provides nologin ]
+            resolution = upgrade-blocked-before
+        ]]
+        !sys-apps/sysvinit[<2.88-r4] [[
+            description = [ util-linux now installs tools previously provided by sysvinit ]
+            resolution = upgrade-blocked-before
+        ]]
+        !sys-apps/sysvinit-tools[<2.88-r5] [[
+            description = [ util-linux now provides mesg, sulogin and utmpdump ]
+            resolution = uninstall-blocked-after
+        ]]
+        !sys-apps/util-linux-ng [[
+            description = [ Upstream renamed util-linux-ng to util-linux ]
+            resolution = uninstall-blocked-after
+        ]]
+        !app-shells/bash-completion[<2.7-r1] [[
+            description = [ util-linux now provides its own bash-completion for mount, umount and rfkill ]
+            resolution = upgrade-blocked-before
+        ]]
+        user/uuidd
+        group/uuidd
+        sys-libs/libcap-ng
+        sys-libs/ncurses[>=5.6] [[
+            note = [ this is required as most of the tools have been converted to use ncurses ]
+        ]]
+        sys-libs/pam
+        sys-libs/readline:=
+        sys-libs/zlib
+        hardlink? ( dev-libs/pcre2 [[ note = automagic ]] )
+        session-management? ( x11-libs/libutempter )
+        systemd? ( sys-apps/systemd )
+        udev? (
+            providers:eudev? ( sys-apps/eudev )
+            providers:systemd? ( sys-apps/systemd )
+        )
+    test:
+        sys-apps/bc
+        sys-apps/grep[>=2.21-r2]
+"
+
+DEFAULT_SRC_INSTALL_PARAMS=( usrsbin_execdir=/usr/$(exhost --target)/bin )
+DEFAULT_SRC_INSTALL_EXTRA_DOCS=( HISTORY VERSION )
+
+util-linux_src_prepare() {
+    # disable failing test
+    edo rm tests/ts/uuid/uuidd
+
+    # only works on btrfs, ext4, ocfs2, and xfs filesystems
+    edo rm tests/ts/misc/fallocate
+
+    option !session-management && edo rm -rf tests/ts/utmpdump
+
+    if ! ever at_least 2.33.2; then
+        autotools_src_prepare
+    else
+        default
+    fi
+}
+
+util-linux_src_configure() {
+    # Conflict Resolution:
+    # - coreutils
+    #   * kill
+    # - shadow
+    #   * chfn
+    #   * chsh
+    #   * login
+    #   * newgrp
+    #   * su
+    #   * vipw
+    local conflicts=( chfn-chsh kill login newgrp su vipw )
+
+    # Deprecated Tools:
+    # pg command is marked deprecated in POSIX since 1997
+    # line is deprecated in favor of head
+    local deprecated=( pg line )
+
+    local enabled_tools=(
+        agetty bfs cal chmem cramfs eject fallocate fdformat fsck hwclock ipcrm ipcs last logger
+        losetup lslogins lsmem mesg minix more mount mountpoint nsenter nologin partx pivot_root
+        raw rename schedutils setpriv setterm sulogin switch_root ul unshare uuidd wall wdctl
+        zramctl
+    )
+
+    local disabled_tools=( pylibmount runuser write )
+
+    NCURSESW6_CONFIG="/usr/$(exhost --target)/bin/ncursesw6-config" \
+    econf \
+        --localstatedir=/ \
+        --enable-colors-default \
+        --enable-fdisks \
+        --enable-fs-paths-default=/usr/$(exhost --target)/bin \
+        --enable-libblkid \
+        --enable-libfdisk \
+        --enable-libmount \
+        --enable-libuuid \
+        --enable-nls \
+        --enable-plymouth_support \
+        --enable-usrdir-path \
+        --enable-widechar \
+        --disable-asan \
+        --disable-libmount-support-mtab \
+        --disable-static \
+        --with-btrfs \
+        --with-cap-ng \
+        --with-libz \
+        --with-ncursesw \
+        --with-readline \
+        --with-tinfo \
+        --with-util \
+        --without-audit \
+        --without-ncurses \
+        --without-python \
+        --without-selinux \
+        --without-slang \
+        --without-smack \
+        --with-systemdsystemunitdir=${SYSTEMDSYSTEMUNITDIR} \
+        $(for tool in "${enabled_tools[@]}" ; do echo --enable-${tool} ; done) \
+        $(for tool in "${disabled_tools[@]}" ; do echo --disable-${tool} ; done) \
+        $(for tool in "${conflicts[@]}" ; do echo --disable-${tool} ; done) \
+        $(for tool in "${deprecated[@]}" ; do echo --disable-${tool} ; done) \
+        $(option_enable gtk-doc) \
+        $(option_enable hardlink) \
+        $(option_enable session-management utmpdump) \
+        $(option_with session-management utempter) \
+        $(option_with systemd) \
+        $(option_with udev)
+}
+
+util-linux_src_test() {
+    providers_set 'grep gnu'
+    default
+}
+
+util-linux_src_install() {
+    default
+
+    keepdir /var/lib/libuuid
+    edo chown uuidd:uuidd "${IMAGE}"/var/lib/libuuid
+    edo chmod 2775 "${IMAGE}"/var/lib/libuuid
+
+    insinto /usr/$(exhost --target)/lib/tmpfiles.d
+    hereins uuidd.conf <<EOF
+d /run/uuidd 2755 uuidd uuidd
+EOF
+
+    if ! option systemd; then
+        edo rmdir "${IMAGE}"/usr/$(exhost --target)/lib/systemd{/system,}
+    fi
+
+    # color customization support
+    keepdir /etc/terminal-colors.d
+
+    edo rm -rf "${IMAGE}"/usr/share/bash-completion
+
+    edo pushd bash-completion
+        edo rm Makemodule.am
+        for i in *; do
+            dobashcompletion "${i}" "${i}"
+        done
+    edo popd
+}
+

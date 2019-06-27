@@ -1,0 +1,53 @@
+# Copyright 2007 Bryan Østergaard
+# Copyright 2008 Richard Brown
+# Distributed under the terms of the GNU General Public License v2
+
+require gnu [ suffix=tar.xz ]
+
+SUMMARY="Generic library support script"
+
+LICENCES="GPL-2"
+SLOT="0"
+PLATFORMS="~amd64 ~arm ~armv7 ~armv8 ~x86"
+MYOPTIONS=""
+
+DEPENDENCIES="
+    build:
+        sys-apps/help2man
+    build+run:
+        sys-devel/gnuconfig
+    test+test-expensive:
+        sys-libs/libgfortran:*
+"
+
+DEFAULT_SRC_CONFIGURE_PARAMS=(
+    # grep and sed are hardcoded into the libtoolize program, it should use
+    # the generic alternative which always exists on the system
+    # (if GNU tools are installed it will hardcode the absolute paths for them,
+    # which breaks upon uninstallation of them)
+    GREP=/usr/host/bin/grep
+    SED=/usr/host/bin/sed
+)
+
+DEFAULT_SRC_INSTALL_EXTRA_DOCS=( docs/PLATFORMS )
+
+WORK="${WORKBASE}/${PNV%a}"
+
+src_test() {
+    emake TESTSUITEFLAGS="-k !expensive -j1" check-local
+}
+
+src_test_expensive() {
+    emake TESTSUITEFLAGS="-k expensive -j1" check-local
+}
+
+src_install() {
+    default
+
+    edo cd "${IMAGE}"
+    for f in $(find . -type f -name config.guess -o -name config.sub); do
+        edo rm ${f}
+        edo ln -s /usr/share/gnuconfig/${f##*/} "${f}"
+    done
+}
+

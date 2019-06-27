@@ -1,0 +1,195 @@
+# Copyright 2008, 2009, 2011, 2014 Ingmar Vanhassel <ingmar@exherbo.org>
+# Distributed under the terms of the GNU General Public License v2
+# Based in part upon 'sqlite-3.5.6.ebuild' from Gentoo, which is:
+#     Copyright 1999-2008 Gentoo Foundation.
+
+SCHNARF_PV="$(ever range 1)$(printf "%02d" $(ever range 2))\
+$(printf "%02d" $(ever range 3))\
+$(printf "%02d" $(ever range 4))"
+
+SCHNARF_PV_DOC="$(ever range 1)$(printf "%02d" $(ever range 2))$(printf "%02d" $(ever range 3))00"
+
+require flag-o-matic
+
+SUMMARY="An embedded SQL database engine"
+HOMEPAGE="https://www.sqlite.org"
+DOWNLOADS="${HOMEPAGE}/2019/${PN}-autoconf-${SCHNARF_PV}.tar.gz
+    ${HOMEPAGE}/2019/${PN}-src-${SCHNARF_PV}.zip
+    doc? ( ${HOMEPAGE}/2019/${PN}-doc-${SCHNARF_PV_DOC}.zip )"
+
+BUGS_TO="philantrop@exherbo.org"
+
+UPSTREAM_RELEASE_NOTES="${HOMEPAGE}/releaselog/$(ever replace_all _).html [[ lang = en ]]"
+
+LICENCES="public-domain"
+SLOT="3"
+PLATFORMS="~amd64 ~arm ~armv7 ~armv8 ~x86"
+MYOPTIONS="
+    debug
+    doc
+    readline
+"
+
+DEPENDENCIES="
+    build:
+        virtual/unzip
+    build+run:
+        sys-libs/zlib
+        readline? ( sys-libs/readline:= )
+    test:
+        dev-lang/tcl[>=8.5]
+"
+
+DEFAULT_SRC_CONFIGURE_OPTION_ENABLES=( readline debug )
+DEFAULT_SRC_CONFIGURE_PARAMS=(
+    --enable-dynamic-extensions
+    --enable-fts5
+    --enable-json1
+    --enable-session
+    --enable-threadsafe
+    --disable-editline
+    --disable-static
+    --disable-static-shell
+)
+
+WORK=${WORKBASE}/${PN}-autoconf-${SCHNARF_PV}/
+
+pkg_setup() {
+    expecting_tests && WORK=${WORKBASE}/${PN}-src-${SCHNARF_PV}/
+}
+
+src_prepare() {
+    # Fix shell1-5.0 test, last checked: 3.10.0
+    # http://mailinglists.sqlite.org/cgi-bin/mailman/private/sqlite-dev/2015-May/002575.html
+    expecting_tests && edo sed -e "/if {\$i==0x0D /s/\$i==0x0D /&|| (\$i>=0xE0 \&\& \$i<=0xEF) /" \
+            -i test/shell1.test
+
+    default
+}
+
+src_configure() {
+    # Support detection of misuse of SQLite API.
+    # https://sqlite.org/compile.html#enable_api_armor
+    append-cppflags -DSQLITE_ENABLE_API_ARMOR
+
+    # Support column metadata functions.
+    # https://sqlite.org/c3ref/column_database_name.html
+    append-cppflags -DSQLITE_ENABLE_COLUMN_METADATA
+
+    # Support sqlite_dbpage virtual table.
+    # https://sqlite.org/compile.html#enable_dbpage_vtab
+    append-cppflags -DSQLITE_ENABLE_DBPAGE_VTAB
+
+    # Support dbstat virtual table.
+    # https://sqlite.org/dbstat.html
+    append-cppflags -DSQLITE_ENABLE_DBSTAT_VTAB
+
+    # Support sqlite3_serialize() and sqlite3_deserialize() functions.
+    # https://sqlite.org/compile.html#enable_deserialize
+    # https://sqlite.org/c3ref/serialize.html
+    # https://sqlite.org/c3ref/deserialize.html
+    append-cppflags -DSQLITE_ENABLE_DESERIALIZE
+
+    # Support comments in output of EXPLAIN.
+    # https://sqlite.org/compile.html#enable_explain_comments
+    append-cppflags -DSQLITE_ENABLE_EXPLAIN_COMMENTS
+
+    # Support Full-Text Search versions 3,4 and 5.
+    # https://sqlite.org/fts3.html
+    append-cppflags -DSQLITE_ENABLE_FTS{{3,3_PARENTHESIS},4,5}
+
+    # Support hidden columns.
+    append-cppflags -DSQLITE_ENABLE_HIDDEN_COLUMNS
+
+    # Support memsys5 memory allocator.
+    # https://sqlite.org/malloc.html#memsys5
+    append-cppflags -DSQLITE_ENABLE_MEMSYS5
+
+    # Support sqlite_offset() function.
+    # https://sqlite.org/lang_corefunc.html#sqlite_offset
+    append-cppflags -DSQLITE_ENABLE_OFFSET_SQL_FUNC
+
+    # Support pre-update hook functions.
+    # https://sqlite.org/c3ref/preupdate_count.html
+    append-cppflags -DSQLITE_ENABLE_PREUPDATE_HOOK
+
+    # Support Resumable Bulk Update extension.
+    # https://sqlite.org/rbu.html
+    append-cppflags -DSQLITE_ENABLE_RBU
+
+    # Support R*Trees.
+    # https://sqlite.org/rtree.html
+    # https://sqlite.org/geopoly.html
+    append-cppflags -DSQLITE_ENABLE_RTREE -DSQLITE_ENABLE_GEOPOLY
+
+    # Support scan status functions.
+    # https://sqlite.org/c3ref/stmt_scanstatus.html
+    # https://sqlite.org/c3ref/stmt_scanstatus_reset.html
+    append-cppflags -DSQLITE_ENABLE_STMT_SCANSTATUS
+
+    # Support sqlite_stmt virtual table.
+    # https://sqlite.org/stmt.html
+    append-cppflags -DSQLITE_ENABLE_STMTVTAB
+
+    # Support unknown() function.
+    # https://sqlite.org/compile.html#enable_unknown_sql_function
+    append-cppflags -DSQLITE_ENABLE_UNKNOWN_SQL_FUNCTION
+
+    # Support unlock notification.
+    # https://sqlite.org/unlock_notify.html
+    append-cppflags -DSQLITE_ENABLE_UNLOCK_NOTIFY
+
+    # Support LIMIT and ORDER BY clauses on DELETE and UPDATE statements.
+    # https://sqlite.org/compile.html#enable_update_delete_limit
+    append-cppflags -DSQLITE_ENABLE_UPDATE_DELETE_LIMIT
+
+    # Support PRAGMA function_list, PRAGMA module_list and PRAGMA pragma_list statements.
+    # https://sqlite.org/pragma.html#pragma_function_list
+    # https://sqlite.org/pragma.html#pragma_module_list
+    # https://sqlite.org/pragma.html#pragma_pragma_list
+    append-cppflags -DSQLITE_INTROSPECTION_PRAGMAS
+
+    # Support soundex() function.
+    # https://sqlite.org/lang_corefunc.html#soundex
+    append-cppflags -DSQLITE_SOUNDEX
+
+    # Support URI filenames.
+    # https://sqlite.org/uri.html
+    append-cppflags -DSQLITE_USE_URI
+
+    # Save a little CPU time on LIKE queries
+    # https://www.sqlite.org/compile.html#like_doesnt_match_blobs
+    append-cppflags -DSQLITE_LIKE_DOESNT_MATCH_BLOBS
+
+    # Fixes cross compilation
+    export BUILD_CC=$(exhost --build)-cc
+    export BUILD_CFLAGS=$(print-build-flags CFLAGS)
+
+    default
+}
+
+# NOTE(somasis): tests attempt to link with host tcl when cross-compiling
+src_test() {
+    if exhost --is-native ; then
+        # tcl tests fail, last checked: 3.18.0
+        # make: *** [Makefile:1121: tcltest] Segmentation fault (core dumped)
+        emake fastfuzztest sourcetest
+    else
+        echo "cross compiling, skipping tests"
+    fi
+}
+
+src_install() {
+    if expecting_tests ; then
+        emake DESTDIR="${IMAGE}" HAVE_TCL="" install
+        doman ${PN}${SLOT}.1
+    else
+        default
+    fi
+
+    if option doc ; then
+        insinto /usr/share/doc/${PNVR}/html
+        doins -r "${WORKBASE}"/${PN}-doc-${SCHNARF_PV_DOC}/*
+    fi
+}
+

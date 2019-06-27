@@ -1,0 +1,41 @@
+# Copyright 2009, 2010 Ingmar Vanhassel
+# Copyright 2018 Timo Gurr <tgurr@exherbo.org>
+# Distributed under the terms of the GNU General Public License v2
+
+require github [ user=BelledonneCommunications ] cmake [ api=2 ]
+
+SUMMARY="A Real-time Transport Protocol (RTP, RFC3550) library"
+HOMEPAGE+=" https://www.linphone.org/technical-corner/${PN}/overview"
+
+LICENCES="GPL-2"
+SLOT="0"
+PLATFORMS="~amd64 ~x86"
+MYOPTIONS="doc"
+
+DEPENDENCIES="
+    build:
+        doc? ( app-doc/doxygen )
+    build+run:
+        net-libs/bctoolbox[>=0.2.0]
+"
+
+DEFAULT_SRC_PREPARE_PATCHES=(
+    "${FILES}"/${PN}-1.0.2-fix-cmake-install-path.patch
+)
+
+CMAKE_SRC_CONFIGURE_PARAMS=(
+    -DCMAKE_BUILD_TYPE:STRING=Release
+    -DENABLE_DEBUG_LOGS:BOOL=FALSE
+    -DENABLE_NTP_TIMESTAMP:BOOL=FALSE
+    -DENABLE_PERF:BOOL=FALSE
+    -DENABLE_SHARED:BOOL=TRUE
+    -DENABLE_STATIC:BOOL=FALSE
+    -DENABLE_STRICT:BOOL=FALSE
+)
+CMAKE_SRC_CONFIGURE_OPTION_ENABLES=(
+    'doc DOC'
+)
+CMAKE_SRC_CONFIGURE_TESTS=(
+    '-DENABLE_TESTS:BOOL=TRUE -DENABLE_TESTS:BOOL=FALSE'
+)
+

@@ -1,0 +1,84 @@
+# Copyright 2017 Saleem Abdulrasool <compnerd@compnerd.org>
+# Distributed under the terms of the GNU General Public License v2
+
+require cmake [ api=2 ]
+require alternatives providers
+
+SUMMARY="The LLVM linker"
+HOMEPAGE="https://lld.llvm.org"
+
+if [[ ${PV} == *rc* ]]; then
+    DOWNLOADS="https://prereleases.llvm.org/${PV%*rc*}/rc${PV#*rc}/${PNV}.src.tar.xz"
+else
+    DOWNLOADS="https://llvm.org/releases/${PV}/${PNV}.src.tar.xz"
+fi
+
+# lld is a cross linker and can compile for any target without a
+# new binary being compiled for the target. this is only used for the
+# creation of the symlinks for targets; /usr/${CHOST}/bin/${target}-lld
+CROSS_COMPILE_TARGETS="
+    aarch64-unknown-linux-gnueabi
+    armv7-unknown-linux-gnueabi
+    armv7-unknown-linux-gnueabihf
+    i686-pc-linux-gnu
+    i686-pc-linux-musl
+    powerpc64-unknown-linux-gnu
+    x86_64-pc-linux-gnu
+    x86_64-pc-linux-musl
+"
+
+LICENCES="UoI-NCSA"
+SLOT="0"
+MYOPTIONS="
+    ( targets: ${CROSS_COMPILE_TARGETS} ) [[ number-selected = at-least-one ]]
+"
+
+
+DEPENDENCIES="
+    build+run:
+        dev-lang/llvm[~${PV}]
+    test:
+        dev-lang/python:*
+"
+
+CMAKE_SOURCE=${WORKBASE}/${PNV}.src
+
+providers=( "llvm $(ever major)" )
+
+src_configure() {
+    providers_set
+    cmake_src_configure
+}
+
+src_install() {
+    local host=$(exhost --target)
+    local target
+
+    default
+
+    # ban ld.lld, alternative for banned ld
+    dobanned ld.lld
+
+    # eclectic managed files
+    local em=(
+        /usr/${host}/bin/ld
+        "${BANNEDDIR}"/ld
+    )
+
+    # provide host-prefixed ld.lld
+    for target in ${CROSS_COMPILE_TARGETS}; do
+        if option targets:${target}; then
+            dosym lld /usr/${host}/bin/${target}-ld.lld
+            em+=( /usr/${host}/bin/${target}-ld )
+        fi
+    done
+
+    # alternatives setup
+    local alternatives=()
+    for m in "${em[@]}"; do
+        alternatives+=( "${m}" "${m##*/}".lld )
+    done
+
+    alternatives_for ld lld 10 "${alternatives[@]}"
+}
+

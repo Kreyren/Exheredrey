@@ -1,0 +1,16 @@
+# Copyright 2011 Dan Callaghan <djc@djc.id.au>
+# Distributed under the terms of the GNU General Public License v2
+
+require gnu [ suffix=tar.xz ]
+
+SUMMARY="Collection of freely re-usable macros for autoconf"
+
+LICENCES="GPL-3"
+SLOT="0"
+PLATFORMS="~amd64 ~armv7 ~armv8 ~x86"
+MYOPTIONS=""
+
+BUGS_TO="flocke@shadowice.org"
+
+DEPENDENCIES=""
+

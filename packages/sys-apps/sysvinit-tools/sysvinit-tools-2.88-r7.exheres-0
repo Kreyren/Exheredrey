@@ -1,0 +1,49 @@
+# Copyright 2011 Wulf C. Krueger
+# Distributed under the terms of the GNU General Public License v2
+
+require flag-o-matic
+
+SUMMARY="System V init tools"
+DESCRIPTION="
+This is the only useful tool from old, crufty, obsolete sysvinit:
+- killall5
+"
+HOMEPAGE="https://savannah.nongnu.org/projects/${PN/-tools}"
+DOWNLOADS="http://download.savannah.gnu.org/releases/${PN/-tools}/${PNV/-tools}dsf.tar.bz2"
+LICENCES="GPL-2"
+SLOT="0"
+PLATFORMS="~amd64 ~arm ~x86"
+MYOPTIONS="static"
+
+DEPENDENCIES="
+    build:
+        sys-kernel/linux-headers
+    build+run:
+        !sys-apps/sysvinit [[
+            description = [ sys-apps/sysvinit and this package collide. You might want this package if you're using systemd. ]
+            resolution = manual
+        ]]
+        !sys-apps/util-linux[<2.22] [[
+            description = [ sys-apps/util-linux 2.22 installs sulogin and utmpdump previously provided by this package ]
+            resolution = upgrade-blocked-before
+        ]]
+        !sys-process/procps[<3.3.9] [[
+            description = [ sys-process/procps 3.3.9 installs pidof previously provided by this package ]
+            resolution = uninstall-blocked-after
+        ]]
+"
+
+WORK=${WORKBASE}/${PNV/-tools}dsf
+
+src_compile() {
+    append-ldflags -static
+
+    emake -C src killall5
+}
+
+src_install() {
+    exeinto /usr/$(exhost --target)/bin
+    doexe src/killall5
+    doman man/killall5.8
+}
+

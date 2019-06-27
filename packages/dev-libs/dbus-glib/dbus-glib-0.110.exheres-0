@@ -1,0 +1,66 @@
+# Copyright 2008 Bo Ørsted Andresen <zlin@exherbo.org>
+# Copyright 2009 Saleem Abdulrasool <compnerd@compnerd.org>
+# Distributed under the terms of the GNU General Public License v2
+
+require bash-completion test-dbus-daemon
+
+SUMMARY="Deprecated D-Bus binding for GLib"
+DESCRIPTION="
+dbus-glib receives minimal maintenance and security fixes for the benefit of projects like
+Telepathy and NetworkManager that still rely on it, but should not be used in new projects (and
+existing projects should try to move away from it, too). Please use GDBus, part of GLib since 2.26.
+"
+HOMEPAGE="https://www.freedesktop.org/wiki/Software/DBusBindings"
+DOWNLOADS="https://dbus.freedesktop.org/releases/${PN}/${PNV}.tar.gz"
+
+LICENCES="|| ( GPL-2 AFL-2.1 )"
+SLOT="1"
+PLATFORMS="~amd64 ~armv8 ~x86"
+MYOPTIONS="
+    bash-completion
+    doc
+"
+
+DEPENDENCIES="
+    build:
+        sys-devel/gettext
+        virtual/pkg-config[>=0.9.0]
+        doc? ( dev-doc/gtk-doc[>=1.14] )
+    build+run:
+        dev-libs/expat
+        dev-libs/glib:2[>=2.40]
+        sys-apps/dbus[>=1.8]
+"
+
+src_configure() {
+    local myconf=()
+
+    #NOTE(Cogitri): Keep tests disabled! Building them renders the library insecure
+    # according to upstream
+    myconf+=(
+        --disable-static
+        --disable-tests
+        $(option_enable bash-completion)
+        $(option_enable doc gtk-doc)
+    )
+
+    # This expects dbus-glib to be installed on the host...
+    if ! exhost --is-native -q ; then
+        myconf+=(
+            --with-dbus-binding-tool=/usr/$(exhost --build)/bin/dbus-binding-tool
+        )
+    fi
+
+    econf "${myconf[@]}"
+}
+
+src_install() {
+    default
+
+    if option bash-completion ; then
+        edo dobashcompletion "${IMAGE}"/etc/bash_completion.d/dbus-bash-completion.sh dbus
+        edo rm "${IMAGE}"/etc/bash_completion.d/dbus-bash-completion.sh
+        edo rmdir "${IMAGE}"/etc/{bash_completion.d,}
+    fi
+}
+

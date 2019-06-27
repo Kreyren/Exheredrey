@@ -1,0 +1,33 @@
+# Copyright 2010 Ali Polatel <alip@exherbo.org>
+# Distributed under the terms of the GNU General Public License v2
+
+require autotools [ supported_autoconf=[ 2.5 ] supported_automake=[ 1.11 1.10 ] ]
+require github [ user=alip ] pinktrace
+
+PLATFORMS="~amd64 ~arm"
+MYOPTIONS="doc python ruby"
+
+DEPENDENCIES="
+    build:
+        dev-libs/check
+        doc? (
+            app-doc/doxygen
+            python? ( dev-python/epydoc )
+        )
+    build+run:
+        python? ( dev-lang/python:= )
+        ruby? ( dev-lang/ruby )
+"
+
+AT_M4DIR=( m4 )
+
+src_configure() {
+    econf \
+        --enable-ipv6 \
+        $(option_enable doc doxygen) \
+        $(option doc && option python && echo '--enable-python-doc') \
+        $(option doc && option ruby && echo '--enable-ruby-doc') \
+        $(option_enable python) \
+        $(option_enable ruby)
+}
+

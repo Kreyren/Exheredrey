@@ -1,0 +1,37 @@
+# Copyright 2011 Saleem Abdulrasool <compnerd@compnerd.org>
+# Copyright 2015 Kylie McClain <somasis@exherbo.org>
+# Distributed under the terms of the GNU General Public License v2
+
+MY_PN=hwdata
+
+require fedorahosted
+
+SUMMARY="PNP ID data"
+DOWNLOADS=""
+
+LICENCES="|| ( GPL-2 GPL-3 X11 )"
+SLOT="0"
+PLATFORMS="~amd64 ~x86"
+MYOPTIONS=""
+
+DEPENDENCIES=""
+
+WORK="${WORKBASE}"
+
+src_fetch_extra() {
+    for path in ${PALUDIS_FETCHERS_DIRS[@]};do
+        export PATH="${PATH}:${path}"
+    done
+    dohttps "https://git.fedorahosted.org/cgit/${MY_PN}.git/plain/pnp.ids?h=master" "${FETCHEDDIR}"/pnp.ids
+}
+
+src_unpack() {
+    edo cp "${FETCHEDDIR}/pnp.ids" "${PWD}"
+    [[ -s pnp.ids ]] || die "pnp.ids is not usable"
+}
+
+src_install() {
+    insinto /usr/share/misc/
+    doins pnp.ids
+}
+

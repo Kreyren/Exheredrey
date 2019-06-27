@@ -1,0 +1,39 @@
+# Copyright 2017-2019 Timo Gurr <tgurr@exherbo.org>
+# Distributed under the terms of the GNU General Public License v2
+
+require github [ user=storaged-project release=${PV} suffix=tar.gz ]
+
+SUMMARY="Library for working with sizes in bytes"
+DESCRIPTION="
+The libbytesize is a C library that facilitates work with sizes in bytes. Be it parsing the input
+from users or producing a nice human readable representation of a size in bytes this library takes
+localization into account. It also provides support for sizes bigger than MAXUINT64.
+"
+
+LICENCES="LGPL-2.1"
+SLOT="0"
+PLATFORMS="~amd64 ~armv8"
+MYOPTIONS="gtk-doc"
+
+# tests run python scripts
+RESTRICT="test"
+
+DEPENDENCIES="
+    build:
+        sys-devel/gettext
+        virtual/pkg-config[>=0.9.0]
+        gtk-doc? ( dev-doc/gtk-doc )
+    build+run:
+        dev-libs/gmp:=
+        dev-libs/mpfr:=
+        dev-libs/pcre2
+"
+
+DEFAULT_SRC_CONFIGURE_PARAMS=(
+    --without-python3
+    --without-tools
+)
+DEFAULT_SRC_CONFIGURE_OPTION_WITHS=(
+    gtk-doc
+)
+

@@ -1,0 +1,67 @@
+# Copyright 2008-2017 Wulf C. Krueger <philantrop@exherbo.org>
+# Distributed under the terms of the GNU General Public License v2
+
+require github [ release=${PV} suffix=tar.xz ] \
+    systemd-service [ systemd_files=[ examples/logrotate.{service,timer} ] ]
+
+export_exlib_phases src_install pkg_postinst
+
+SUMMARY="Rotates, compresses and mails system logs"
+
+BUGS_TO="philantrop@exherbo.org"
+
+LICENCES="GPL-2"
+SLOT="0"
+MYOPTIONS="
+    cron [[ description = [ Install launcher script to cron.daily path ] ]]
+"
+
+DEPENDENCIES="
+    build+run:
+        dev-libs/popt[>=1.5]
+        sys-apps/acl
+"
+
+DEFAULT_SRC_CONFIGURE_PARAMS=(
+    --disable-werror
+    --with-acl
+    --with-compress-command=/usr/$(exhost --target)/bin/gzip
+    --with-compress-extension=.gz
+    --with-default-mail-command=/usr/$(exhost --target)/bin/mail
+    --with-state-file-path=/var/lib/logrotate.status
+    --with-uncompress-command=/usr/$(exhost --target)/bin/gunzip
+    --without-selinux
+)
+
+logrotate_src_install() {
+    default
+
+    insinto /etc
+    doins "${FILES}"/logrotate.conf
+
+    keepdir /etc/logrotate.d
+    # logrotate errors trying to rotate /var/log/wtmp on musl
+    # because musl does not support utmp/wtmp.
+    if [[ $(exhost --target) != *-musl* ]]; then
+        insinto /etc/logrotate.d
+        doins examples/{b,w}tmp
+    fi
+
+    if option cron; then
+        exeinto /etc/cron.daily
+        newexe examples/logrotate.cron logrotate
+    fi
+
+    install_systemd_files
+}
+
+logrotate_pkg_postinst() {
+    # Remove file installed by previous versions (prior to 3.14.0-r1)
+    local cruft=( /etc/cron.daily/logrotate.cron )
+    for file in ${cruft[@]}; do
+        if [[ -f "${file}" ]]; then
+            nonfatal edo rm "${file}" || ewarn "removing ${file} failed"
+        fi
+    done
+}
+

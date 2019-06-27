@@ -1,0 +1,66 @@
+Author: Benedikt Morbach <benedikt.morbach@googlemail.com>
+Upstream: submitted via email, though the project seems stalled
+          wanted to send to the ml, but was unable to subscribe
+
+--
+
+Author: Wouter van Kesteren <woutershep@gmail.com>
+
+I rebased mobens version for 0.30.0 to 0.30.1.
+It's kept as close to upstream as i could to hopefully make it not such a pain in the future.
+
+--
+
+From 73c6f3dd10197dc80c1d47e792dcdea653407f95 Mon Sep 17 00:00:00 2001
+From: Benedikt Morbach <benedikt.morbach@googlemail.com>
+Date: Fri, 22 Aug 2014 15:02:29 +0200
+Subject: [PATCH] addr_reverse test: accept fqdn
+
+the test failed here because the reverse lookup returned a fqdn,
+while gethostname() only returns the hostname.
+
+Also check against the fqdn from getaddrinfo
+---
+ test/socket.c | 23 ++++++++++++++++++++++-
+ 1 file changed, 22 insertions(+), 1 deletion(-)
+
+diff --git a/test/socket.c b/test/socket.c
+index 75a9628..68897a0 100644
+--- a/test/socket.c
++++ b/test/socket.c
+@@ -394,11 +394,32 @@ static int addr_reverse(void)
+     match = strcmp(buf, "localhost.localdomain") == 0
+         || strcmp(buf, "localhost") == 0;
+ 
+-    if (!match && syshost)
++    if (!match && syshost) {
+         /* If the returned name has the system hostname as a prefix, that's
+          * good enough. */
+         match = strncmp(buf, syshost, strlen(syshost)) == 0;
+ 
++#ifdef HAVE_GETADDRINFO
++        if (!match) {
++            struct addrinfo hints, *info, *p;
++
++            memset(&hints, 0, sizeof hints);
++            hints.ai_family = AF_UNSPEC; /*either IPV4 or IPV6*/
++            hints.ai_socktype = SOCK_STREAM;
++            hints.ai_flags = AI_CANONNAME;
++
++            if (getaddrinfo(syshost, "http", &hints, &info) == 0) {
++                for(p = info; p != NULL; p = p->ai_next) {
++                    match = (strcmp(buf, p->ai_canonname) == 0);
++                    if (match) break;
++                }
++            }
++
++            freeaddrinfo(info);
++        }
++#endif
++    }
++
+     if (!match)
+         t_warning("reverse lookup for 127.0.0.1 got '%s'", buf);
+     
+-- 
+2.4.4

@@ -1,0 +1,108 @@
+# Copyright 2016 Kylie McClain <somasis@exherbo.org>
+# Distributed under the terms of the GNU General Public License v2
+
+require python [ with_opt=true multibuild=false blacklist='3' ]
+require lua [ with_opt=true multibuild=false ]
+
+if ever is_scm;then
+    SCM_REPOSITORY="http://repo.or.cz/${PN}.git"
+    require scm-git
+    require autotools [ supported_autoconf=[ 2.5 ] supported_automake=[ 1.15 ] ]
+else
+    DOWNLOADS="http://www.${PN}.cz/download/${PNV}.tar.bz2"
+fi
+
+export_exlib_phases src_prepare src_test src_install
+
+HOMEPAGE="http://www.${PN}.cz"
+SUMMARY="A feature-rich text mode browser forked from Links and more actively developed"
+
+SLOT="0"
+LICENCES="GPL-2" # the COPYING file is all jacked up, but every license within is GPL compatible
+
+MYOPTIONS="
+    X
+    bittorrent
+    debug
+    gopher
+    gpm
+    guile
+    idn
+    javascript
+    minimal
+    nntp
+    perl
+    ruby
+    ( providers: gnutls libressl openssl ) [[ number-selected = exactly-one ]]
+"
+
+DEPENDENCIES="
+    build:
+        sys-devel/gettext
+    build+run:
+        app-arch/bzip2
+        dev-libs/expat [[ note = [ for bookmarks support ] ]]
+        sys-libs/zlib
+        idn? ( net-dns/libidn )
+        gpm? ( sys-libs/gpm )
+        javascript? ( dev-libs/spidermonkey:= )
+        guile? ( dev-lang/guile:= )
+        perl? ( dev-lang/perl:= )
+        ruby? ( dev-lang/ruby:= )
+        X? ( x11-libs/libX11 )
+        providers:gnutls? ( dev-libs/gnutls[>=1.2] )
+        providers:libressl? ( dev-libs/libressl:= )
+        providers:openssl? ( dev-libs/openssl )
+"
+# fsp? ( net-libs/fsplib )
+
+
+DEFAULT_SRC_CONFIGURE_PARAMS=(
+    --enable-{bookmarks,xbel}
+    --enable-{cgi,finger,exmode,html-highlight}
+    --enable-256-colors
+    --enable-nls
+    --with-zlib
+    gt_cv_func_gnugettext{1,2}_libc=yes
+)
+
+DEFAULT_SRC_CONFIGURE_OPTION_ENABLES=(
+    '!debug fastmem'
+    'javascript sm-scripting'
+    'minimal small'
+    bittorrent
+    debug
+    gopher
+    nntp
+    # SMB support will supposedly be in 0.12.0
+)
+
+DEFAULT_SRC_CONFIGURE_OPTION_WITHS=(
+    'X x'
+    'javascript spidermonkey'
+    '!providers:gnutls openssl'
+    'providers:gnutls gnutls'
+    gpm
+    guile
+    idn
+    lua
+    perl
+    python
+    ruby
+)
+
+elinks_src_prepare() {
+    edo ./autogen.sh
+    default
+}
+
+elinks_src_test() {
+    emake test
+}
+
+elinks_src_install() {
+    default
+    nonfatal edo rm -f "${IMAGE}"/usr/$(exhost --target)/lib/charset.alias
+    nonfatal edo rmdir "${IMAGE}"/usr/$(exhost --target)/lib
+}
+

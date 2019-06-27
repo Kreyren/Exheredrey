@@ -1,0 +1,50 @@
+# Copyright 2012 Saleem Abdulrasool <compnerd@compnerd.org>
+# Distributed under the terms of the GNU General Public License v2
+
+require flag-o-matic
+
+if ever is_scm ; then
+    SCM_REPOSITORY="https://sourceware.org/git/dwz.git"
+    if ! ever at_least scm; then
+        SCM_TAG="${PNV%-scm}"
+    fi
+
+    require scm-git
+else
+    DOWNLOADS="https://dev.exherbo.org/distfiles/${PN}/${PNV}.tar.xz"
+    # generate tarball by:
+    # $ git archive --prefix=${PNV}/ --format=tar ${PNV} | xz > ${PNV}.tar.xz
+fi
+
+export_exlib_phases pkg_setup
+
+SUMMARY="DWARF optimization and duplicate removal tool"
+DESCRIPTION="
+The dwz package contains a program that attempts to optimize DWARF debugging
+information contained in ELF shared libraries and ELF executables for size, by
+replacing DWARF information representation with equivalent smaller
+representation where possible and by reducing the amount of duplication using
+techniques from DWARF standard appendix E - creating DW_TAG_partial_unit
+compilation units (CUs) for duplicated information and using
+DW_TAG_imported_unit to import it into each CU that needs it.
+"
+HOMEPAGE="https://sourceware.org/git/?p=dwz.git;a=summary"
+
+MYOPTIONS="
+    ( libc: musl )
+"
+
+DEPENDENCIES="
+    build+run:
+        dev-util/elfutils
+        libc:musl? ( dev-libs/musl-obstack )
+"
+
+dwz_pkg_setup() {
+    if [[ $(exhost --target) == *-musl* ]];then
+        # NOTE(somasis) dwz needs an external obstack library on musl
+        append-ldflags -lobstack
+    fi
+    default
+}
+

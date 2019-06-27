@@ -1,0 +1,57 @@
+# Copyright 2008 Anders Ossowicki <arkanoid@exherbo.org>
+# Copyright 2018 Heiko Becker <heirecka@exherbo.org>
+# Distributed under the terms of the GNU General Public License v2
+# Based in part upon 'fortune-mod-1.99.1-r2.ebuild' which is
+#   Copyright 1999-2008 Gentoo Foundation
+
+require github [ user=shlomif ] cmake [ api=2 ]
+
+SUMMARY="Get your fortune today"
+
+DOWNLOADS="https://www.shlomifish.org/open-source/projects/${PN}/arcs/${PNV}.tar.xz"
+
+LICENCES="BSD-3"
+SLOT="0"
+PLATFORMS="~amd64 ~x86"
+MYOPTIONS=""
+
+DEPENDENCIES="
+    build:
+        dev-lang/perl:*
+    build+run:
+        app-text/recode
+    test:
+        dev-perl/File-Find-Object
+        dev-perl/IO-All
+        dev-perl/Test-Differences
+"
+
+CMAKE_SRC_CONFIGURE_PARAMS=(
+    -DLOCALDIR=/usr/share/fortune
+    -DCOOKIEDIR=/usr/share/fortune
+)
+
+src_prepare() {
+    cmake_src_prepare
+
+    # Remove test which needs valgrind and dev-perl/Test-RunValgrind and
+    # doesn't work anyway (2.6.1).
+    edo rm tests/t/valgrind.t
+
+    # Remove tests which invoke "cmake && make && make install" and also use
+    # games instead of bin, which we sed out below.
+    edo rm tests/t/test-fortune-{m,o-rot}.t
+
+    edo sed \
+        -e 's/"sbin"/"bin"/' \
+        -e 's/"games"/"bin"/' \
+        -i CMakeLists.txt
+
+    edo sed \
+        -e "s|\(share/man/man\)|/usr/\1|" \
+        -e "/SET (DATADIR/ s|\${CMAKE_INSTALL_PREFIX}|/usr|" \
+        -i cmake/Shlomif_Common.cmake
+}
+
+DEFAULT_SRC_INSTALL_EXTRA_DOCS=( INDEX Offensive cookie-files )
+

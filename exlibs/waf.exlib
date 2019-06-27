@@ -1,0 +1,95 @@
+# Copyright 2009 Ingmar Vanhassel
+# Distributed under the terms of the GNU General Public License v2
+
+export_exlib_phases src_configure src_compile src_test src_install
+
+myexparam waf_executable="./waf"
+
+exparam -v WAF_EXECUTABLE waf_executable
+
+DEPENDENCIES="
+    build:
+        dev-lang/python:*[>=2.3]
+"
+
+ewaf() {
+    illegal_in_global_scope
+
+    local i j hates= ewaf_args=() args=()
+    for i in "$@" ; do
+        case "${i}" in
+            --hates=*)
+                hates+=" ${i#--hates=} "; continue;;
+        esac
+        ewaf_args+=( "${i}" )
+    done
+
+    # don't pass nocache to newer waf, as the functionality it disables was removed
+    local wafver=$(edo ${WAF_EXECUTABLE} --version | cut -d' ' -f2)
+
+    for i in \
+        --verbose \
+        $(ever at_least 1.8 ${wafver} || echo "--nocache") \
+        "${ewaf_args[@]}" ; do
+        j=${i%%=*}
+        has ${j#--} ${hates} || args+=( "${i}" )
+    done
+
+    edo env \
+        PKGCONFIG=${PKG_CONFIG} "${EWAF_ENVIRONMENT[@]}"  \
+        ${WAF_EXECUTABLE} "${args[@]}"
+}
+
+configure_one_multibuild() {
+    waf_configure_one_multibuild
+}
+
+waf_configure_one_multibuild() {
+    waf_src_configure
+}
+
+waf_src_configure() {
+    ewaf --jobs=1 configure \
+        --prefix=/usr/$(exhost --target)/ \
+        --bindir=/usr/$(exhost --target)/bin/ \
+        --sbindir=/usr/$(exhost --target)/bin/ \
+        --libdir=/usr/$(exhost --target)/lib/ \
+        --datadir=/usr/share/ \
+        ${WAF_SRC_CONFIGURE_HTMLDIR---htmldir=/usr/share/doc/${PNVR}/html/} \
+        "${WAF_DEFAULT_PARAMS[@]}" \
+        "${WAF_SRC_CONFIGURE_PARAMS[@]}" \
+        $(for s in "${WAF_SRC_CONFIGURE_OPTIONS[@]}" ; do option ${s} ; done) \
+        $(for s in "${WAF_SRC_CONFIGURE_OPTION_ENABLES[@]}" ; do option_enable ${s} ; done) \
+        $(for s in "${WAF_SRC_CONFIGURE_OPTION_WITHS[@]}" ; do option_with ${s} ; done) \
+        $(for s in "${WAF_SRC_CONFIGURE_TESTS[@]}" ; do expecting_tests ${s} ; done)
+}
+
+compile_one_multibuild() {
+    waf_compile_one_multibuild
+}
+
+waf_compile_one_multibuild() {
+    waf_src_compile
+}
+
+waf_src_compile() {
+    ewaf --jobs=${EXJOBS:-1} "${WAF_DEFAULT_PARAMS[@]}" "${WAF_SRC_COMPILE_PARAMS[@]}" build
+}
+
+waf_src_test() {
+    ewaf --jobs=${EXJOBS:-1} "${WAF_DEFAULT_PARAMS[@]}" "${WAF_SRC_TEST_PARAMS[@]}" -v test
+}
+
+install_one_multibuild() {
+    waf_install_one_multibuild
+}
+
+waf_install_one_multibuild() {
+    waf_src_install
+}
+
+waf_src_install() {
+    ewaf --jobs=1 install "${WAF_DEFAULT_PARAMS[@]}" "${WAF_SRC_INSTALL_PARAMS[@]}" --destdir="${IMAGE}"
+    emagicdocs
+}
+

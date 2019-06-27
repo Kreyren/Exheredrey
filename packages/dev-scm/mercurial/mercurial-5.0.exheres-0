@@ -1,0 +1,81 @@
+# Copyright 2007 Alexander Færøy <ahf@exherbo.org>
+# Copyright 2008-2011 Ingmar Vanhassel <ingmar@exherbo.org>
+# Distributed under the terms of the GNU General Public License v2
+
+require bash-completion zsh-completion elisp [ with_opt=true source_directory=contrib ]
+require setup-py [ import=setuptools has_bin=true multibuild=false ]
+
+SUMMARY="A fast, lightweight, distributed source control management system"
+HOMEPAGE="https://${PN}-scm.org"
+DOWNLOADS="${HOMEPAGE}/release/${PNV}.tar.gz"
+
+REMOTE_IDS="pypi:Mercurial"
+
+UPSTREAM_RELEASE_NOTES="
+    ${HOMEPAGE}/wiki/WhatsNew [[ lang = en ]]
+    ${HOMEPAGE}/wiki/UpgradeNotes [[
+        lang = en
+        description = [ Important notes on upgrading from previous versions ]
+    ]]
+    ${HOMEPAGE}/wiki/HgkExtension [[
+        lang = en
+        description = [ Setting up Hgk ]
+    ]]
+"
+
+LICENCES="|| ( GPL-3 GPL-2 )"
+SLOT="0"
+PLATFORMS="~amd64 ~armv8 ~x86"
+MYOPTIONS="
+    emacs
+    tk [[ description = [ Install hgk, a port to mercurial of git's gitk repository viewer ] ]]
+"
+
+# The tests take >= one hour to run and, thus, are expensive.
+RESTRICT="test"
+
+DEPENDENCIES="
+    build+run:
+        tk? (
+            dev-lang/tcl[>=8.4]
+            dev-lang/tk[>=8.4]
+        )
+        python_abis:3.5? ( dev-lang/python:3.5[>=3.5.3] )
+        python_abis:3.6? ( dev-lang/python:3.6[>=3.6.2] )
+"
+
+# Allow python3
+export HGPYTHON3=1
+
+src_compile() {
+    setup-py_src_compile
+    elisp_src_compile
+}
+
+src_test_expensive() {
+    esandbox disable_net
+    edo cd tests
+
+    # At least in mercurial-1.5.4, the upstream tests break if
+    # we run them in more than one job.
+    # edo ${PYTHON} ./run-tests.py -j${EXJOBS:-1} --verbose
+    edo ${PYTHON} ./run-tests.py -j1 --verbose --timeout=3600
+    esandbox enable_net
+}
+
+src_install() {
+    setup-py_src_install
+
+    dobashcompletion contrib/bash_completion hg
+    dozshcompletion contrib/zsh_completion _hg
+
+    elisp_src_install
+
+    doman doc/hg*.?
+    dodoc doc/{hg.1,hgignore.5,hgrc.5,hg-ssh.8}.html
+
+    if option tk ; then
+        dobin contrib/hgk
+    fi
+}
+

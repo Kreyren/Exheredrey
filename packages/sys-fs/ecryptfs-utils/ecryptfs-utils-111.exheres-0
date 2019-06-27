@@ -1,0 +1,94 @@
+# Copyright 2011 Ali Polatel <alip@exherbo.org>
+# Distributed under the terms of the GNU General Public License v2
+
+require launchpad [ project=ecryptfs branch=trunk pnv=${PN}_${PV}.orig ]
+require pam
+
+SUMMARY="eCryptfs userspace tools"
+
+BUGS_TO="alip@exherbo.org"
+
+LICENCES="GPL-2"
+SLOT="0"
+PLATFORMS="~amd64"
+MYOPTIONS="
+    doc
+    gcrypt [[ description = [ Build against gcrypt rather than NSS ] ]]
+    gpg [[ description = [ Build GnuPG key module ] ]]
+    openssl [[ description = [ Build OpenSSL key module ] ]]
+    pkcs11 [[
+        description = [ Build pkcs11-helper key module ]
+        requires = [ openssl ]
+    ]]
+    setuid [[ description = [ Allow mount.ecryptfs_private to run as root, for auto-mounting of home on login ] ]]
+    openssl? (
+        ( providers: libressl openssl ) [[ number-selected = exactly-one ]]
+    )
+"
+
+DEPENDENCIES="
+    build:
+        dev-lang/perl:* [[ description = [ pod2man is required ] ]]
+        dev-util/intltool
+        sys-devel/gettext
+    build+run:
+        sys-apps/keyutils
+        sys-libs/pam
+        !gcrypt? ( dev-libs/nss )
+        gcrypt? ( dev-libs/libgcrypt )
+        gpg? ( app-crypt/gpgme )
+        openssl? (
+            providers:libressl? ( dev-libs/libressl:= )
+            providers:openssl? ( dev-libs/openssl )
+        )
+        pkcs11? ( dev-libs/pkcs11-helper )
+"
+
+DEFAULT_SRC_PREPARE_PATCHES=(
+    "${FILES}"/${PN}-111-openssl-1.1.0.patch
+)
+
+WORK=${WORKBASE}/${PNV}
+
+src_configure() {
+    # -alip: Tests are disabled because they mount and thus require root.
+    #        Other options are only disabled because I have not tested them.
+    #        Feel free to enable them after testing and adjust DEPENDENCIES as
+    #        needed. Also see the comments in src_install.
+    local myconf=(
+        --enable-nls
+        --enable-pam
+        --disable-gui
+        --disable-mudflap
+        --disable-pywrap
+        --disable-tests
+        --disable-tspi
+        --with-pamdir=$(getpam_mod_dir)
+        $(option_enable doc docs)
+        $(option_enable gpg)
+        $(option_enable openssl)
+        $(option_enable pkcs11 pkcs11-helper)
+    )
+
+    if option gcrypt; then
+        myconf+=( --enable-gcrypt --disable-nss )
+    else
+        myconf+=( --disable-gcrypt --enable-nss )
+    fi
+
+    econf "${myconf[@]}"
+}
+
+src_install() {
+    default
+
+    option setuid && edo chmod 4755 "${IMAGE}"/usr/$(exhost --target)/bin/mount.ecryptfs_private
+}
+
+pkg_postinst() {
+    if option setuid; then
+        einfo "You should read /usr/share/doc/${PNVR}/README's PAM MODULE section"
+        einfo "if you wish to encrypt and auto-mount your home directory on login."
+    fi
+}
+

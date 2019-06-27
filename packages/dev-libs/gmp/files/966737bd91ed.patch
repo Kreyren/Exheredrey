@@ -1,0 +1,22 @@
+Upstream: yes
+
+# HG changeset patch
+# User Torbjorn Granlund <tege@gmplib.org>
+# Date 1318259187 -7200
+#      Mon Oct 10 17:06:27 2011 +0200
+# Node ID 966737bd91ed4cd158ca9730167f70db47442fc1
+# Parent  27913f466a23776215bd9341866e10a50cf61c01
+(check_ref): Fix loop end bound.
+
+diff -r 27913f466a23 -r 966737bd91ed tests/mpz/t-scan.c
+--- a/tests/mpz/t-scan.c	Mon Oct 10 12:06:39 2011 +0200
++++ b/tests/mpz/t-scan.c	Mon Oct 10 17:06:27 2011 +0200
+@@ -79,7 +79,7 @@ check_ref (void)
+ 
+               for (isize = 0; isize <= size; isize++)
+                 {
+-                  for (oindex = 0; oindex <= numberof (offset); oindex++)
++                  for (oindex = 0; oindex < numberof (offset); oindex++)
+                     {
+                       o = offset[oindex];
+                       if ((int) isize*GMP_NUMB_BITS < -o)

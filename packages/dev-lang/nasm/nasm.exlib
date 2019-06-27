@@ -1,0 +1,42 @@
+# Copyright 2009 Daniel Mierswa <impulze@impulze.org>
+# Distributed under the terms of the GNU General Public License v2
+
+export_exlib_phases src_test src_install
+
+SUMMARY="An 80x86 and x86-64 assembler designed for portability and modularity"
+DESCRIPTION="
+It supports a range of object file formats, including Linux and *BSD a.out,
+ELF, COFF, Mach-O, Microsoft 16-bit OBJ, Win32 and Win64. It will also
+output plain binary files. Its syntax is designed to be simple and easy to
+understand, similar to Intel's but less complex.
+"
+HOMEPAGE="https://www.${PN}.us"
+DOWNLOADS="${HOMEPAGE}/pub/${PN}/releasebuilds/${PV}/${PNV}.tar.xz"
+
+UPSTREAM_DOCUMENTATION="${HOMEPAGE}/doc"
+
+LICENCES="BSD-2"
+SLOT="0"
+MYOPTIONS=""
+
+DEPENDENCIES="
+    build:
+        app-doc/asciidoc
+        app-text/xmlto
+        sys-apps/groff
+"
+
+DEFAULT_SRC_CONFIGURE_PARAMS=(
+    --disable-werror
+)
+
+nasm_src_test() {
+    emake -C test golden
+    emake -C test test
+}
+
+nasm_src_install() {
+    emake -j1 DESTDIR="${IMAGE}" install
+    emagicdocs
+}
+

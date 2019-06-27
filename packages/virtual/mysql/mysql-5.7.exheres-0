@@ -1,0 +1,26 @@
+# Copyright 2014 Marc-Antoine Perennou <keruspe@exherbo.org>
+# Distributed under the terms of the GNU General Public License v2
+
+SUMMARY="Virtual: mysql database providers"
+HOMEPAGE=""
+
+SLOT="0"
+PLATFORMS="~amd64 ~armv7 ~armv8 ~x86"
+MYOPTIONS="
+    embedded-server [[ description = [ A full-featured server library that can be run inside a client application ] ]]
+    ( providers:
+        mariadb
+        mysql
+        percona
+    ) [[
+        *description = [ mysql database provider ]
+        number-selected = exactly-one
+    ]]
+"
+
+DEPENDENCIES="
+    providers:mariadb? ( dev-db/mariadb[~>10.1][embedded-server?] )
+    providers:mysql? ( dev-db/mysql[~>${PV}][embedded-server?] )
+    providers:percona? ( dev-db/Percona-Server:${PV}[embedded-server?] )
+"
+

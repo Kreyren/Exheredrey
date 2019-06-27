@@ -1,0 +1,60 @@
+# Copyright 2009 Wulf C. Krueger
+# Distributed under the terms of the GNU General Public License v2
+# Based in part upon 'linux-atm-2.5.0.ebuild' from Gentoo, which is:
+#       Copyright 1999-2008 Gentoo Foundation
+
+require sourceforge [ suffix=tar.gz ]
+
+SUMMARY="Tools for ATM in Linux"
+DESCRIPTION="
+Drivers and tools to support ATM networking under Linux. Eventually this will
+also include support for some types of DSL modems.
+"
+
+LICENCES="GPL-2 LGPL-2"
+SLOT="0"
+PLATFORMS="~amd64 ~x86"
+MYOPTIONS=""
+
+DEPENDENCIES=""
+
+# The tests are completely broken
+RESTRICT="test"
+
+DEFAULT_SRC_PREPARE_PATCHES=(
+    "${FILES}"/${PNV}-cross-prefixed-objcopy.patch
+)
+
+DEFAULT_SRC_CONFIGURE_PARAMS=(
+    "CC=${CC}"
+)
+
+DEFAULT_SRC_COMPILE_PARAMS=(
+    "OBJCOPY=$(exhost --tool-prefix)objcopy"
+)
+
+DEFAULT_SRC_INSTALL_EXTRA_PREFIXES=( "doc/" )
+DEFAULT_SRC_INSTALL_EXTRA_DOCS=(
+    "atm-linux-howto.txt"
+    "atm-linux-howto.sgml"
+)
+
+src_prepare() {
+    default
+
+    # Useless cruft
+    edo rm doc/README
+
+    # Gentoo bug #159823
+    edo sed -i -e '/#define _LINUX_NETDEVICE_H/d' src/arpd/*.c
+
+    # install firmware to /${LIBDIR}/firmware/ to shush paludis
+    edo sed -i -e 's:/lib/:/${LIBDIR}/:' src/extra/Makefile.in
+}
+
+src_install() {
+    default
+
+    edo mv "${IMAGE}"/{,usr/$(exhost --target)/lib/}firmware
+}
+

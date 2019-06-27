@@ -1,0 +1,14 @@
+# Copyright 2010-2011 Wulf C. Krueger <philantrop@exherbo.org>
+# Distributed under the terms of the GNU General Public License v2
+
+[Unit]
+Description=DHCP Daemon
+Requires=network.target
+After=network.target
+
+[Service]
+EnvironmentFile=/etc/conf.d/dhcpd.conf
+ExecStart=/usr/host/bin/dhcpd -cf ${DHCPD_CONF} -q -f $DHCPD_OPTS ${DHCPD_IFACE}
+
+[Install]
+WantedBy=multi-user.target

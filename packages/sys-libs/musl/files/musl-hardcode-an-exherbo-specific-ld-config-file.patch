@@ -1,0 +1,41 @@
+Upstream: no, Exherbo specific
+Reason: We change PT_INTERP to a non-default value and that's not supported by
+        upstream
+
+From f3a7fd529d426dc8629348c7a424396cbb5fe9c3 Mon Sep 17 00:00:00 2001
+From: Johannes Nixdorf <mixi@exherbo.org>
+Date: Tue, 16 Feb 2016 05:11:42 -0500
+Subject: [PATCH] (Exherbo specific) dynlink.c: hardcode
+ /etc/ld-musl-$(EXHERBO_TARGET).path as library search path
+
+This makes two separate changes:
+  1.) This makes the search path absolute, instead of relative to the
+      path the dynamic linker was called from.
+  2.) This replaces the architecture-specific prat of the path with a
+      target-specific one, as we need this granularity to express our
+      default library search path.
+---
+ ldso/dynlink.c | 7 +------
+ 1 file changed, 1 insertion(+), 6 deletions(-)
+
+diff --git a/ldso/dynlink.c b/ldso/dynlink.c
+index 87f3b7f..9f05557 100644
+--- a/ldso/dynlink.c
++++ b/ldso/dynlink.c
+@@ -973,12 +973,7 @@ static struct dso *load_library(const char *name, struct dso *needed_by)
+ 					prefix = "";
+ 					prefix_len = 0;
+ 				}
+-				char etc_ldso_path[prefix_len + 1
+-					+ sizeof "/etc/ld-musl-" LDSO_ARCH ".path"];
+-				snprintf(etc_ldso_path, sizeof etc_ldso_path,
+-					"%.*s/etc/ld-musl-" LDSO_ARCH ".path",
+-					(int)prefix_len, prefix);
+-				FILE *f = fopen(etc_ldso_path, "rbe");
++				FILE *f = fopen("/etc/ld-" EXHERBO_TARGET ".path", "rbe");
+ 				if (f) {
+ 					if (getdelim(&sys_path, (size_t[1]){0}, 0, f) <= 0) {
+ 						free(sys_path);
+-- 
+2.7.0
+

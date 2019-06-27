@@ -1,0 +1,54 @@
+# Copyright 2012-2015 Wulf C. Krueger <philantrop@exherbo.org>
+# Distributed under the terms of the GNU General Public License v2
+
+require systemd-service
+
+SUMMARY="Userspace logging daemon for netfilter/iptables related logging"
+DESCRIPTION="
+The Userspace Logging Daemon (ulogd) is a flexible framework for extensive logging
+of packets on a firewall machine. ulogd uses the ULOG target of iptables/netfilter,
+the packet filtering framework of Linux 2.4 and 2.6. It supports binary plugins
+for adding packet interpreters and output-targets (e.g., for logging into databases,
+user-defined filetypes, etc.).
+"
+
+HOMEPAGE="https://www.netfilter.org/projects/${PN}"
+DOWNLOADS="${HOMEPAGE}/files/${PNV}.tar.bz2"
+
+LICENCES="GPL-2"
+SLOT="0"
+PLATFORMS="~amd64 ~x86"
+MYOPTIONS=""
+
+DEPENDENCIES="
+    build+run:
+        dev-db/sqlite:3
+        dev-libs/libpcap
+        net-libs/libmnl[>=1.0.3]
+        net-libs/libnetfilter_acct[>=1.0.1]
+        net-libs/libnetfilter_conntrack[>=1.0.2]
+        net-libs/libnetfilter_log[>=1.0.0]
+        net-libs/libnfnetlink[>=1.0.1]
+"
+
+DEFAULT_SRC_CONFIGURE_PARAMS=(
+    --enable-nfacct
+    --enable-nfct
+    --enable-nflog
+    --with-pcap
+    --with-sqlite
+    --without-dbi
+    --without-jansson
+    --without-mysql
+    --without-pgsql
+)
+
+src_install() {
+    default
+
+    insinto /etc
+    doins ulogd.conf
+
+    install_systemd_files
+}
+

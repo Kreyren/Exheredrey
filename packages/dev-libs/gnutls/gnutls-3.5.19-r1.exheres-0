@@ -1,0 +1,16 @@
+# Copyright 2008 Saleem Abdulrasool <compnerd@compnerd.org>
+# Distributed under the terms of the GNU General Public License v2
+
+require gnutls
+
+PLATFORMS="~amd64 ~arm ~armv7 ~armv8 ~x86"
+
+DEFAULT_SRC_PREPARE_PATCHES=(
+    "${FILES}"/${PN}-3.5.19-libidn2.patch
+)
+
+# Parallel make fails in doc/
+DEFAULT_SRC_COMPILE_PARAMS=( -j1 )
+
+WORK=${WORKBASE}/${PN}-$(ever range 1-4)
+

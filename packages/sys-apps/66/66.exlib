@@ -1,0 +1,46 @@
+# Copyright 2018-2019 Danilo Spinella <danyspin97@protonmail.com>
+# Distributed under the terms of the GNU General Public License v2
+
+require gitlab [ prefix=https://framagit.org user=obarun tag=v${PV} ]
+
+export_exlib_phases src_install
+
+SUMMARY="Helper tools around s6 supervision suite"
+HOMEPAGE="https://framagit.org/Obarun/${PN}"
+
+LICENCES="ISC"
+SLOT="0"
+MYOPTIONS=""
+
+DEPENDENCIES="
+    build:
+        virtual/pkg-config
+    build+run:
+        dev-lang/execline[>=2.5.1.0]
+        dev-libs/oblibs[>=0.0.1.0]
+        dev-libs/skalibs[>=2.8.0.0]
+        sys-apps/s6[>=2.8.0.0]
+        sys-apps/s6-portable-utils[>=2.2.1.3]
+        sys-apps/s6-rc[>=0.5.0.0]
+        sys-process/procps
+"
+
+DEFAULT_SRC_CONFIGURE_PARAMS=(
+    --with-system-dir=/var/lib/${PN}
+    --with-packager-service=/usr/share/66/service
+    --with-sys-service=/etc/66/service
+    --with-sys-service-conf=/etc/66/conf
+    --enable-shared
+)
+
+DEFAULT_SRC_COMPILE_PARAMS=(
+    AR=$(exhost --tool-prefix)ar
+    RANLIB=$(exhost --tool-prefix)ranlib
+)
+
+66_src_install() {
+    default
+
+    keepdir /etc/66/env
+}
+

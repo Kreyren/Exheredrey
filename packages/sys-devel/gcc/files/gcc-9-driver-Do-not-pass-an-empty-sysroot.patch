@@ -1,0 +1,32 @@
+From 64931fbacfef1288f0edfafaf1d919f3fb0171c8 Mon Sep 17 00:00:00 2001
+From: Saleem Abdulrasool <compnerd@compnerd.org>
+Date: Fri, 3 Apr 2015 16:17:39 -0700
+Subject: [PATCH 2/5] driver: Do not pass an empty sysroot
+
+Certain linkers support a sysroot parameter to indicate the sysroot to link
+against.  However, the sysroot may not be empty, which can be used as a
+mechanism for enabling sysroot support in the gcc build.  Simply ignore empty
+sysroots.
+---
+ gcc/gcc.c | 5 ++++-
+ 1 file changed, 4 insertions(+), 1 deletion(-)
+
+diff --git a/gcc/gcc.c b/gcc/gcc.c
+index 4f57765b012..6ec715fe890 100644
+--- a/gcc/gcc.c
++++ b/gcc/gcc.c
+@@ -7625,7 +7625,10 @@ driver::set_up_specs () const
+      there is a sysroot_suffix_spec, it has already been processed by
+      this point, so target_system_root really is the system root we
+      should be using.  */
+-  if (target_system_root)
++  /* If gcc was built with an empty sysroot to enable sysroot support, ensure
++     that we do not pass that to the linker even if it supports it.  Certain
++     implementations like gold object to the non-empty value.  */
++  if (target_system_root && strlen (target_system_root))
+     {
+       obstack_grow (&obstack, "%(sysroot_spec) ", strlen ("%(sysroot_spec) "));
+       obstack_grow0 (&obstack, link_spec, strlen (link_spec));
+-- 
+2.21.0
+

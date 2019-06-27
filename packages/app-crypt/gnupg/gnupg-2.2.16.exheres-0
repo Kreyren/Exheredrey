@@ -1,0 +1,135 @@
+# Copyright 2008-2010 Ingmar Vanhassel <ingmar@exherbo.org>
+# Distributed under the terms of the GNU General Public License v2
+# Based in part upon 'gnupg-2.0.7.ebuild' from Gentoo, which is:
+#     Copyright 1999-2008 Gentoo Foundation
+
+require systemd-service [ systemd_files=[ ] systemd_user_files=[ doc/examples/systemd-user/{{dirmngr,gpg-agent}.{service,socket},gpg-agent-{browser,extra,ssh}.socket} ] ] \
+    udev-rules [ udev_files=[ 80-${PN}-ccid.rules ] ]
+
+SUMMARY="The GNU Privacy Guard, a GPL pgp replacement"
+HOMEPAGE="https://www.gnupg.org"
+DOWNLOADS="mirror://gnupg/gnupg/${PNV}.tar.bz2"
+
+LICENCES="
+    BSD-3 [[ note = [ TinySCHEME (tests/gpgscm) ] ]]
+    GPL-3
+    || ( LGPL-2.1 LGPL-3 )
+    MIT   [[ note = [ DNS resolver (dirmngr/dns.c) ] ]]
+"
+SLOT="0"
+PLATFORMS="~amd64 ~armv7 ~armv8 ~x86"
+MYOPTIONS="
+    doc
+    hkps [[ description = [ Enable support for HKPS protocol using GnuTLS ] ]]
+    smartcard [[ description = [ Install the smartcard daemon ( includes CCID support ) ] ]]
+    tofu [[ description = [ Support for the Trust on First Use trust model  ] ]]
+    ( linguas: ca cs da de el eo es et fi fr gl hu id it ja nb pl pt ro ru sk sv tr uk zh_CN
+               zh_TW )
+"
+
+DEPENDENCIES="
+    build:
+        sys-devel/gettext[>=0.17]
+        doc? ( sys-apps/texinfo )
+    build+run:
+        app-arch/bzip2
+        dev-libs/libassuan[>=2.5.0]
+        dev-libs/libgcrypt[>=1.7.0]
+        dev-libs/libgpg-error[>=1.28] [[ note = [ GPGRT_LOGLVL_INFO, not in configure.ac ] ]]
+        dev-libs/libksba[>=1.3.4]
+        dev-libs/npth[>=1.2]
+        net-misc/curl[>=7.10]
+        sys-libs/readline:=
+        hkps? ( dev-libs/gnutls[>=3.0] )
+        smartcard? (
+            dev-libs/libusb:1
+            group/scard
+        )
+        tofu? ( dev-db/sqlite[>=3.7] )
+    recommendation:
+        app-crypt/pinentry [[ description = [
+            Provides GTK+, Qt, and ncurses password prompts
+        ] ]]
+        smartcard? ( sys-apps/pcsc-lite ) [[ description = [
+            Provides the default pcsc library for accessing smartcards
+        ] ]]
+"
+
+DEFAULT_SRC_CONFIGURE_PARAMS=(
+    CC_FOR_BUILD=$(exhost --build)-cc
+    --enable-bzip2
+    --enable-gpg
+    --enable-gpgsm
+    --enable-libdns
+    --enable-nls
+    --enable-symcryptrun
+    --disable-build-timestamp
+    --disable-ldap
+    --disable-ntbtls
+    --disable-run-gnupg-user-socket
+    --disable-selinux-support
+    --disable-werror
+    --without-capabilities # This option doesn\'t do anything.
+    $(for lib in gpg-error ksba libgcrypt npth libassuan libiconv libintl;do
+        echo "--with-${lib}-prefix=/usr/$(exhost --target)"
+    done)
+)
+DEFAULT_SRC_CONFIGURE_OPTION_ENABLES=(
+    'hkps gnutls'
+    'smartcard scdaemon'
+    'smartcard ccid-driver'
+    tofu
+    'tofu sqlite'
+)
+
+src_unpack() {
+    default
+    option smartcard && edo cp {"${FILES}","${WORK}"}/80-${PN}-ccid.rules
+}
+
+src_prepare() {
+    default
+    option smartcard && edo sed -e "s:@UDEVDIR@:${UDEVDIR}:" -i 80-${PN}-ccid.rules
+}
+
+src_compile() {
+    default
+    option doc && emake html
+}
+
+src_test() {
+    # Allow the tests to run its own instance of gpg-agent
+    esandbox allow_net "unix:${WORK}/tests/openpgp/S.gpg-agent*"
+    esandbox allow_net --connect "unix:${WORK}/tests/openpgp/S.gpg-agent*"
+    esandbox allow_net "unix:/tmp/gpgscm-*/S.gpg-agent*"
+    esandbox allow_net --connect "unix:/tmp/gpgscm-*/S.gpg-agent*"
+    esandbox allow_net "unix:/tmp/gpgscm-*/S.dirmngr*"
+    esandbox allow_net --connect "unix:/tmp/gpgscm-*/S.dirmngr*"
+
+    default
+
+    esandbox disallow_net --connect "unix:/tmp/gpgscm-*/S.dirmngr*"
+    esandbox disallow_net "unix:/tmp/gpgscm-*/S.dirmngr*"
+    esandbox disallow_net --connect "unix:/tmp/gpgscm-*/S.gpg-agent*"
+    esandbox disallow_net "unix:/tmp/gpgscm-*/S.gpg-agent*"
+    esandbox disallow_net --connect "unix:${WORK}/tests/openpgp/S.gpg-agent*"
+    esandbox disallow_net "unix:${WORK}/tests/openpgp/S.gpg-agent*"
+}
+
+src_install() {
+    default
+
+    install_systemd_files
+
+    if option doc; then
+        insinto /usr/share/doc/${PNVR}/html
+        doins doc/*.png doc/gnupg.html/*
+    fi
+
+    if option smartcard; then
+        install_udev_files
+        exeinto "${UDEVDIR}"
+        doexe "${FILES}"/${PN}-ccid
+    fi
+}
+

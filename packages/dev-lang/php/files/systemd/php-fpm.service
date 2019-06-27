@@ -1,0 +1,9 @@
+[Unit]
+Description=php-fpm
+
+[Service]
+Type=forking
+ExecStart=/usr/sbin/php-fpm
+
+[Install]
+WantedBy=multi-user.target

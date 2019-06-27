@@ -1,0 +1,11 @@
+# Copyright 2015 Quentin “Sardem FF7” Glidic <sardemff7@exherbo.org>
+# Distributed under the terms of the GNU General Public License v2
+
+require pugixml
+
+PLATFORMS="~amd64"
+
+DEFAULT_SRC_PREPARE_PATCHES=(
+    "${FILES}"/daeb8013b20f9c47e85730faaa4131064a1f9c2e.patch
+)
+

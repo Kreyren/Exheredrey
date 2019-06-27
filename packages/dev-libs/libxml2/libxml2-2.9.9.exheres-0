@@ -1,0 +1,137 @@
+# Copyright 2007-2008 Bo Ørsted Andresen
+# Copyright 2012 Saleem Abdulrasool <compnerd@compnerd.org>
+# Copyright 2018 Rasmus Thomsen <cogitri@exherbo.org>
+# Distributed under the terms of the GNU General Public License v2
+
+require setup-py [ import=setuptools with_opt=true work=${PNV}/python ]
+
+SUMMARY="XML C Parser and Toolkit v2"
+HOMEPAGE="http://www.xmlsoft.org"
+BASE_URI="http://www.w3.org/XML"
+SCHEMA_TEST_URI="${BASE_URI}/2004/xml-schema-test-suite/xmlschema"
+TEST_VERSION="20130923"
+TAR1="2002-01-16"
+TAR2="2004-01-14"
+
+DOWNLOADS="ftp://www.xmlsoft.org/${PN}/${PNV}.tar.gz
+    ${BASE_URI}/Test/xmlts${TEST_VERSION}.tar.gz
+    ${SCHEMA_TEST_URI}${TAR1}/xsts-${TAR1}.tar.gz
+    ${SCHEMA_TEST_URI}${TAR2}/xsts-${TAR2}.tar.gz"
+
+UPSTREAM_RELEASE_NOTES="${HOMEPAGE}/news.html"
+UPSTREAM_CHANGELOG="${HOMEPAGE}/ChangeLog.html"
+
+LICENCES="MIT"
+SLOT="2.0"
+PLATFORMS="~amd64 ~arm ~armv7 ~armv8 ~x86"
+MYOPTIONS="
+    doc
+    examples
+"
+
+DEPENDENCIES="
+    build+run:
+        app-arch/xz
+        dev-libs/icu:=
+        sys-libs/readline:=
+        sys-libs/zlib[>=1.2.5-r1]
+"
+
+DEFAULT_SRC_CONFIGURE_PARAMS=(
+    --disable-static
+    --enable-ipv6
+    --with-history
+    # ICU is required for chromium
+    --with-icu
+    --with-readline
+    --with-threads
+    --with-zlib=/usr/$(exhost --target)
+    # We build python bindings separately to allow building
+    # against multiple ABIs
+    --without-python
+)
+
+DEFAULT_SRC_INSTALL_EXTRA_DOCS=( README.tests TODO_SCHEMAS )
+
+C_WORK="${WORKBASE}"/${PNV}
+
+src_unpack() {
+    unpack ${PNV}.tar.gz
+
+    # test suite
+    edo cd "${C_WORK}"
+    unpack xmlts${TEST_VERSION}.tar.gz
+
+    option python && easy-multibuild_run_phase
+}
+
+compile_one_multibuild() {
+    PYTHON="/usr/$(exhost --target)/bin/python$(python_get_abi)" \
+        setup-py_compile_one_multibuild
+}
+
+install_one_multibuild() {
+    PYTHON="/usr/$(exhost --target)/bin/python$(python_get_abi)" \
+        setup-py_install_one_multibuild
+}
+
+src_prepare() {
+    edo cd "${C_WORK}"
+
+    # prevent fetching with wget during src_test
+    edo ln -s "${FETCHEDDIR}"/xsts-{${TAR1},${TAR2}}.tar.gz xstc/
+
+    option python && easy-multibuild_run_phase
+}
+
+src_configure() {
+    edo cd "${C_WORK}"
+
+    default
+
+    option python && easy-multibuild_run_phase
+}
+
+src_compile() {
+    edo cd "${C_WORK}"
+
+    default
+
+    option python && easy-multibuild_run_phase
+}
+
+
+src_test() {
+    edo cd "${C_WORK}"
+
+    default
+}
+
+
+src_install() {
+    edo cd "${C_WORK}"
+
+    default
+
+    option python && easy-multibuild_run_phase
+
+    # The package build system installs stuff to /usr/share/doc/${PNV}; move
+    # it to .../${PNVR} as necessary
+    if [[ ${PNV} != ${PNVR} ]]; then
+        edo mv "${IMAGE}"/usr/share/doc/${PNV}/* "${IMAGE}"/usr/share/doc/${PNVR}
+        edo rmdir "${IMAGE}"/usr/share/doc/${PNV}
+    fi
+
+    # devhelp doesn't support out-of-source builds
+    edo cp -pPR "${C_WORK}"/doc/devhelp "${IMAGE}"/usr/share/doc/${PNVR}/html/
+
+    if ! option doc; then
+        edo rm -r "${IMAGE}"/usr/share/gtk-doc
+        edo rm -r "${IMAGE}"/usr/share/doc/${PNVR}/html
+    fi
+
+    if ! option examples; then
+        edo rm -r "${IMAGE}"/usr/share/doc/${PNVR}/examples
+    fi
+}
+

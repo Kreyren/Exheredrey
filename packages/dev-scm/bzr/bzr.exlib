@@ -1,0 +1,108 @@
+# Copyright 2009-2011 Wulf C. Krueger <philantrop@exherbo.org>
+# Copyright 2015 Kylie McClain <somasis@exherbo.org>
+# Distributed under the terms of the GNU General Public License v2
+# Based in part upon 'bzr-1.10.ebuild' from Gentoo, which is:
+#     Copyright 1999-2008 Gentoo Foundation
+
+require launchpad
+require setup-py [ blacklist='3' import='distutils' has_bin=true has_lib=true multibuild=false ]
+require bash-completion
+
+export_exlib_phases src_prepare src_install src_test_expensive
+
+MY_PV=${PV/_}
+
+SUMMARY="Bazaar is a simple distributed version control system"
+DESCRIPTION="
+Bazaar is a simple decentralized revision control system. Decentralized revision
+control systems give users the ability to branch remote repositories to a local
+context. Users can commit to local branches without requiring special permission
+from the branches that they branched from.
+If you have a choice, use dev-scm/git instead.
+"
+HOMEPAGE="http://bazaar.canonical.com/"
+
+BUGS_TO=""
+REMOTE_IDS="freecode:${PN} launchpad:${PN}"
+
+UPSTREAM_RELEASE_NOTES="https://launchpad.net/${PN}/$(ever range 1-2)/${PV} [[ lang = en ]]"
+UPSTREAM_DOCUMENTATION="http://doc.bazaar.canonical.com/${PN}.$(ever range 1-2)/en/ [[ lang = en ]]"
+
+LICENCES="GPL-2"
+SLOT="0"
+MYOPTIONS=""
+
+# The tests are very expensive in terms of runtime.
+RESTRICT="test"
+
+DEPENDENCIES="
+    suggestion:
+        dev-python/paramiko [[ description = [ Provides sftp support ] group-name = [ bzr-sftp-support ] ]]
+        dev-python/pycrypto [[ description = [ Provides sftp support ] group-name = [ bzr-sftp-support ] ]]
+        dev-scm/bzrtools [[ description = [ Provides rsync support, and other useful extra functionality ] ]]
+    test-expensive:
+        dev-python/paramiko
+        dev-python/pycrypto
+        dev-python/testtools[>=0.9.5]
+        dev-util/subunit
+"
+
+WORK="${WORKBASE}"/${PN}-${MY_PV}
+
+bzr_src_prepare() {
+    setup-py_src_prepare
+
+    # Disable failing tests
+    edo sed -e "/test_btree_index/d" \
+            -e "/test__btree_serializer/d" \
+            -i bzrlib/tests/__init__.py
+
+    # Change source files to explicitly require python2
+    IFS=$'\n' find -type f -name '*.py' | while read file;do
+        edo sed -i 's:^#!.*python.*:#!/usr/bin/python2:' "$file"
+    done
+}
+
+bzr_src_test_expensive() {
+    esandbox allow_net "inet:0.0.0.0@4155"
+    esandbox allow_net --connect "LOCAL@1"
+    esandbox allow_net --connect "LOCAL@53"
+    esandbox allow_net --connect "inet:0.0.0.0@4155"
+    esandbox allow_net --connect "inet6:::@4155"
+    esandbox allow_net "unix:${TEMP%/}/testbzr-*.tmp/*/*/socket"
+
+    # Some tests expect the usual pyc compiling behaviour.
+    python_enable_pyc
+    LC_ALL=C edo "${PYTHON}" bzr --no-plugins selftest --parallel=fork \
+        -x blackbox \
+        -x per_transport \
+        -x test_config \
+        -x test_email_message \
+        -x test_http \
+        -x test_osutils.TestWin32Funcs \
+        -x test_selftest.TestActuallyStartBzrSubprocess \
+        -x test_smart_transport.TestSmartTCPServer \
+        -x test_transport.TestSSHConnections \
+        -x test_transport.TestWin32LocalTransport \
+        -x test_urlutils.TestUrlToPath
+    # Just to make sure we don't hit any errors on later stages.
+    python_disable_pyc
+
+    esandbox disallow_net "inet:0.0.0.0@4155"
+    esandbox disallow_net --connect "LOCAL@1"
+    esandbox disallow_net --connect "LOCAL@53"
+    esandbox disallow_net --connect "inet:0.0.0.0@4155"
+    esandbox disallow_net --connect "inet6:::@4155"
+    esandbox disallow_net "unix:${TEMP%/}/testbzr-*.tmp/*/*/socket"
+}
+
+bzr_src_install() {
+    setup-py_src_install
+
+    insinto /usr/share/doc/${PNVR}
+    doins -r doc/en/*
+    edo mv "${IMAGE}"/usr{,/share}/man
+
+    dobashcompletion contrib/bash/bzr
+}
+

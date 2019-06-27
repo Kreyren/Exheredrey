@@ -1,0 +1,25 @@
+# Copyright 2007 Bryan Østergaard
+# Distributed under the terms of the GNU General Public License v2
+
+require bash-completion zsh-completion
+require github [ user='williamh' ]
+require setup-py [ blacklist='3' import='distutils' has_bin=true has_lib=true \
+                   python_opts='[readline]' ]
+
+SUMMARY="Bugzilla command line client"
+
+LICENCES="GPL-2"
+SLOT="0"
+PLATFORMS="~amd64 ~x86"
+MYOPTIONS=""
+
+DEPENDENCIES=""
+
+DEFAULT_SRC_PREPARE_PATCHES=( "${FILES}"/${PN}-default-to-exherbo.patch )
+
+install_one_multibuild() {
+    dobashcompletion contrib/bash-completion
+    dozshcompletion contrib/zsh-completion _pybugz
+    setup-py_install_one_multibuild
+}
+

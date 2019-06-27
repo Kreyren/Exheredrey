@@ -1,0 +1,9 @@
+# Copyright 2008 Thomas Anderson
+# Distributed under the terms of the GNU General Public License v2
+
+require ntp
+
+PLATFORMS="~amd64 ~arm ~armv7 ~armv8 ~x86"
+
+DEFAULT_SRC_PREPARE_PATCHES=( "${FILES}"/${PN}-4.2.8-ipc-caps.patch )
+

@@ -1,0 +1,17 @@
+# Copyright 2014-2017 Wulf C. Krueger <philantrop@exherbo.org>
+# Distributed under the terms of the GNU General Public License v2
+
+SUMMARY="Virtual for Java Runtime Environments"
+
+SLOT="9.0"
+PLATFORMS="~amd64 ~x86"
+
+DEPENDENCIES="
+    run:
+        virtual/jdk:9.0
+        !virtual/jdk:1.9 [[
+            description = [ ${PN}:${SLOT} is fairly different from ${PN}:1.9 which was never unmasked ]
+            resolution = uninstall-blocked-after
+        ]]
+"
+

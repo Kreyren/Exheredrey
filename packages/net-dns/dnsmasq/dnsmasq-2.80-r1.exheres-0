@@ -1,0 +1,113 @@
+# Copyright 2009-2011 Pierre Lejeune <superheron@gmail.com>
+# Copyright 2011 Brett Witherspoon <spoonb@exherbo.org>
+# Distributed under the terms of the GNU General Public License v2
+
+require 66-service systemd-service
+
+SUMMARY="Lightweight DNS forwarder and DHCP server"
+DESCRIPTION="
+Dnsmasq is a lightweight, easy to configure DNS forwarder and DHCP server. It is
+designed to provide DNS and, optionally, DHCP, to a small network. It can serve
+the names of local machines which are not in the global DNS. The DHCP server
+integrates with the DNS server and allows machines with DHCP-allocated addresses
+to appear in the DNS with names configured either in each host or in a central
+configuration file. Dnsmasq supports static and dynamic DHCP leases and BOOTP/
+TFTP/PXE for network booting of diskless machines.
+"
+BASEURI="http://www.thekelleys.org.uk/${PN}"
+HOMEPAGE="${BASEURI}/doc.html"
+DOWNLOADS="${BASEURI}/${PNV}.tar.gz"
+
+UPSTREAM_CHANGELOG="${BASEURI}/CHANGELOG [[ lang = en ]]"
+
+LICENCES="|| ( GPL-2 GPL-3 )"
+SLOT="0"
+PLATFORMS="~amd64 ~arm ~x86"
+MYOPTIONS="
+    conntrack [[ description = [ Enables connection tracking via NetFilter ] ]]
+    dbus
+    dnssec [[ description = [ Support the Domain Name System Security Extensions ] ]]
+    idn [[ description = [ Support international domain names ] ]]
+    systemd [[ requires = [ dbus ] ]]
+"
+
+DEPENDENCIES="
+    build:
+        sys-devel/gettext
+        virtual/pkg-config
+    build+run:
+        conntrack? ( net-libs/libnetfilter_conntrack )
+        dbus? ( sys-apps/dbus )
+        dnssec? (
+            dev-libs/gmp:=
+            dev-libs/nettle[>=3]
+        )
+        idn? ( net-dns/libidn2:= )
+"
+
+src_prepare() {
+    default
+
+    # Use a more sane lease directory
+    edo sed -e 's:^#dhcp-leasefile=.*:dhcp-leasefile=/var/lib/dnsmasq/dnsmasq.leases:' \
+            dnsmasq.conf.example > dnsmasq.conf
+    # Adapt some config.h defines
+    edo sed -i -e '/^#define RUNFILE/s:/var/run:/run:' \
+               -e '/^#      define LEASEFILE/s:/var/lib/misc:/var/lib/dnsmasq:' \
+            src/config.h
+}
+
+dnsmasq_make() {
+    local my_vars=(
+        PREFIX=/usr/$(exhost --target)
+        PKG_CONFIG="${PKG_CONFIG}"
+        CC="${CC}"
+        CFLAGS="${CFLAGS}"
+        LDFLAGS="${LDFLAGS}"
+        LOCALEDIR="/usr/share/locale"
+    )
+    local my_copts=(
+        $(option conntrack -DHAVE_CONNTRACK)
+        $(option dbus -DHAVE_DBUS)
+        $(option dnssec -DHAVE_DNSSEC)
+        $(option idn -DHAVE_LIBIDN2)
+    )
+    emake "${my_vars[@]}" COPTS="${my_copts[*]}" "${@}"
+}
+
+src_compile() {
+    dnsmasq_make all-i18n
+}
+
+src_install() {
+    dnsmasq_make DESTDIR="${IMAGE}" PREFIX=/usr BINDIR=/usr/$(exhost --target)/bin install-i18n
+
+    insinto /etc
+    doins dnsmasq.conf
+
+    # Lease directory
+    dodir /var/lib/dnsmasq
+    keepdir /var/lib/dnsmasq
+
+    # Only install dnsmasq.service, not README
+    insinto ${SYSTEMDSYSTEMUNITDIR}
+
+    # Enable DBus connection for dnsmasq's service (dependent on the dbus option)
+    if option dbus; then
+        edo sed -i -e "/ExecStart=/s:-k:--enable-dbus -k:" "${WORK}"/contrib/systemd/${PN}.service
+    fi
+
+    doins "${WORK}"/contrib/systemd/${PN}.service
+
+    if option dbus ; then
+        insinto /usr/share/dbus-1/system.d
+        doins dbus/dnsmasq.conf
+    fi
+
+    install_66_files
+
+    emagicdocs
+    docinto html
+    dodoc *.html
+}
+

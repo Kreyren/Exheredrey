@@ -1,0 +1,68 @@
+# Copyright 2007 Bo Ørsted Andresen <zlin@exherbo.org>
+# Distributed under the terms of the GNU General Public License v2
+
+MY_PNV="${PNV/-/_}"
+
+SUMMARY="List open files for running UNIX processes"
+HOMEPAGE="https://people.freebsd.org/~abe/"
+DOWNLOADS="
+    https://www.mirrorservice.org/sites/lsof.itap.purdue.edu/pub/tools/unix/${PN}/${MY_PNV}.tar.bz2
+    ftp://lsof.itap.purdue.edu/pub/tools/unix/${PN}/${MY_PNV}.tar.bz2
+    ftp://vic.cc.purdue.edu/pub/tools/unix/${PN}/${MY_PNV}.tar.bz2
+    ftp://ftp.cerias.purdue.edu/pub/tools/unix/sysutils/${PN}/${MY_PNV}.tar.bz2
+    ftp://sunsite.ualberta.ca/pub/Mirror/${PN}/${MY_PNV}.tar.bz2
+    ftp://ftp.fu-berlin.de/pub/unix/tools/${PN}/${MY_PNV}.tar.bz2
+    ftp://ftp.sunet.se/pub/unix/admin/${PN}/${MY_PNV}.tar.bz2
+"
+
+BUGS_TO="philantrop@exherbo.org"
+
+LICENCES="lsof"
+SLOT="0"
+PLATFORMS="~amd64 ~arm ~armv8 ~x86"
+MYOPTIONS=""
+DEPENDENCIES=""
+
+# The tests are broken, last checked: 4.89
+RESTRICT="test"
+
+WORK=${WORKBASE}/${MY_PNV}_src
+
+DEFAULT_SRC_PREPARE_PATCHES=(
+    "${FILES}"/${PN}-4.83.patch
+    "${FILES}"/${PN}-4.82-exit-on-test-failure.patch
+    "${FILES}"/${PN}-4.82-disable-nfs-test.patch
+)
+
+src_unpack() {
+    unpack ${ARCHIVES}
+    unpack ./${MY_PNV}/${MY_PNV}_src.tar
+}
+
+src_configure() {
+    # 00FAQ: ..and note that LSOF_AR must specify [..] the arguments for it
+    # glibc version test tries to execute a binary, assume our oldest glibc when cross compiling
+    LSOF_AR="${AR} cr" LSOF_CC="${CC}" LSOF_RANLIB="${RANLIB}" \
+    LINUX_CLIB="$(exhost --is-native -q || echo '-DGLIBCV=216')" \
+    LINUX_INCL="/usr/$(exhost --target)/include" \
+        edo ./Configure -n linux
+}
+
+DEFAULT_SRC_COMPILE_PARAMS=( DEBUG="" )
+
+src_test() {
+    edo cd tests
+    esandbox disable_net
+    esandbox disable_exec
+    emake -j1 test opt
+}
+
+src_install() {
+    dobin lsof
+    doman lsof.8
+    dodoc 00*
+
+    insinto /usr/share/${PN}/scripts
+    doins scripts/*
+}
+

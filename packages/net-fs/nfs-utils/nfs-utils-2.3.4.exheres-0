@@ -1,0 +1,15 @@
+# Copyright 2008-2018 Wulf C. Krueger <philantrop@exherbo.org>
+# Distributed under the terms of the GNU General Public License v2
+
+require nfs-utils
+
+PLATFORMS="~amd64 ~arm ~armv7 ~armv8 ~x86"
+
+DEFAULT_SRC_PREPARE_PATCHES=(
+    "${FILES}"/a709f25c1da4a2fb44a1f3fd060298fbbd88aa3c.patch
+    "${FILES}"/a8133e1fd174267536cd459e19cfe0a1cbbe037c.patch
+    "${FILES}"/50ef80739d9e1e0df6616289ef2ff626a94666ee.patch
+    "${FILES}"/d77ee0f18c0e0658f892932600c38c346c4d5337.patch
+    "${FILES}"/6ec295428a5f50c184891a57566b8667844f8af6.patch
+)
+

@@ -1,0 +1,30 @@
+# Copyright 2009-2010 Ingmar Vanhassel <ingmar@exherbo.org>
+# Distributed under the terms of the GNU General Public License v2
+
+SCM_REPOSITORY="svn://svn.xapian.org/xapian"
+SCM_EXTERNAL_REFS="swig: xapian-applications/omega/common:"
+
+require xapian-core scm-svn autotools [ supported_autoconf=[ 2.5 ] supported_automake=[ 1.11 ] ]
+
+DOWNLOADS=""
+
+PLATFORMS="~amd64 ~x86"
+
+UPSTREAM_RELEASE_NOTES=""
+
+DEFAULT_SRC_CONFIGURE_PARAMS+=(
+    --enable-maintainer-mode
+)
+
+WORK="${WORK}/${PN}"
+
+src_prepare() {
+    edo cd ..
+    edo ./bootstrap --without-autotools
+}
+
+src_install() {
+    default
+    edo find "${IMAGE}" -type d -empty -delete
+}
+

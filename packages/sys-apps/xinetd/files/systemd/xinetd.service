@@ -1,0 +1,9 @@
+[Unit]
+Description=Extended Internet service daemon
+After=network.target
+
+[Service]
+ExecStart=/usr/sbin/xinetd -dontfork
+
+[Install]
+WantedBy=multi-user.target

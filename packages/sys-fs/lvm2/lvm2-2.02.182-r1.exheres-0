@@ -1,0 +1,17 @@
+# Copyright 2008 Kim Højgaard-Hansen <kimrhh@exherbo.org>
+# Copyright 2009-2015 Wulf C. Krueger <philantrop@exherbo.org>
+# Distributed under the terms of the GNU General Public License v2
+
+require lvm2
+
+PLATFORMS="~amd64 ~arm ~armv7 ~armv8 ~x86"
+
+src_prepare() {
+    if [[ $(exhost --target) == *-musl* ]]; then
+        expatch "${FILES}"/${PN}-2.02.177-mlockall-default-config.patch
+        expatch "${FILES}"/${PN}-2.02.177-musl.patch
+    fi
+
+    default
+}
+

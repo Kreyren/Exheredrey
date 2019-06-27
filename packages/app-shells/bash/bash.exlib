@@ -1,0 +1,118 @@
+# Copyright 2007-2008 Bryan Østergaard <kloeri@exherbo.org>
+# Copyright 2009 Mike Kelly <pioto@exherbo.org>
+# Distributed under the terms of the GNU General Public License v2
+
+MY_PNV=${PNV%_p*}
+WORK="${WORKBASE}/${MY_PNV}"
+
+require gnu [ suffix=tar.gz ]
+
+export_exlib_phases src_prepare src_install pkg_preinst
+
+if [[ ${PV} == *_p* ]] ; then
+    PATCH_LEVEL=${PNV##*_p}
+else
+    PATCH_LEVEL=0
+fi
+
+SUMMARY="Bourne-Again SHell, an enhanced sh-compatible command interpreter"
+DESCRIPTION="
+Bash is the shell, or command language interpreter, that will appear in
+the GNU operating system. Bash is an sh-compatible shell that
+incorporates useful features from the Korn shell (ksh) and C shell
+(csh). It is intended to conform to the IEEE POSIX P1003.2/ISO 9945.2
+Shell and Tools standard. It offers functional improvements over sh for
+both programming and interactive use. In addition, most sh scripts can
+be run by Bash without modification.
+"
+
+DOWNLOADS+=" ftp://ftp.cwru.edu/pub/${PN}/${MY_PNV}.tar.gz"
+
+if (( PATCH_LEVEL )) ; then
+    DOWNLOADS+="
+        $(for (( i=1; i <= PATCH_LEVEL; i++ )) ; do
+            printf "mirror://gnu/bash/${MY_PNV}-patches/${MY_PNV//[.-]}-%03d\n" ${i}
+          done)
+    "
+fi
+
+LICENCES="GPL-3"
+SLOT="0"
+MYOPTIONS="
+    static
+    parts: binaries configuration documentation
+"
+
+DEPENDENCIES="
+    build:
+        sys-devel/bison
+    build+run:
+        sys-libs/ncurses
+"
+
+DEFAULT_SRC_CONFIGURE_PARAMS=(
+    CC_FOR_BUILD=$(exhost --build)-cc
+    --enable-nls
+    --without-bash-malloc           # should go unused on both glibc and musl
+    --without-installed-readline
+    --with-curses
+)
+
+DEFAULT_SRC_CONFIGURE_OPTION_ENABLES=(
+    'static static-link'
+)
+
+DEFAULT_SRC_INSTALL_EXTRA_PREFIXES=( doc )
+
+bash_src_prepare() {
+    if (( PATCH_LEVEL )) ; then
+        local i patches=( -p0 )
+
+        for (( i=1; i <= PATCH_LEVEL; i++ )) ; do
+            patches+=( "${FETCHEDDIR}/${MY_PNV//[.-]}-$(printf "%03d" ${i})" )
+        done
+
+        expatch "${patches[@]}"
+    fi
+
+    default
+    echo '#define SYS_BASHRC "/etc/bash/bashrc"' >> config-top.h
+}
+
+bash_src_install() {
+    default
+
+    dosym bash /usr/$(exhost --target)/bin/sh
+
+    insinto /etc/bash
+    doins "${FILES}"/bashrc
+
+    insinto /etc/skel
+    hereins .bashrc <<'EOF'
+# Don't run anything here unless we have an interactive shell.
+if [[ $- != *i* ]] ; then
+    return
+fi
+EOF
+    hereins .bash_profile <<'EOF'
+# Source ~/.bashrc for login shells as recommended by bash upstream
+[[ -f ~/.bashrc ]] && source ~/.bashrc
+EOF
+
+    keepdir /etc/bash/bashrc.d
+
+    expart binaries /usr/$(exhost --target)/bin
+    expart configuration /etc
+    expart documentation /usr/share/{doc,info,man}
+}
+
+bash_pkg_preinst() {
+    if exhost --is-native -q && [[ $(readlink -f "${ROOT##/}"/bin) == ${ROOT##/}/bin ]] ; then
+        # NOTE(compnerd) preserve legacy paths for paludis
+        nonfatal edo rm "${ROOT}"/bin/{bash,sh} &&
+        nonfatal edo cp "${IMAGE}"/usr/$(exhost --build)/bin/bash "${ROOT}"/bin/bash &&
+        nonfatal edo ln -s bash "${ROOT}"/bin/sh ||
+            eerror "Symlinking to /bin/bash and /bin/sh failed"
+    fi
+}
+

@@ -1,0 +1,44 @@
+Source/Upstream: Yes, fixed in git master
+
+From 37bd531377a5fe7a001598a391e368455d861b83 Mon Sep 17 00:00:00 2001
+From: Timo Gurr <timo.gurr@gmail.com>
+Date: Fri, 17 Aug 2018 12:54:15 +0200
+Subject: [PATCH] do not hardcode the pkg-config command
+
+---
+ SDL/Makefile.am | 8 ++++----
+ configure.ac    | 2 +-
+ 2 files changed, 5 insertions(+), 5 deletions(-)
+
+diff --git a/SDL/Makefile.am b/SDL/Makefile.am
+index 99dd540..c66d443 100644
+--- a/SDL/Makefile.am
++++ b/SDL/Makefile.am
+@@ -8,10 +8,10 @@ EXTRA_DIST = $(sdl_DATA)
+ check_PROGRAMS = zzcatsdl
+ 
+ zzcatsdl_SOURCES = SDL_rwops_zzcat.c SDL_rwops_zzip.c
+-ZZIP_CFLAGS= `export PKG_CONFIG_PATH=../zzip; pkg-config zziplib --cflags` 
+-ZZIP_LIBS= `export PKG_CONFIG_PATH=../zzip; pkg-config zziplib --libs`
+-SDL_CFLAGS= `export PKG_CONFIG_PATH=.; pkg-config sdl --cflags` 
+-SDL_LIBS= `export PKG_CONFIG_PATH=.; pkg-config sdl --libs`
++ZZIP_CFLAGS= `export PKG_CONFIG_PATH=../zzip; $(PKG_CONFIG) zziplib --cflags` 
++ZZIP_LIBS= `export PKG_CONFIG_PATH=../zzip; $(PKG_CONFIG) zziplib --libs`
++SDL_CFLAGS= `export PKG_CONFIG_PATH=.; $(PKG_CONFIG) sdl --cflags` 
++SDL_LIBS= `export PKG_CONFIG_PATH=.; $(PKG_CONFIG) sdl --libs`
+ CFLAGS= -I$(srcdir) $(ZZIP_CFLAGS) $(SDL_CFLAGS)
+ LIBS= $(ZZIP_LIBS) $(SDL_LIBS)
+ 
+diff --git a/configure.ac b/configure.ac
+index 9d45f34..64ca049 100644
+--- a/configure.ac
++++ b/configure.ac
+@@ -261,7 +261,7 @@ AC_ARG_ENABLE(sdl, AC_HELP_STRING(
+ if test "$enable_sdl" = "no" ; then
+    AC_MSG_RESULT([no, disabled])
+ else
+-   enable_sdl=`pkg-config --modversion sdl 2>/dev/null`
++   enable_sdl=`$PKG_CONFIG --modversion sdl 2>/dev/null`
+    if test -z "$enable_sdl"; then
+       enable_sdl=`sdl-config --version 2>/dev/null`
+       SDL_GENERATE="sdl-uninstalled.pc"

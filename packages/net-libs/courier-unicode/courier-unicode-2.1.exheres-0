@@ -1,0 +1,22 @@
+# Copyright 2018 Timo Gurr <tgurr@exherbo.org>
+# Distributed under the terms of the GNU General Public License v2
+
+require sourceforge [ project=courier ]
+
+SUMMARY="Library implementing algorithms related to the Unicode Standard"
+
+LICENCES="GPL-3"
+SLOT="0"
+PLATFORMS="~amd64"
+MYOPTIONS=""
+
+DEPENDENCIES="
+    build:
+        dev-lang/perl:*
+"
+
+DEFAULT_SRC_CONFIGURE_PARAMS=(
+    --disable-static
+    --without-libcharset
+)
+

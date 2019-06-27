@@ -1,0 +1,63 @@
+# Copyright 2010 Timothy Redaelli <timothy@redaelli.eu>
+# Copyright 2012-2017 Wulf C. Krueger <philantrop@exherbo.org>
+# Distributed under the terms of the GNU General Public License v2
+
+require debian-upstream [ suffix=tar.xz ]
+
+SUMMARY="Utility to detect other OSs on a set of drives"
+DESCRIPTION="
+os-prober can probe disks on the system for other operating systems, and add them
+to the boot loader.
+New OSes and linux distros can be added by just dropping in a test file to check
+for them.
+"
+HOMEPAGE+=" https://joeyh.name/code/${PN}"
+
+BUGS_TO="philantrop@exherbo.org"
+
+LICENCES="GPL-2"
+SLOT="0"
+PLATFORMS="~amd64 ~x86"
+MYOPTIONS=""
+
+DEPENDENCIES="
+    suggestion:
+        sys-fs/ntfs-3g_ntfsprogs [[
+            description = [ Used to detect version of Windows installed on NTFS-formatted partitions. ]
+        ]]
+"
+
+DEFAULT_SRC_PREPARE_PATCHES=( "${FILES}"/0001-Add-Exherbo-Linux-detection.patch )
+
+src_compile() {
+    edo ${CC} ${CFLAGS} ${LDFLAGS} -o newns newns.c
+}
+
+src_install() {
+    dobin os-prober linux-boot-prober
+
+    exeinto /usr/$(exhost --target)/lib/os-prober
+    doexe newns
+
+    insinto /usr/share/os-prober
+    doins common.sh
+
+    for dir in os-probes{,/mounted,/init} linux-boot-probes{,/mounted}; do
+        exeinto /usr/$(exhost --target)/lib/$dir
+        doexe $dir/common/*
+        [[ -d $dir/x86 ]] && doexe $dir/x86/*
+        if [[ -d $dir/x86/efi ]]; then
+            exeinto /usr/$(exhost --target)/lib/$dir/efi
+            doexe $dir/x86/efi/*
+        fi
+    done
+
+    exeinto /usr/$(exhost --target)/lib/os-probes/mounted
+    doexe os-probes/mounted/powerpc/20macosx
+
+    emagicdocs
+    dodoc debian/changelog
+
+    keepdir /var/lib/os-prober
+}
+

@@ -1,0 +1,46 @@
+From: Thomas Berger <loki@lokis-chaos.de>
+Date: Fri, 9 Nov 2018 14:29:16 +0100
+Subject: [PATCH] disable mo-files versioning
+
+To avoid file collision with the postgresql server packages, remove the
+major version suffix from the mo files.
+
+As we always use the latest client packages, there is no need for the
+versioned mo files.
+---
+ src/include/c.h   | 4 ++--
+ src/nls-global.mk | 2 +-
+ 2 files changed, 3 insertions(+), 3 deletions(-)
+
+diff --git a/src/include/c.h b/src/include/c.h
+index 6b5e717..a5edd5a 100644
+--- a/src/include/c.h
++++ b/src/include/c.h
+@@ -1083,9 +1083,9 @@ typedef union PGAlignedXLogBlock
+  * Make sure this matches the installation rules in nls-global.mk.
+  */
+ #ifdef SO_MAJOR_VERSION
+-#define PG_TEXTDOMAIN(domain) (domain CppAsString2(SO_MAJOR_VERSION) "-" PG_MAJORVERSION)
++#define PG_TEXTDOMAIN(domain) (domain CppAsString2(SO_MAJOR_VERSION))
+ #else
+-#define PG_TEXTDOMAIN(domain) (domain "-" PG_MAJORVERSION)
++#define PG_TEXTDOMAIN(domain) (domain)
+ #endif
+ 
+ 
+diff --git a/src/nls-global.mk b/src/nls-global.mk
+index 4fc9937..d7d3387 100644
+--- a/src/nls-global.mk
++++ b/src/nls-global.mk
+@@ -99,7 +99,7 @@ endif # GETTEXT_FILES
+ install-po: all-po installdirs-po
+ ifneq (,$(LANGUAGES))
+ 	for lang in $(LANGUAGES); do \
+-	  $(INSTALL_DATA) po/$$lang.mo '$(DESTDIR)$(localedir)'/$$lang/LC_MESSAGES/$(CATALOG_NAME)$(SO_MAJOR_VERSION)-$(MAJORVERSION).mo || exit 1; \
++	  $(INSTALL_DATA) po/$$lang.mo '$(DESTDIR)$(localedir)'/$$lang/LC_MESSAGES/$(CATALOG_NAME)$(SO_MAJOR_VERSION).mo || exit 1; \
+ 	done
+ endif
+ 
+-- 
+2.19.1
+

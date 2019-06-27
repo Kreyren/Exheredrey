@@ -1,0 +1,14 @@
+# Copyright 2012 © Saleem Abdulrasool <compnerd@compnerd.org>
+# Distributed under the terms of the GNU General Public License v2
+
+ECJ_JAR_PV=4.9
+require gcj
+
+PLATFORMS="~amd64"
+
+DEFAULT_SRC_PREPARE_PATCHES=(
+    "${FILES}"/gcc-5.1-musl-support.patch
+    "${FILES}"/gcc-5.1-exherbo-multiarch-paths.patch
+    "${FILES}"/gcc-5.1-exherbo-gold-sysroot-support.patch
+)
+

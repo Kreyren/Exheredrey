@@ -1,0 +1,22 @@
+# Copyright 2011 Wulf C. Krueger <philantrop@exherbo.org>
+# Distributed under the terms of the GNU General Public License v2
+
+# Instead of setting directory ownership and modes as well as those of the cron
+# executables inside the individual cron exheres, we use this exlib as a common
+# place for such definitions.
+
+myexparam crond
+myexparam crontab
+exparam -v crond crond
+exparam -v crontab crontab
+
+do_cron_exes() {
+    exeopts -m 2755 -o root -g cron
+    exeinto /usr/$(exhost --target)/bin
+    doexe "${crontab}"
+
+    exeopts -m 0750 -o root -g wheel
+    exeinto /usr/$(exhost --target)/bin
+    doexe "${crond}"
+}
+

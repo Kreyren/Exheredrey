@@ -1,0 +1,36 @@
+# Copyright 2008-2015 Wulf C. Krueger
+# Distributed under the terms of the GNU General Public License v2
+# Based in part upon 'liblockfile-1.06-r2.ebuild' from Gentoo, which is:
+#     Copyright 1999-2007 Gentoo Foundation
+
+require debian-upstream [ debian_pv=${PV}.orig ]
+
+SUMMARY="Liblockfile is a shared library with NFS-safe locking functions"
+HOMEPAGE="https://packages.qa.debian.org/${DEBIAN_UPSTREAM_PREFIX}/${PN}.html"
+
+LICENCES="|| ( LGPL-3 LGPL-2.1 LGPL-2 GPL-3 GPL-2 )"
+SLOT="0"
+PLATFORMS="~amd64 ~arm ~armv7 ~armv8 ~x86"
+MYOPTIONS=""
+
+DEPENDENCIES="
+    build+run:
+        group/mail
+"
+
+WORK=${WORKBASE}/${PN}
+
+DEFAULT_SRC_CONFIGURE_PARAMS=(
+    --with-mailgroup=mail
+    --enable-shared
+)
+
+DEFAULT_SRC_INSTALL_PARAMS=(
+    DESTDIR="${IMAGE}"
+    prefix="${IMAGE}"/usr
+    libdir="${IMAGE}"/usr/$(exhost --target)/lib
+    mandir="${IMAGE}"/usr/share/man
+    bindir="${IMAGE}"/usr/$(exhost --target)/bin
+    includedir="${IMAGE}"/usr/$(exhost --target)/include
+)
+

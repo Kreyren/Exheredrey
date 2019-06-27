@@ -1,0 +1,65 @@
+# Copyright 2007 David Leverton <dleverton@exherbo.org>
+# Distributed under the terms of the GNU General Public License v2
+# Based in part upon 'screen-4.0.3.ebuild' from Gentoo, which is:
+#     Copyright 1999-2007 Gentoo Foundation
+
+require pam autotools [ supported_autoconf=[ 2.5 ] supported_automake=[ 1.16 1.15 ] ]
+
+export_exlib_phases src_install
+
+SUMMARY="A full-screen terminal multiplexer/window manager"
+
+LICENCES="GPL-3"
+SLOT="0"
+MYOPTIONS="
+    setuid [[ description = [ Install screen setuid root, allowing you to share screen sessions between multiple users ] ]]
+"
+
+DEPENDENCIES="
+    build+run:
+        !setuid? ( group/utmp )
+        sys-libs/ncurses
+        sys-libs/pam
+"
+
+DEFAULT_SRC_PREPARE_PATCHES=(
+    "${FILES}"/${PN}-4.3.0-no-utempter.patch
+    "${FILES}"/${PN}-4.3.0-do-not-link-against-libelf.patch
+)
+
+DEFAULT_SRC_CONFIGURE_PARAMS=(
+    --hates=docdir
+    --enable-colors256
+    --enable-pam
+    --enable-telnet
+    --enable-rxvt_osc
+    --enable-use-locale
+    --with-socket-dir=/run/screen
+    --with-sys-screenrc=/etc/screenrc
+)
+
+screen_src_install() {
+    default
+
+    insinto /etc
+    newins etc/etcscreenrc screenrc
+
+    if ! option setuid ; then
+        edo chown root:utmp "${IMAGE}"/usr/$(exhost --target)/bin/${PN}
+        edo chmod 2755 "${IMAGE}"/usr/$(exhost --target)/bin/${PN}
+        insinto /usr/$(exhost --target)/lib/tmpfiles.d
+        hereins ${PN}.conf <<EOF
+d /run/screen 0775 root utmp
+EOF
+    else
+        edo chown root:root "${IMAGE}"/usr/$(exhost --target)/bin/${PN}
+        edo chmod 4755 "${IMAGE}"/usr/$(exhost --target)/bin/${PN}
+        insinto /usr/$(exhost --target)/lib/tmpfiles.d
+        hereins ${PN}.conf <<EOF
+d /run/screen 0755 root root
+EOF
+    fi
+
+    pamd_mimic_system screen auth auth
+}
+

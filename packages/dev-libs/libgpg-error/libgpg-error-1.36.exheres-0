@@ -1,0 +1,77 @@
+# Copyright 2009, 2010 Ingmar Vanhassel <ingmar@exherbo.org>
+# Distributed under the terms of the GNU General Public License v2
+
+SUMMARY="Contains error handling functions used by GnuPG software"
+HOMEPAGE="https://www.gnupg.org/related_software/${PN}/index.en.html"
+DOWNLOADS="mirror://gnupg/${PN}/${PNV}.tar.bz2"
+
+LICENCES="LGPL-2.1"
+SLOT="0"
+PLATFORMS="~amd64 ~arm ~armv7 ~armv8 ~x86"
+MYOPTIONS=""
+
+DEPENDENCIES="
+    build:
+        sys-devel/gettext[>=0.19.3]
+"
+
+DEFAULT_SRC_PREPARE_PATCHES=(
+    "${FILES}"/gawk-5.0.patch
+)
+
+DEFAULT_SRC_CONFIGURE_PARAMS=(
+    CC_FOR_BUILD=$(exhost --build)-cc
+    --enable-doc
+    --enable-nls
+    # cryptsetup needs a static version of libgpg-error
+    --enable-static
+    # Do not install common lisp files (they need cffi anyway)
+    --disable-languages
+    --disable-werror
+)
+DEFAULT_SRC_CONFIGURE_TESTS=(
+    "--enable-tests --disable-tests"
+)
+
+src_prepare() {
+    # All this espam is supposed to only be triggered for one user per target, so it shouldn't be
+    # too annoying.
+    if ! [[ -e "${WORK}"/src/syscfg/lock-obj-pub.$(exhost --target).h ]]; then
+        if exhost --is-native -q; then
+            if ! [[ -e "${FILES}"/lock-obj-pub.$(exhost --target).h ]]; then
+                einfo "You are building libgpg-error natively for $(exhost --target), for which we don't have a proper lock-obj-pub.$(exhost --target).h file for cross-compilation."
+                einfo "Please consider contributing your /usr/share/doc/${PNVR}/lock-obj-pub.$(exhost --target) file to our repositories after building."
+            fi
+        else
+            if [[ -e "${FILES}"/lock-obj-pub.$(exhost --target).h ]]; then
+                edo cp "${FILES}"/lock-obj-pub.$(exhost --target).h "${WORK}"/src/syscfg/
+            else
+                eerror "There is no lock-obj-pub.$(exhost --target).h file for cross-compilation to $(exhost --target)"
+                eerror "If you have a way to run binaries for this target you should consider generating the file as follows and contributing it to our repositories:"
+                eerror "On the host:"
+                eerror "    cp -vr \"${WORK}\" ."
+                eerror "    cd \"${PNV}\""
+                eerror "    ./configure --build=$(exhost --build) --host=$(exhost --target)"
+                eerror "    cd src"
+                eerror "    make LDFLAGS=-all-static gen-posix-lock-obj"
+                eerror "Now copy the gen-posix-lock-obj binary to the target machine."
+                eerror "On the target machine:"
+                eerror "    ./gen-posix-lock-obj > lock-obj-pub.$(exhost --target).h"
+                die "lock-obj-pub.$(exhost --target).h is missing"
+            fi
+        fi
+    fi
+
+    default
+}
+
+src_install() {
+    default
+
+    if exhost --is-native -q; then
+        newdoc src/lock-obj-pub.native.h lock-obj-pub.$(exhost --target).h
+    else
+        dodoc src/syscfg/lock-obj-pub.$(exhost --target).h
+    fi
+}
+

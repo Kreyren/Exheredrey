@@ -1,0 +1,69 @@
+# Copyright 2011 Elias Pipping <pipping@exherbo.org>
+# Copyright 2017 Rasmus Thomsen <Rasmus.thomsen@protonmail.com>
+# Distributed under the terms of the GNU General Public License v2
+
+if ever is_scm ; then
+    SCM_REPOSITORY="https://git.llvm.org/git/libcxx.git"
+
+    SCM_llvm_REPOSITORY="https://git.llvm.org/git/llvm.git"
+    # We need that to keep compatibility with the below -DLLVM_MAIN_SRC_DIR
+    SCM_llvm_UNPACK_TO="llvm-scm.src"
+
+    SCM_SECONDARY_REPOSITORIES="llvm"
+
+    require scm-git
+else
+    if [[ ${PV} == *rc* ]]; then
+        DOWNLOADS="https://prereleases.llvm.org/${PV%*rc*}/rc${PV#*rc}/libcxx-${PV}.src.tar.xz
+            https://prereleases.llvm.org/${PV%*rc*}/rc${PV#*rc}/llvm-${PV}.src.tar.xz"
+    else
+        DOWNLOADS="https://llvm.org/releases/${PV}/libcxx-${PV}.src.tar.xz
+            https://llvm.org/releases/${PV}/llvm-${PV}.src.tar.xz"
+    fi
+fi
+
+require cmake [ api=2 ] python [ blacklist=none multibuild=false ]
+require utf8-locale
+
+export_exlib_phases src_test
+
+SUMMARY="A new implementation of the C++ standard library"
+HOMEPAGE="https://libcxx.llvm.org/"
+
+if ever at_least 9.0; then
+    LICENCES="Apache-2.0-with-LLVM-exception"
+else
+    LICENCES="|| ( MIT UoI-NCSA )"
+fi
+SLOT="0"
+MYOPTIONS=""
+
+DEPENDENCIES="
+    build+run:
+        sys-libs/libc++abi
+    build+test:
+        dev-lang/llvm [[ note = [ For llvm-config and CMake modules ] ]]
+"
+
+CMAKE_SRC_CONFIGURE_PARAMS=(
+    -DLIBCXX_CXX_ABI:STRING="libcxxabi"
+    -DLIBCXX_CXX_ABI_INCLUDE_PATHS:PATH="/usr/$(exhost --target)/include/libc++abi"
+    -DLIBCXX_ENABLE_STATIC:BOOL=FALSE
+    -DLIBCXX_INCLUDE_TESTS:BOOL=TRUE
+
+    -DPYTHON_EXECUTABLE:PATH="${PYTHON}"
+
+    -DLLVM_MAIN_SRC_DIR="${WORKBASE}/llvm-${PV}.src"
+    -DLLVM_LIT_ARGS:STRING="-sv"
+)
+
+libc++_src_test() {
+    require_utf8_locale
+
+    esandbox allow_net "unix:${WORK}/test/filesystem/Output/dynamic_env/test.*/socket"
+
+    emake check-cxx
+
+    esandbox disallow_net "unix:${WORK}/test/filesystem/Output/dynamic_env/test.*/socket"
+}
+

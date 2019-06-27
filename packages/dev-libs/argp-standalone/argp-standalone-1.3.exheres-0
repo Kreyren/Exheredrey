@@ -1,0 +1,45 @@
+# Copyright 2015 Kylie McClain <somasis@exherbo.org>
+# Distributed under the terms of the GNU General Public License v2
+
+require autotools [ supported_autoconf=[ 2.5 ] supported_automake=[ 1.15 ] ]
+
+HOMEPAGE="http://www.lysator.liu.se/~nisse/misc"
+DOWNLOADS="${HOMEPAGE}/${PNV}.tar.gz"
+
+SUMMARY="Argument parsing functions, split from the GNU C Library"
+SLOT="0"
+LICENCES="GPL-2 LGPL-2.1"
+
+MYOPTIONS=""
+
+PLATFORMS="~amd64"
+
+DEPENDENCIES="
+    run:
+        !sys-libs/glibc [[
+            description = [ argp is part of glibc ]
+            resolution = manual
+        ]]
+"
+
+DEFAULT_SRC_PREPARE_PATCHES=(
+    "${FILES}"/0001-throw-in-funcdef.patch
+    "${FILES}"/0002-isprint.patch
+    "${FILES}"/0003-no_optimize.patch
+)
+
+DEFAULT_SRC_COMPILE_PARAMS=(
+    AR=$(exhost --tool-prefix)ar
+    CC=$(exhost --tool-prefix)cc
+    NM=$(exhost --tool-prefix)nm
+    RANLIB=$(exhost --tool-prefix)ranlib
+    CFLAGS="${CFLAGS} -fPIC"
+)
+
+src_install() {
+    dolib.a libargp.a
+    insinto /usr/$(exhost --target)/include
+    doins argp.h
+    emagicdocs
+}
+

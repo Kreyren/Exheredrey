@@ -1,0 +1,62 @@
+# Copyright 2009-2017 Wulf C. Krueger <philantrop@exherbo.org>
+# Distributed under the terms of the GNU General Public License v2
+# Based in part upon 'ddclient-3.7.3-r1.ebuild' from Gentoo, which is:
+#       Copyright 1999-2008 Gentoo Foundation
+
+require sourceforge [ suffix=zip ] systemd-service
+
+export_exlib_phases pkg_pretend src_install
+
+SUMMARY="Perl updater client for dynamic DNS services"
+DESCRIPTION="
+ddclient is a Perl client used to update dynamic DNS entries for accounts on
+'Dynamic DNS Network Services' free DNS service. It currently supports a lot of
+different routers and a few different services.
+"
+
+#BUGS_TO="philantrop@exherbo.org"
+REMOTE_IDS+=" freecode:${PN}"
+
+LICENCES="GPL-2"
+SLOT="0"
+MYOPTIONS=""
+
+DEPENDENCIES="
+    build+run:
+        group/${PN}
+        user/${PN}
+    run:
+        dev-perl/Data-Validate-IP
+        dev-perl/IO-Socket-SSL [[ description = [ Needed for SSL connect ] ]]
+    suggestion:
+        dev-perl/IO-Socket-INET6 [[ description = [ Needed for IPv6 connect ] ]]
+"
+
+ddclient_pkg_pretend() {
+    if [[ -f "${ROOT}"/etc/tmpfiles.d/${PN}.conf ]] ; then
+        ewarn "The configuration file /etc/tmpfiles.d/${PN}.conf has been moved to"
+        ewarn "/usr/$(exhost --target)/lib/tmpfiles.d/${PN}.conf and can be safely removed after upgrade"
+        ewarn "if you did not make any changes to it."
+    fi
+}
+
+ddclient_src_install() {
+    default
+    dodoc sample*
+
+    dobin ${PN}
+
+    insinto /usr/$(exhost --target)/lib/tmpfiles.d
+    hereins ${PN}.conf <<EOF
+d /run/ddclient 0755 ddclient ddclient
+EOF
+    install_systemd_files
+
+    keepdir /var/cache/${PN}
+    edo chown ${PN}:${PN} "${IMAGE}"/var/cache/${PN}
+
+    insinto /etc/${PN}
+    insopts -m 0640 -o root -g ${PN}
+    newins sample-etc_${PN}.conf ${PN}.conf.sample
+}
+

@@ -1,0 +1,52 @@
+# Copyright 2008 Anders Ossowicki <arkanoid@exherbo.org>
+# Distributed under the terms of the GNU General Public License v2
+
+SUMMARY="Library and utilities for handling TIFF-files"
+HOMEPAGE="http://libtiff.maptools.org"
+DOWNLOADS="https://download.osgeo.org/libtiff/${PNV}.tar.gz"
+
+UPSTREAM_CHANGELOG="${HOMEPAGE}/v${PV}.html [[ lang = en ]]"
+UPSTREAM_DOCUMENTATION="${HOMEPAGE}/document.html [[ lang = en ]]"
+
+LICENCES="MIT"
+SLOT="0"
+PLATFORMS="~amd64 ~arm ~x86"
+MYOPTIONS="
+    opengl
+    webp [[ description = [ Support the webp compression format ] ]]
+    zstd [[ description = [ Support the zstd compression format ] ]]
+    ( providers: ijg-jpeg jpeg-turbo ) [[ number-selected = exactly-one ]]
+"
+
+DEPENDENCIES="
+    build+run:
+        app-arch/xz
+        sys-libs/zlib
+        opengl? (
+            x11-dri/freeglut
+            x11-dri/mesa
+            x11-libs/libX11
+            x11-libs/libICE
+        )
+        providers:ijg-jpeg? ( media-libs/jpeg:= )
+        providers:jpeg-turbo? ( media-libs/libjpeg-turbo )
+        webp? ( media-libs/libwebp:= )
+        zstd? ( app-arch/zstd )
+"
+
+DEFAULT_SRC_CONFIGURE_PARAMS=(
+    --enable-cxx
+    --enable-lzma
+    --enable-zlib
+    --disable-jbig
+    --disable-static
+    --with-docdir=/usr/share/doc/${PNVR}
+)
+DEFAULT_SRC_CONFIGURE_OPTION_ENABLES=(
+    webp
+    zstd
+)
+DEFAULT_SRC_CONFIGURE_OPTION_WITHS=(
+    'opengl x'
+)
+

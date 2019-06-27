@@ -1,0 +1,39 @@
+# Copyright 2009, 2010 Ingmar Vanhassel
+# Distributed under the terms of the GNU General Public License v2
+
+require cmake [ api=2 ]
+
+SUMMARY="A validating XML parser written in a portable subset of C++"
+HOMEPAGE="https://xerces.apache.org/${PN}"
+DOWNLOADS="mirror://apache/xerces/c/$(ever major)/sources/${PNV}.tar.xz"
+
+LICENCES="Apache-2.0"
+SLOT="0"
+PLATFORMS="~amd64 ~x86"
+MYOPTIONS="
+    platform: amd64
+    x86_cpu_features: sse2
+"
+
+DEPENDENCIES="
+    build+run:
+        net-misc/curl
+"
+
+src_configure() {
+    local cmakeargs=(
+        -DBUILD_SHARED_LIBS:BOOL=TRUE
+        -DCMAKE_INSTALL_DOCDIR:PATH=/usr/share/doc/${PNVR}
+        -Dthreads:BOOL=TRUE
+        -Dmessage-loader:STRING=inmemory
+        -Dnetwork-accessor:STRING=curl
+        -Dtranscoder:STRING=gnuiconv
+    )
+
+    if option platform:amd64 || option x86_cpu_features:sse2 ; then
+        cmakeargs+=( -Dsse2:BOOL=TRUE )
+    fi
+
+    ecmake "${cmakeargs[@]}"
+}
+

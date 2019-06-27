@@ -1,0 +1,61 @@
+# Copyright 2008-2013 Wulf C. Krueger
+# Distributed under the terms of the GNU General Public License v2
+# Based in part upon 'tcp-wrappers-7.6-r8.ebuild' from Gentoo, which is:
+#     Copyright 1999-2007 Gentoo Foundation
+
+MY_PNV="${PNV//-/_}"
+
+PATCH_VER="1.1"
+SUMMARY="TCP Wrappers"
+HOMEPAGE="ftp://ftp.porcupine.org/pub/security/index.html"
+DOWNLOADS="ftp://ftp.porcupine.org/pub/security/${MY_PNV}.tar.gz
+    https://dev.exherbo.org/~philantrop/distfiles/${PNV}-patches-${PATCH_VER}.tar.bz2"
+
+LICENCES="tcp_wrappers"
+SLOT="0"
+PLATFORMS="~amd64 ~arm ~armv7 ~armv8 ~x86"
+MYOPTIONS=""
+DEPENDENCIES=""
+
+WORK=${WORKBASE}/${MY_PNV}
+
+src_prepare() {
+    PATCHDIR="${WORKBASE}/${PV}"
+
+    expatch "${PATCHDIR}/${PNV}-makefile.patch" "${PATCHDIR}/${PNV}-shared.patch" "${PATCHDIR}/generic"
+    expatch -p2 "${PATCHDIR}"/${PNV}-ipv6-1.14.diff
+    expatch "${FILES}"/${PNV}-musl.patch
+}
+
+src_compile() {
+    local myconf="-DHAVE_WEAKSYMS"
+    myconf+=" -DINET6=1 -Dss_family=__ss_family -Dss_len=__ss_len"
+
+    for target in config-check linux; do
+        emake                                             \
+            REAL_DAEMON_DIR=/usr/$(exhost --target)/bin   \
+            EXHERBO_OPT="${myconf}"                       \
+            MAJOR=0 MINOR=${PV:0:1} REL=${PV:2:3}         \
+            ${target}
+    done
+}
+
+src_install() {
+    dodir /usr/$(exhost --target)/lib
+
+    dobin tcpd tcpdchk tcpdmatch safe_finger try-from
+
+    doman *.[358]
+    dosym hosts_access.5 /usr/share/man/man5/hosts.allow.5
+    dosym hosts_access.5 /usr/share/man/man5/hosts.deny.5
+
+    insinto /usr/$(exhost --target)/include
+    doins tcpd.h
+
+    dolib.a libwrap.a
+    newlib.so libwrap.so libwrap.so.0.${PV}
+    dosym libwrap.so.0.${PV} /usr/$(exhost --target)/lib/libwrap.so.0
+
+    dodoc BLURB CHANGES DISCLAIMER README* "${FILES}"/hosts.allow.example
+}
+

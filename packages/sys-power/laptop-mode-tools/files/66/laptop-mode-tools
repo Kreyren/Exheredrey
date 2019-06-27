@@ -1,0 +1,30 @@
+[main]
+@type = oneshot
+@name = laptop-mode-tools
+@description = "Start and stop laptop-mode-tools"
+@user = ( root )
+@depends = ( acpid )
+
+[start]
+@build = auto
+@execute = (
+    foreground { s6-echo -- "Starting oneshot: laptop-mode-tools" }
+    foreground {
+        if { s6-test -f /run/laptop-mode-tools/enabled }
+        s6-rmrf /run/laptop-mode-tools/enabled
+    }
+    foreground {
+        if { s6-test -f /run/laptop-mode-tools/state }
+        s6-rmrf /run/laptop-mode-tools/state
+    }
+    foreground { /usr/host/bin/laptop_mode force }
+    s6-echo -- "Done oneshot: laptop-mode-tools"
+)
+
+[stop]
+@build = auto
+@execute = (
+    foreground { s6-echo -- "Stopping oneshot: laptop-mode-tools" }
+    if { /usr/host/bin/laptop_mode stop }
+    s6-echo -- "Done oneshot: laptop-mode-tools"
+)

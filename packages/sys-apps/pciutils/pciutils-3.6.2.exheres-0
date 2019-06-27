@@ -1,0 +1,117 @@
+# Copyright 2008 Mike Kelly
+# Distributed under the terms of the GNU General Public License v2
+# Based in part upon 'pciutils-2.2.9.ebuild' from Gentoo, which is:
+#     Copyright 1999-2008 Gentoo Foundation
+
+SUMMARY="Collection of programs for inspecting and manipulating configuration of PCI devices"
+HOMEPAGE="https://mj.ucw.cz/sw/${PN}"
+DOWNLOADS="mirror://kernel/software/utils/${PN}/${PNV}.tar.xz"
+
+BUGS_TO="philantrop@exherbo.org"
+
+LICENCES="GPL-2"
+SLOT="0"
+PLATFORMS="~amd64 ~arm ~armv7 ~armv8 ~x86"
+MYOPTIONS="
+    udev [[
+        description = [ Enable support for udev's hwdb (*only* ever disable this to break a dependency cycle) ]
+        note = [ Usually, we hard-enable udev. This option is *solely* to break
+                 a dep-cycle between udev->pciutils->udev.
+                 Do NOT introduce new udev options.
+        ]
+    ]]
+    udev? ( ( providers: eudev systemd ) [[ number-selected = exactly-one ]] )
+"
+
+DEPENDENCIES="
+    build:
+        virtual/pkg-config
+    build+run:
+        sys-apps/kmod
+        udev? (
+            providers:eudev? ( sys-apps/eudev )
+            providers:systemd? ( sys-apps/systemd[>=196] )
+        )
+    suggestion:
+        sys-apps/pciutils-data [[ description = [ Up-to-date pci.ids to complement udev's hwdb ] ]]
+"
+
+DEFAULT_SRC_INSTALL_EXCLUDE=( "README.Windows" )
+
+src_prepare() {
+    default
+
+    edo cp -r "${WORK}" "${WORKBASE}"/static
+    edo cp -r "${WORK}" "${WORKBASE}"/shared
+}
+
+src_compile() {
+    params=(
+        AR="${AR}"
+        CC="${CC}"
+        PKG_CONFIG="$(exhost --tool-prefix)pkg-config"
+        DNS="no"
+        PREFIX=/usr/$(exhost --target)
+        IDSDIR=/usr/share/misc
+        OPT="${CFLAGS} -fPIC"
+        RANLIB="${RANLIB}"
+        LIBKMOD="yes"
+        ZLIB="no"
+    )
+
+    option udev && params+=( HWDB="yes" ) || params+=( HWDB="no" )
+
+    edo pushd "${WORKBASE}"/static
+    emake \
+        "${params[@]}"
+    edo popd
+    edo pushd "${WORKBASE}"/shared
+    emake \
+        "${params[@]}" \
+        SHARED="yes"
+    edo popd
+}
+
+src_test() {
+    edo pushd "${WORKBASE}"/static
+    default
+    edo popd
+    edo pushd "${WORKBASE}"/shared
+    default
+    edo popd
+}
+
+src_install() {
+    params=(
+        DESTDIR="${IMAGE}"
+        PREFIX=/usr/$(exhost --target)
+        SBINDIR=/usr/$(exhost --target)/bin
+        IDSDIR=/usr/share/misc
+        MANDIR=/usr/share/man
+        STRIP=""
+    )
+
+    edo pushd "${WORKBASE}"/static
+    emake \
+        "${params[@]}" \
+        install-lib
+    edo popd
+    edo pushd "${WORKBASE}"/shared
+    emake \
+        "${params[@]}" \
+        SHARED="yes" \
+        install \
+        install-lib
+    edo popd
+
+    # provided by pciutils-data
+    edo rm -f "${IMAGE}"/usr/share/misc/pci.ids
+    edo rmdir "${IMAGE}"/usr/share/misc
+
+    # not needed
+    edo rm -f "${IMAGE}"/usr/$(exhost --target)/bin/update-pciids
+    edo rm -f "${IMAGE}"/usr/share/man/man8/update-pciids.8
+
+    emagicdocs
+}
+

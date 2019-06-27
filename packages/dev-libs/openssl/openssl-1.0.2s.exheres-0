@@ -1,0 +1,21 @@
+# Copyright 2007 Bryan Østergaard
+# Distributed under the terms of the GNU General Public License v2
+
+require openssl
+
+PLATFORMS="~amd64 ~arm ~armv7 ~armv8 ~x86"
+
+DEFAULT_SRC_PREPARE_PATCHES=(
+    "${FILES}"/${PN}-0.9.8o-CFLAGS.patch
+)
+
+src_prepare() {
+    default
+
+    # https://github.com/openssl/openssl/issues/490
+    edo chmod 0755 util/pod2mantest
+
+    # verbose
+    edo sed -i -e 's/^#SET_X=/SET_X=/' Makefile.shared
+}
+

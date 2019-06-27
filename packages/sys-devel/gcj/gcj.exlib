@@ -1,0 +1,322 @@
+# Copyright 2012 © Saleem Abdulrasool <compnerd@compnerd.org>
+# Copyright 2015 Marc-Antoine Perennou <keruspe@exherbo.org>
+# Distributed under the terms of the GNU General Public License v2
+
+require gcc.gnu.org
+require alternatives toolchain-runtime-libraries
+
+DOWNLOADS+=" mirror://sourceware/java/ecj-${ECJ_JAR_PV}.jar"
+
+SUMMARY="stand alone java compiler"
+
+LICENCES="GPL-2"
+# Upstream did some version bikeshedding, 5.x. are bugfix releases.
+if ever at_least 6.0 ; then
+    SLOT="$(ever major)"
+else
+    SLOT=5.1
+fi
+CROSS_COMPILE_TARGETS="
+    x86_64-pc-linux-gnu
+"
+MYOPTIONS="
+    ( targets: ${CROSS_COMPILE_TARGETS} ) [[ number-selected = at-least-one ]]
+"
+
+DEPENDENCIES="
+    build:
+        app-arch/zip
+        virtual/unzip
+    build+run:
+        dev-libs/gmp:=[>=4.2]
+        dev-libs/isl:=[>=0.12]
+        dev-libs/mpc:=[>=0.8.1]
+        dev-libs/mpfr:=[>=2.4.0]
+        sys-libs/zlib
+    run:
+        sys-devel/binutils[targets:*(-)?]
+"
+
+#   build:
+#       $(for host in ${CROSS_COMPILE_TARGETS} ; do
+#           echo hosts:${host}? ( sys-devel/binutils[targets:${host}] )
+#         done)
+#   buil+run:
+#       sys-libs/glibc[hosts:*(-)?]
+
+gcj_pkg_setup() {
+    local target=
+
+    for target in ${CROSS_COMPILE_TARGETS} ; do
+        local target_cflags_var=${target//-/_}_CFLAGS
+
+        # NOTE(compnerd) ensure that CFLAGS_FOR_TARGET are specified by the user as otherwise the
+        # generated target components will be invalid as they will be compiled with CFLAGS for the
+        # host.
+        if option targets:${target}; then
+            [[ -n ${!target_cflags_var} ]] || die "CFLAGS for ${target} are not set"
+        fi
+
+        # ecj1: symbol lookup error: ecj1: undefined symbol: _Jv_Compiler_Properties
+        local target_ldflags_var=${target//-/_}_LDFLAGS
+        eval "${target_ldflags_var}+=\" -Wl,--no-as-needed\""
+    done
+}
+
+gcj_src_unpack() {
+    unpack --if-compressed ${ARCHIVES//ecj-${ECJ_JAR_PV}.jar}
+    edo cp "${FETCHEDDIR}"/ecj-${ECJ_JAR_PV}.jar "${WORKBASE}"/gcc-${PV}/ecj.jar
+}
+
+gcj_src_prepare() {
+    edo sed -i -e '/AR = ar/cAR := \$(AR)' libcpp/Makefile.in
+    edo mkdir -p libjava/classpath/lib
+    edo cp "${WORKBASE}"/gcc-${PV}/libjava/classpath/lib/standard.omit.in libjava/classpath/lib/standard.omit
+    default
+}
+
+gcj_src_configure() {
+    local target=
+
+    for target in ${CROSS_COMPILE_TARGETS} ; do
+        local libpath=/usr/${target}/lib
+        local target_cflags_var=${target//-/_}_CFLAGS
+        local target_cppflags_var=${target//-/_}_CPPFLAGS
+        local target_cxxflags_var=${target//-/_}_CXXFLAGS
+        local target_ldflags_var=${target//-/_}_LDFLAGS
+        local tool_prefix=$(exhost --tool-prefix)
+
+        if option !targets:${target} ; then
+            echo "    Cross-Compile Target: ${target} (disabled)"
+            continue
+        fi
+
+        echo "    Cross-Compile Target: ${target}"
+
+        edo mkdir -p "${WORKBASE}/build/${target}"
+        edo cd "${WORKBASE}/build/${target}"
+
+        local myconf=(
+            --cache-file=config.cache
+            --build=${CHOST}
+            --host=${CHOST}
+            --target=${target}
+            --prefix=/usr/${CHOST}
+            --datarootdir=/usr/share
+            --localstatedir=/var
+            --sysconfdir=/etc
+            --disable-dependency-tracking
+            --enable-fast-install
+            --enable-serial-configure
+            --disable-bootstrap
+            --disable-decimal-float
+            --disable-install-libiberty
+            --disable-libada
+            --disable-libatomic
+            --disable-libcilkrts
+            --disable-libgfortran
+            --disable-libgo
+            --disable-libgomp
+            --disable-libitm
+            --disable-libmpx
+            --disable-libobjc
+            --disable-liboffloadmic
+            --disable-libquadmath
+            --disable-libsanitizer
+            --disable-libssp
+            --disable-libstdcxx
+            --disable-libstdc++-v3
+            --disable-libvtv
+            --disable-vtable-verify
+            --disable-multilib
+            --disable-nls
+            --disable-lto
+            --disable-plugin
+            --with-sysroot='""'
+            --without-newlib
+            --enable-threads
+            --enable-libffi
+            --enable-libjava
+            --enable-shared
+            --enable-languages=java
+            $(if [[ ${target} == ${CHOST} ]] ; then
+                echo --program-transform="s,$,-${SLOT},"
+              else
+                echo --program-transform="s,^,${target}-,;s,$,-${SLOT},"
+              fi)
+            --with-lib-path=${libpath}
+            --with-as=/usr/${CHOST}/bin/${target}-as
+            --with-ld=/usr/${CHOST}/bin/${target}-ld
+            --with-system-zlib
+            $(if [[ ${target} == armv7* ]] ; then
+                    # TODO(compnerd) use the variant agnostic architecture by default
+                    echo --with-arch=armv7-a
+              fi)
+            $(if [[ ${target} == arm*-*-*-*hf ]] ; then
+                echo --with-float=hard
+              fi)
+            --with-python-dir=/../share/gdb/python
+            --with-glibc-version=2.11
+            --enable-linker-build-id
+            --with-multilib-list=
+
+            # disable JNI relying on external things
+            # libjava/classpath/configure.ac
+            --disable-alsa
+            --disable-dssi
+        )
+
+        edo env                                             \
+            AR=${CHOST}-ar                                  \
+            RANLIB=${CHOST}-ranlib                          \
+            AR_FOR_TARGET=${tool_prefix}ar                  \
+            AS_FOR_TARGET=${tool_prefix}as                  \
+            CPP_FOR_TARGET=${tool_prefix}cpp                \
+            READELF_FOR_TARGET=${tool_prefix}readelf        \
+            NM_FOR_TARGET=${tool_prefix}nm                  \
+            OBJDUMP_FOR_TARGET=${tool_prefix}objdump        \
+            CFLAGS_FOR_TARGET="${!target_cflags_var}"       \
+            CPPFLAGS_FOR_TARGET="${!target_cppflags_var}"   \
+            CXXFLAGS_FOR_TARGET="${!target_cxxflags_var}"   \
+            LDFLAGS_FOR_TARGET="${!target_ldflags_var}"     \
+        "${WORKBASE}/gcc-${PV}/configure" "${myconf[@]}"
+    done
+}
+
+gcj_src_compile() {
+    local target=
+
+    for target in ${CROSS_COMPILE_TARGETS} ; do
+        local target_cflags_var=${target//-/_}_CFLAGS
+        local target_cppflags_var=${target//-/_}_CPPFLAGS
+        local target_cxxflags_var=${target//-/_}_CXXFLAGS
+        local target_ldflags_var=${target//-/_}_LDFLAGS
+
+        if option !targets:${target} ; then
+            echo "    Cross-Compile Target: ${target} (disabled)"
+            continue
+        fi
+
+        echo "    Cross-Compile Target: ${target}"
+
+        edo cd "${WORKBASE}/build/${target}"
+
+        # NOTE(compnerd) unset CPP which is set by default by ebuild.bash.  We want to auto-detect
+        # the C preprocessor so that the cross-compiled configuration is properly detected and can
+        # honour the target specific flags.
+        unset CPP
+
+        AR_FOR_TARGET=$(exhost --tool-prefix)ar           \
+        READELF_FOR_TARGET=$(exhost --tool-prefix)readelf \
+        CFLAGS_FOR_TARGET="${!target_cflags_var}"         \
+        CPPFLAGS_FOR_TARGET="${!target_cppflags_var}"     \
+        CXXFLAGS_FOR_TARGET="${!target_cxxflags_var}"     \
+        LDFLAGS_FOR_TARGET="${!target_ldflags_var}"       \
+        CXXCPP="$(exhost --tool-prefix)g++ -E"            \
+        default
+    done
+}
+
+gcj_src_install() {
+    local target= alternatives=()
+
+    for target in ${CROSS_COMPILE_TARGETS} ; do
+        if option !targets:${target} ; then
+            echo "    Cross-Compile Target: ${target} (disabled)"
+            continue
+        fi
+
+        echo "    Cross-Compile Target: ${target}"
+
+        edo cd "${WORKBASE}/build/${target}"
+
+        emake -j1 DESTDIR="${IMAGE}" install
+        if [[ ${target} == ${CHOST} ]] ; then
+            # TODO(compnerd) tweak build to automatically name these tools properly
+            for tool in aot-compile-${SLOT} gappletviewer-${SLOT} gc-analyze-${SLOT} \
+                gcj-dbtool-${SLOT} gcjh-${SLOT} gij-${SLOT} gjar-${SLOT} gjarsigner-${SLOT} \
+                gjavah-${SLOT} gkeytool-${SLOT} gnative2ascii-${SLOT} gorbd-${SLOT} grmic-${SLOT} \
+                grmid-${SLOT} grmiregistry-${SLOT} gserialver-${SLOT} gtnameserv-${SLOT} \
+                jcf-dump-${SLOT} jv-convert-${SLOT} rebuild-gcj-db-${SLOT} ; do
+                edo mv "${IMAGE}"/usr/${CHOST}/bin/{,${target}-}${tool}
+                nonfatal edo mv "${IMAGE}"/usr/share/man/man1/{,${target}-}${tool}.1
+            done
+            edo rm "${IMAGE}"/usr/${CHOST}/bin/gcj-${SLOT}
+            edo mv "${IMAGE}"/usr/share/man/man1/{,${target}-}gcj-${SLOT}.1
+            edo mv "${IMAGE}"/usr/share/man/man1/{,${target}-}gjdoc-${SLOT}.1
+        fi
+
+        # Drop stuff already installed by sys-devel/gcc
+        for i in c++ g++ gcc gcc-ar gcc-nm gcc-ranlib; do
+            edo rm "${IMAGE}"/usr/$(exhost --target)/bin/${target}-${i}-${SLOT}
+        done
+        edo rm "${IMAGE}"/usr/$(exhost --target)/bin/${target}-gcc-${PV}
+        edo rm "${IMAGE}"/usr/$(exhost --target)/lib/gcc/${target}/${PV}/*.o
+        edo rm "${IMAGE}"/usr/$(exhost --target)/lib/gcc/${target}/${PV}/*.a
+        edo rm -r "${IMAGE}"/usr/$(exhost --target)/lib/gcc/${target}/${PV}/include-fixed
+        edo rm -r "${IMAGE}"/usr/$(exhost --target)/lib/gcc/${target}/${PV}/install-tools
+        for i in cc1 cc1plus collect2 lto-wrapper; do
+            edo rm "${IMAGE}"/usr/$(exhost --target)/libexec/gcc/${target}/${PV}/${i}
+        done
+        edo rm -r "${IMAGE}"/usr/$(exhost --target)/libexec/gcc/${target}/${PV}/install-tools
+        for i in '*intrin.h' cpuid.h cross-stdarg.h float.h iso646.h 'mm*' 'std*' unwind.h varargs.h ; do
+            edo rm "${IMAGE}"/usr/$(exhost --target)/lib/gcc/${target}/${PV}/include/${i}
+        done
+        for i in cpp cppinternals gcc gccinstall gccint ; do
+            nonfatal edo rm "${IMAGE}"/usr/share/info/${i}{,-${SLOT}}.info
+        done
+        for i in c++ cpp g++ gcc{,-ar,-nm,-ranlib} gcov{,-tool,-dump}; do
+            nonfatal edo rm "${IMAGE}"/usr/$(exhost --target)/bin/${i}-${SLOT}
+            nonfatal edo rm "${IMAGE}"/usr/share/man/man1/${i}{,-${SLOT}}.1
+        done
+        edo rm -r "${IMAGE}"/usr/share/man/man7
+        edo rm -r "${IMAGE}"/usr/$(exhost --target)/lib/libgcc_s*
+
+        edo pushd "${IMAGE}"
+
+        local unset_nullglob=
+        shopt -q nullglob || unset_nullglob=1
+        shopt -s nullglob
+
+        for tool in usr/"${CHOST}"/bin/${target}-*-${SLOT}; do
+            alternatives+=( /"${tool%-${SLOT}}" "${tool##*/}" )
+        done
+
+        for man in usr/share/man/man*/*.*; do
+            local ext=${man##*.}
+            # some are already slotted due to --program-suffix, some aren't
+            [[ ${man} =~ -${SLOT}.${ext}$ ]] && man=${man%-${SLOT}.${ext}}.${ext}
+            local name=${man##*/}
+            alternatives+=( /${man} ${name%.${ext}}-${SLOT}.${ext} )
+        done
+        for info in usr/share/info/*.info; do
+            # some are already slotted due to --program-suffix, some aren't
+            [[ ${info} =~ -${SLOT}.info$ ]] && info=${info%-${SLOT}.info}.info
+            local name=${info##*/}
+            alternatives+=( /${info} ${name%.info}-${SLOT}.info )
+        done
+        for locale in usr/share/locale/*/*/*.mo; do
+            [[ -e ${locale} ]] || continue
+            local name=${locale##*/}
+            alternatives+=( /${locale} ${name%.mo}-${SLOT}.mo )
+        done
+
+        [[ -n ${unset_nullglob} ]] && shopt -u nullglob
+
+        edo popd
+    done
+
+    symlink_dynamic_libs libgcj libgcj_bc libgcj-tools libgij
+    slot_dynamic_libs libgcj libgcj_bc libgcj-tools libgij
+    slot_other_libs libgcj.spec logging.properties
+
+    alternatives_for "_$(exhost --target)_classpath" "${SLOT}" "${SLOT}" \
+        "/usr/$(exhost --target)/lib/security/classpath.security" "classpath-${SLOT}.security"
+
+    alternatives_for gcj ${SLOT} ${SLOT} "${alternatives[@]}"
+
+    edo find "${IMAGE}" -depth -type d -empty -delete
+}
+
+export_exlib_phases pkg_setup src_unpack src_prepare src_configure src_compile src_install
+

@@ -1,0 +1,18 @@
+# Copyright 2010 NAKAMURA Yoshitaka <arumakanoy@gmail.com>
+# Distributed under the terms of the GNU General Public License v2
+
+require ldns
+
+PLATFORMS="~amd64"
+
+DEPENDENCIES="
+    build+run:
+        providers:openssl? ( dev-libs/openssl[<1.1] )
+"
+
+# disable broken test
+# bash: test/test_all.sh: No such file or directory
+RESTRICT="test"
+
+DEFAULT_SRC_PREPARE_PATCHES=( "${FILES}"/${PN}-1.6.17-doxyparse-fix.patch )
+

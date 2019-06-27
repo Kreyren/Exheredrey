@@ -1,0 +1,17 @@
+Source: Alex Elsayed <eternaleye@gmail.com>
+Upstream: Dead
+Reason: FTBFS on cross
+
+diff --git a/src/extra/Makefile.in b/src/extra/Makefile.in
+index 665aa4a..edffe1e 100644
+--- a/src/extra/Makefile.in
++++ b/src/extra/Makefile.in
+@@ -385,7 +385,7 @@ install-exec-hook:
+ 	$(INSTALL_DATA) $(srcdir)/sba200e_ecd.bin2 $(DESTDIR)/${LIBDIR}/firmware
+ 
+ %.bin %.bin2: %.data
+-	objcopy -Iihex $< -Obinary $@.gz
++	$(OBJCOPY) -Iihex $< -Obinary $@.gz
+ 	gzip -n -df $@.gz
+ 
+ # Tell versions [3.59,3.63) of GNU make to not export all variables.

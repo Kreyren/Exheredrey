@@ -1,0 +1,18 @@
+# Copyright 2008 Richard Brown <rbrown@exherbo.org>
+# Distributed under the terms of the GNU General Public License v2
+# Based in part upon 'aspell-en-6.0.0.ebuild' from Gentoo, which is:
+#     Copyright 1999-2007 Gentoo Foundation
+
+MY_PNV=${PN}-$(ever replace 3 -)
+
+require aspell-dict [ major_pv="6" desc="English (British, Canadian, USian)" ]
+
+HOMEPAGE+=" http://wordlist.aspell.net"
+
+LICENCES="as-is public-domain"
+SLOT="0"
+PLATFORMS="~amd64 ~arm ~armv8 ~x86"
+MYOPTIONS=""
+
+DEPENDENCIES=""
+

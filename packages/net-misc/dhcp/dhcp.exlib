@@ -1,0 +1,103 @@
+# Copyright 2007-2009 Bryan Østergaard
+# Copyright 2010-2016 Wulf C. Krueger <philantrop@exherbo.org>
+# Distributed under the terms of the GNU General Public License v2
+
+require systemd-service [ systemd_files=[ dhcpd.service dhcpd@.service ] ] \
+        autotools [ supported_autoconf=[ 2.5 ] supported_automake=[ 1.16 ] ]
+
+export_exlib_phases src_prepare src_compile src_install pkg_postinst
+
+MY_PNV="${PNV/_rc/rc}"
+MY_PNV="${PNV/_p/-P}"
+
+SUMMARY="ISC DHCP server and client"
+DESCRIPTION="
+ISC DHCP is open source software that implements the Dynamic Host Configuration
+Protocols for connection to a local network. It is a reference implementation of
+those protocols, but it is also production-grade software, suitable for use in
+high-volume and high-reliability applications.
+"
+BASE_URI="isc.org"
+HOMEPAGE="https://www.${BASE_URI}/downloads/${PN}"
+DOWNLOADS="
+    https://ftp.${BASE_URI}/isc/${PN}/${MY_PNV}/${MY_PNV}.tar.gz
+    https://ftp.${BASE_URI}/isc/${PN}/${PN}-$(ever range 1-2)-history/${MY_PNV}.tar.gz
+    https://ftp.${BASE_URI}/isc/${PN}/${MY_PNV/dhcp-}/${MY_PNV}.tar.gz
+"
+
+BUGS_TO="philantrop@exherbo.org"
+
+LICENCES="ISC"
+SLOT="0"
+MYOPTIONS=""
+
+DEPENDENCIES="
+    run:
+        sys-apps/iproute2
+"
+
+DEFAULT_SRC_CONFIGURE_PARAMS=(
+    --localstatedir=/var
+    --enable-delayed-ack
+    --enable-dhcpv6
+    --enable-execute
+    --enable-failover
+    --enable-tracing
+    --disable-bind-install
+    --disable-early-chroot
+    --disable-paranoia
+    --disable-relay-port
+    --with-cli-pid-file=/run/dhclient.pid
+    --with-cli6-pid-file=/run/dhclient6.pid
+    --with-relay-pid-file=/run/dhcrelay.pid
+    --with-relay6-pid-file=/run/dhcrelay6.pid
+    --with-srv-conf-file=/etc/dhcpd.conf
+    --with-srv-pid-file=/run/dhcpd.pid
+    --with-srv6-pid-file=/run/dhcpd6.pid
+    --without-libbind
+)
+
+WORK=${WORKBASE}/${MY_PNV}
+
+dhcp_src_prepare() {
+    # Part of the build accepts ${AR}...
+    export AR=/usr/$(exhost --target)/bin/$(exhost --tool-prefix)ar
+
+    # ... other parts hardcode it...
+    edo echo "AR = ${AR}" >> common/Makefile.am
+    edo echo "AR = ${AR}" >> dhcpctl/Makefile.am
+    edo echo "AR = ${AR}" >> omapip/Makefile.am
+    edo echo "AR = ${AR}" >> tests/Makefile.am
+
+    autotools_src_prepare
+}
+
+dhcp_src_compile() {
+    # work around parallel make issues
+    pushd bind
+    emake -j1
+    popd
+
+    default
+}
+
+dhcp_src_install() {
+    default
+
+    install_systemd_files
+    insinto /etc/conf.d
+    doins "${FILES}"/systemd/dhcpd.conf
+
+    # install dhcp client script
+    newbin client/scripts/linux dhclient-script
+
+    # install docs
+    dodoc -r doc/*
+}
+
+dhcp_pkg_postinst() {
+    if [[ ! -f ${ROOT}/var/db/dhcpd.leases ]]; then
+        nonfatal edo touch "${ROOT}"/var/db/dhcpd.leases || ewarn "creating dhcpd.leases failed."
+    fi
+}
+

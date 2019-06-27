@@ -1,0 +1,680 @@
+# Copyright 2010-2016 Wulf C. Krueger <philantrop@exherbo.org>
+# Copyright 2017-2018 Jonathon Kowalski <worz@tuta.io>
+# Distributed under the terms of the GNU General Public License v2
+
+require github [ tag=v${PV} ] \
+        meson \
+        alternatives \
+        kernel \
+        test-dbus-daemon \
+        udev-rules \
+        pam \
+        option-renames [ renames=[ 'journal-push libcurl' ] ] \
+        python [ blacklist="2" multibuild=false ] \
+        toolchain-funcs
+
+export_exlib_phases pkg_pretend pkg_setup src_configure src_prepare src_test src_install pkg_postinst
+
+SUMMARY="${PN} System and Service Manager"
+DESCRIPTION="
+systemd is a suite of basic building blocks for a Linux system. It provides a system
+and service manager that runs as PID 1 and starts the rest of the system. systemd
+provides aggressive parallelization capabilities, uses socket and D-Bus activation
+for starting services, offers on-demand starting of daemons, keeps track of processes
+using Linux control groups, supports snapshotting and restoring of the system state,
+maintains mount and automount points and implements an elaborate transactional
+dependency-based service control logic. Other parts include a logging daemon, utilities
+to control basic system configuration like the hostname, date, locale, maintain a
+list of logged-in users and running containers and virtual machines, system accounts,
+runtime directories and settings, and daemons to manage simple network configuration,
+network time synchronization, log forwarding, and name resolution.
+SysVinit compatibility is deactivated in our package because we don't want it nor
+do we support it.
+"
+HOMEPAGE="https://wiki.freedesktop.org/www/Software/${PN}"
+BUGS_TO="philantrop@exherbo.org"
+LICENCES="
+    LGPL-2.1        [[ note = [ Everything but ] ]]
+    GPL-2           [[ note = [ src/udev, ] ]]
+    public-domain   [[ note = [ src/shared/MurmurHash2.c, src/shared/siphash24.c, src/journal/lookup3.c ] ]]
+"
+SLOT="0"
+LANGUAGES=( el fr it pl ru )
+MYOPTIONS="
+    acl
+    apparmor
+    bash-completion
+    cryptsetup [[ description = [ Enable systemd's minimal cryptsetup unit generator ] ]]
+    efi [[
+        description = [ EFI information in various tools, sd-boot, and mounting of efivars during boot ]
+        note = [ Needs (U)EFI compatible hardware and a fairly recent kernel with proper configuration ]
+    ]]
+    gcrypt [[ description = [ Enable cryptographically secured journal files ] ]]
+    gnutls [[ description = [ Enable certificate support for journal-remote, journal-gatewayd & friends ] ]]
+    idn  [[ description = [ Support Internationalised Domain Names in systemd-resolved ] ]]
+    importd [[
+        description = [ Enable systemd's container download service systemd-importd ]
+        requires = [ libcurl gcrypt ]
+    ]]
+    journal-gateway [[
+        description = [ Enable journal gateway daemon to access the journal via HTTP and JSON ]
+        requires = [ libcurl ]
+    ]]
+    libcurl [[ description = [ Support pushing journal data to a remote system ] ]]
+    lz4 [[ description = [ Use LZ4 compression for longer journal fields ] ]]
+    nat [[ description = [ Enable minimal firewall support for NAT ] ]]
+    polkit [[ description = [ Use PolicyKit for privileged operations ] ]]
+    qrencode [[ description = [ For transferring the journal verification key to a smartphone ] ]]
+    regexp [[ description = [ regexp matching support using pcre2 in journalctl for the MESSAGE field ] ]]
+    seccomp [[ description = [ System call filtering support via seccomp ] ]]
+    selinux
+    static [[ description = [ Build static versions of libsystemd and libudev and link systemctl against them ] ]]
+    xkbcommon [[ description = [ verify x11 keymap settings by compiling the configured keymap ] ]]
+    zsh-completion
+    ( linguas: ${LANGUAGES[@]} )
+    ( providers:
+        gnutls [[ requires = [ gnutls ] ]]
+        openssl
+    ) [[
+        number-selected = at-most-one
+        *description = [ TLS provider for DNS-over-TLS ]
+    ]]
+"
+
+DEPENDENCIES="
+    build:
+        app-text/docbook-xml-dtd:4.5 [[ note = [ for creating the man pages (used in {less-variables,standard-options}.xml) ] ]]
+        dev-lang/perl:*
+        dev-libs/libxslt [[ note = [ for creating the man pages ] ]]
+        dev-util/gperf[>=3.0.4] [[ note = [ for keymap ] ]]
+        sys-devel/gettext
+        sys-kernel/linux-headers[>=3.10]
+        virtual/pkg-config[>=0.20]
+    build+run:
+        app-arch/xz
+        dev-util/elfutils[>=0.158]
+        sys-apps/kmod[>=15]
+        sys-apps/pciutils
+        sys-apps/skeleton-filesystem-layout
+        sys-apps/util-linux[>=2.30]
+        sys-kernel/linux-headers[>=3.10]
+        sys-libs/libcap
+        sys-libs/pam[>=1.1.2]
+        !net-dns/nss-myhostname [[
+            description = [ Included and enabled in systemd >= 197 ]
+            resolution = uninstall-blocked-after
+        ]]
+        !sys-fs/udev [[
+            description = [ udev is now part of systemd. ]
+            resolution = uninstall-blocked-after
+        ]]
+        acl? ( sys-apps/acl )
+        apparmor? ( security/apparmor )
+        cryptsetup? ( sys-fs/cryptsetup[>=2.0.0] )
+        efi? ( sys-boot/gnu-efi )
+        gcrypt? (
+            dev-libs/libgcrypt[>=1.4.5]
+            dev-libs/libgpg-error[>=1.12]
+        )
+        gnutls? ( dev-libs/gnutls[>=3.1.4] )
+        idn? ( net-dns/libidn2:= )
+        journal-gateway? ( net-libs/libmicrohttpd[>=0.9.33] )
+        libcurl? ( net-misc/curl[>=7.32.0] )
+        lz4? ( app-arch/lz4[>=1.7.5] )
+        nat? ( net-firewall/iptables )
+        polkit? ( sys-auth/polkit:1 )
+        providers:gnutls? ( dev-libs/gnutls[>=3.1.4] )
+        providers:openssl? ( dev-libs/openssl[>=1.1.0] )
+        qrencode? ( media-libs/qrencode:= )
+        regexp? ( dev-libs/pcre2 )
+        seccomp? ( sys-libs/libseccomp[>=2.3.1] )
+        xkbcommon? ( x11-libs/libxkbcommon[>=0.3.0] )
+        selinux? ( security/libselinux )
+    run:
+        sys-apps/coreutils[selinux?][>=8.16]
+        sys-apps/dbus[>=1.9.18] [[ note = [ Required to support the new DBus policy files location ] ]]
+        sys-apps/kbd[>=1.15.2-r1]
+        group/dialout
+        group/lock [[ note = [ Required for var-lock service ] ]]
+        group/systemd-bus-proxy [[ note = [ Required for systemd-bus-proxyd ] ]]
+        group/systemd-coredump [[ note = [ Required for coredumpctl ] ]]
+        group/systemd-journal [[ note = [ Required for journal access by non-root users when SplitMode=none or the journal is volatile ] ]]
+        group/systemd-journal-remote [[ note = [ Required for systemd-journal-remote ] ]]
+        group/systemd-network [[ note = [ Required for systemd-networkd ] ]]
+        group/systemd-resolve [[ note = [ Required for systemd-resolved ] ]]
+        user/systemd-bus-proxy [[ note = [ Required for systemd-bus-proxyd ] ]]
+        user/systemd-coredump [[ note = [ Required for coredumpctl ] ]]
+        user/systemd-journal-remote [[ note = [ Required for systemd-journal-remote ] ]]
+        user/systemd-network [[ note = [ Required for systemd-networkd ] ]]
+        user/systemd-resolve [[ note = [ Required for systemd-resolved ] ]]
+        !sys-apps/debianutils[<4.5.1-r1] [[
+            description = [ Alternatives conflict ]
+            resolution = upgrade-blocked-before
+        ]]
+        !sys-apps/eudev [[
+            description = [ ${PN} has the upstream udev daemon instead of Gentoo's fork eudev ]
+            resolution = manual
+        ]]
+    suggestion:
+        dev-python/lxml[python_abis:*(-)?] [[ description = [ Build the man page index ] ]]
+        sys-apps/kexec-tools [[ description = [ Support for systemctl kexec - booting a kernel immediately, skipping the BIOS ] ]]
+        sys-boot/dracut [[ description = [ Easily create an initramfs (if in doubt, don't take this) ] ]]
+"
+
+systemd_pkg_pretend() {
+    if ! kernel_version_at_least 3.11 ; then
+        ewarn "You MUST install a kernel >= 3.11 to use systemd."
+        ewarn "This check is based upon the kernel currently running, thus, if you already"
+        ewarn "installed a suitable kernel and just need to boot it, you can disregard this."
+    fi
+
+    if [[ -f "${ROOT}"/etc/tmpfiles.d/legacy.conf ]] ; then
+        ewarn "The configuration file /etc/tmpfiles.d/legacy.conf has been moved to"
+        ewarn "/usr/$(exhost --target)/lib/tmpfiles.d/legacy.conf and can be safely removed after upgrade"
+        ewarn "if you did not make any changes to it."
+    fi
+
+    if cc-is-gcc && ! ever at_least 4.9 $(gcc-version); then
+        eerror "You're using gcc-$(gcc-fullversion). ${PNV} requires gcc-4.9.x. Set your compiler to 4.9 by using eclectic gcc"
+        die "${PNV} requires gcc-4.9.x"
+    fi
+
+    option-renames_pkg_pretend
+}
+
+systemd_pkg_setup() {
+    meson_pkg_setup
+
+    exdirectory --allow /etc/binfmt.d
+    exdirectory --allow /etc/modules-load.d
+    exdirectory --allow /etc/sysctl.d
+    exdirectory --allow /etc/systemd/system
+    exdirectory --allow /etc/tmpfiles.d
+    exdirectory --allow /etc/udev/rules.d
+}
+
+systemd_src_prepare() {
+    meson_src_prepare
+
+    if [[ -d ${FILES}/patches-${PV} ]]; then
+        expatch -p1 "${FILES}"/patches-${PV}
+    fi
+
+    edo sed -e "s/(prefixdir, 'lib/(rootprefixdir, 'lib/" -i meson.build
+    edo sed -e 's:${prefix}/lib:${rootprefix}/lib:' -i src/core/systemd.pc.in
+
+    # Fails tests because our prefix makes --help outputs longer than 80 characters
+    # Disable the test because it doesn't test actual functionality and is more of an upstream CI check
+    edo ln -sf /bin/true tools/meson-check-help.sh
+}
+
+MESON_SRC_CONFIGURE_PARAMS=(
+    -Dlocalstatedir=/var
+
+    -Dsplit-usr=false
+    -Dsplit-bin=false
+    -Drootlibdir=/usr/$(exhost --target)/lib
+    -Drootprefix=/usr/$(exhost --target)
+    -Ddocdir=/usr/share/doc/${PNVR}
+    -Dlink-udev-shared=true
+
+    -Dsysvinit-path=""
+    -Dsysvrcnd-path=""
+    -Dtelinit-path=""
+    -Drc-local=""
+    -Dhalt-local=""
+
+    -Ddebug-tty=/dev/tty9
+
+    -Dutmp=true
+    -Dhibernate=true
+    -Dldconfig=true
+    -Dresolve=true
+    -Dtpm=true
+    -Denvironment-d=true
+    -Dbinfmt=true
+    -Dcoredump=true
+    -Dlogind=true
+    -Dhostnamed=true
+    -Dlocaled=true
+    -Dmachined=true
+    -Dnetworkd=true
+    -Dportabled=true
+    -Dtimedated=true
+    -Dtimesyncd=true
+    -Dfirstboot=true
+    -Drandomseed=true
+    -Dbacklight=true
+    -Dvconsole=true
+    -Dquotacheck=true
+    -Dsysusers=true
+    -Dtmpfiles=true
+    -Dhwdb=true
+    -Drfkill=true
+    -Dman=true
+    -Dhtml=false
+
+    -Dcertificate-root=/etc/ssl
+    -Dpkgconfigdatadir=/usr/$(exhost --target)/lib/pkgconfig
+    -Drpmmacrosdir=no
+    -Dpamconfdir=/etc/pam.d
+    -Dpamlibdir=/usr/$(exhost --target)/lib/security
+
+    -Dfallback-hostname=localhost
+    -Ddefault-net-naming-scheme=latest
+    -Ddefault-hierarchy=hybrid
+    -Dtty-gid=5
+    -Dadm-group=false
+    -Dwheel-group=true
+    -Dnobody-user=nobody
+    -Dnobody-group=nobody
+    -Ddefault-kill-user-processes=false
+    -Dgshadow=true
+
+    -Ddefault-dnssec=allow-downgrade
+    -Dntp-servers="0.exherbo.pool.ntp.org 1.exherbo.pool.ntp.org 2.exherbo.pool.ntp.org 3.exherbo.pool.ntp.org"
+
+    -Dsmack=false
+    -Dima=false
+
+    -Daudit=false
+    -Dblkid=true
+    -Dkmod=true
+    -Dpam=true
+    -Dlibidn=false
+    -Dnss-myhostname=true
+    -Dnss-mymachines=true
+    -Dnss-resolve=true
+    -Dnss-systemd=true
+    -Delfutils=true
+    -Dzlib=true
+    -Dbzip2=true
+    -Dxz=true
+    -Dglib=false
+    -Ddbus=true
+
+    -Defi-cc=${CC}
+    -Defi-ld=${LD}
+    -Defi-libdir=/usr/$(exhost --target)/lib
+    -Defi-includedir=/usr/$(exhost --target)/include/efi
+
+    -Dtests=true
+    -Dslow-tests=false
+    -Dinstall-tests=false
+)
+
+MESON_SRC_CONFIGURE_OPTION_SWITCHES=(
+    apparmor
+    efi
+    'journal-gateway remote'
+    importd
+
+    seccomp
+    selinux
+    polkit
+    acl
+    'journal-gateway microhttpd'
+    'cryptsetup libcryptsetup'
+    libcurl
+    idn
+    'idn libidn2'
+    'nat libiptc'
+    qrencode
+    gcrypt
+    gnutls
+    lz4
+    xkbcommon
+    'regexp pcre2'
+    'efi gnu-efi'
+    'providers:openssl'
+
+    'static link-systemctl-shared false true'
+    'static static-libsystemd pic false'
+    'static static-libudev pic false'
+
+    'bash-completion bashcompletiondir /usr/share/bash-completion/completions no'
+    'zsh-completion zshcompletiondir /usr/share/zsh/site-functions no'
+)
+
+systemd_src_configure() {
+    local meson_args=()
+
+    if option providers:gnutls; then
+        meson_args+=(
+            '-Ddns-over-tls=gnutls'
+            '-Ddefault-dns-over-tls=opportunistic'
+        )
+    elif option providers:openssl; then
+        meson_args+=(
+            '-Ddns-over-tls=openssl'
+            '-Ddefault-dns-over-tls=opportunistic'
+        )
+    else
+        meson_args+=(
+            '-Ddns-over-tls=false'
+            '-Ddefault-dns-over-tls=no'
+        )
+    fi
+
+    meson_src_configure "${meson_args[@]}"
+}
+
+systemd_src_test() {
+    if exhost --is-native -q; then
+        # Note to self & whoever else reads this: Don't even *think* about
+        # RESTRICT=userpriv in order to enable more expensive udev tests.
+        # Enabling those tests can (and most likely will) mess up your running system
+        # completely and require you to reboot. You've been warned.
+        if [[ -f /etc/machine-id ]]; then
+            # src/test/test-systemd-tmpfiles.py expects ${HOME} to not end in a slash
+            HOME=${HOME%/}
+
+            # src/test/test-condition.c gets confused when running with ${USER} == root && euid != 0
+            # can be removed when this paludis MR is merged:
+            # https://gitlab.exherbo.org/paludis/paludis/merge_requests/4
+            USER=paludisbuild
+
+            # The tests currently fail if run under sydbox.
+            esandbox disable
+            esandbox disable_net
+            test-dbus-daemon_run-tests meson_src_test
+            esandbox enable
+            esandbox enable_net
+        else
+            ewarn "The tests require a valid, initialised /etc/machine-id which you don't seem to"
+            ewarn "have. Please run /usr/bin/systemd-machine-id-setup and re-install systemd if you"
+            ewarn "want to run the tests."
+        fi
+    else
+        echo "cross compiled host, skipping tests"
+    fi
+}
+
+systemd_src_install() {
+    local host=$(exhost --target) alternatives=(
+        init ${PN} 1000
+        /usr/share/man/man1/init.1 ${PN}.init.1
+    )
+
+    local a
+    for a in halt poweroff reboot runlevel shutdown telinit; do
+        alternatives+=(
+            /usr/share/man/man8/${a}.8 ${PN}.${a}.8
+        )
+    done
+
+    meson_src_install
+
+    # alternatives
+    local a
+    for a in halt poweroff reboot runlevel shutdown telinit; do
+        dosym systemctl /usr/${host}/bin/${a}
+        alternatives+=(
+            /usr/${host}/bin/${a} ${PN}.${a}
+        )
+    done
+    dosym ../lib/systemd/systemd /usr/${host}/bin/init
+    alternatives+=(
+        /usr/${host}/bin/init ${PN}.init
+    )
+
+    keepdir /usr/${host}/lib/systemd/user-generators
+    keepdir /usr/${host}/lib/udev/devices
+    keepdir /usr/${host}/lib/systemd/system/graphical.target.wants
+    keepdir /usr/${host}/lib/systemd/system-generators
+    keepdir /usr/${host}/lib/systemd/system-shutdown
+    keepdir /usr/${host}/lib/systemd/user-generators
+    keepdir /usr/${host}/lib/environment.d
+    keepdir /usr/${host}/lib/modules-load.d
+    keepdir /usr/${host}/lib/sysctl.d
+    keepdir /usr/${host}/lib/binfmt.d
+    keepdir /usr/${host}/lib/tmpfiles.d
+    keepdir /usr/${host}/lib/systemd/system-sleep
+
+    alternatives_for "${alternatives[@]}"
+
+    alternatives_for installkernel ${PN} 100 \
+        /usr/$(exhost --target)/bin/installkernel kernel-install
+
+    # Install the legacy.conf tmpdirs.d config file.
+    # systemd does not install it itself if SysV compatibility is not enabled.
+    insinto /usr/${host}/lib/tmpfiles.d
+    doins "${MESON_SOURCE}"/tmpfiles.d/legacy.conf
+
+    insinto /etc
+
+    # Install a sample vconsole file
+    hereins vconsole.conf <<EOF
+# The console font to use.
+# If you want to use your kernel's defaults, comment out everything here.
+#FONT=
+FONT="lat9w-16"
+# The charset map file to use. Look in /usr/share/consoletrans for map files.
+#FONT_MAP=""
+#FONT_UNIMAP=""
+# The keyboard layout to use.
+KEYMAP="us"
+#KEYMAP_TOGGLE=""
+EOF
+
+    # Install a default hostname file
+    hereins hostname <<EOF
+localhost
+EOF
+
+    # Install a default machine-info file
+    hereins machine-info <<EOF
+# A human-readable UTF-8 machine identifier string. This should contain a name like
+# "Wulf's Notebook" which should be similar to the hostname (e. g. "wulfs-notebook")
+# but may differ if you prefer because it's used for presentation only (e. g. in GDM/KDM).
+PRETTY_HOSTNAME="My Computer"
+# An icon identifying this machine according to the XDG Icon Naming Specification.
+# http://standards.freedesktop.org/icon-naming-spec/icon-naming-spec-latest.html
+# The default value "computer" is the most basic fallback, you could use e. g.
+# "computer-laptop" or "computer-desktop".
+ICON_NAME=computer
+EOF
+
+    # Install a default *system* locale file
+    hereins locale.conf <<EOF
+# Here you configure the *system* locale, i. e. the locale daemons and other non-
+# interactive processes get. *Never* change anything here if you don't know *exactly*
+# what you're doing. For your user's locale, use an /etc/env.d file instead.
+# You must not use LC_ALL here.
+LANG=
+LC_CTYPE=en_US.UTF-8
+LC_NUMERIC=C
+LC_TIME=C
+LC_COLLATE=C
+LC_MONETARY=C
+LC_MESSAGES=C
+LC_PAPER=C
+LC_NAME=C
+LC_ADDRESS=C
+LC_TELEPHONE=C
+LC_MEASUREMENT=C
+LC_IDENTIFICATION=C
+EOF
+
+    # Don't create /var/log/journal, the user should do that
+    edo rm -r "${IMAGE}"/var/log/{journal,}
+    elog "Persistent logging to the systemd journal in /var/log/journal is disabled"
+    elog "by default because it is felt that logging decisions are best left to the"
+    elog "sysadmin."
+    elog ""
+    elog "For information on how to enable persistent logging, please consult the"
+    elog "systemd-journald man page."
+
+    # keepdir some stuff
+    keepdir /etc/systemd/session
+    keepdir /etc/systemd/system/getty.target.wants
+    keepdir /etc/systemd/system/graphical.target.wants
+    keepdir /etc/systemd/system/local-fs.target.wants
+    keepdir /etc/systemd/system/multi-user.target.wants
+    keepdir /etc/systemd/system/sysinit.target.wants
+    keepdir /etc/systemd/user
+    keepdir /var/lib/systemd
+
+    # Make sure /etc/machine-id exists.
+    [[ -f /etc/machine-id ]] || edo touch "${IMAGE}"/etc/machine-id
+
+    # Keep the administrator's environment.d configuration dir.
+    keepdir /etc/environment.d
+
+    # Module names in /etc/modules-load.d/?*.conf get read and the modules loaded.
+    keepdir /etc/modules-load.d
+
+    # Files in /etc/sysctl.d/?*.conf get read and applied via sysctl. Can be used
+    # in combination with sysctl.conf (sysctl.conf takes precedence over sysctl.d).
+    keepdir /etc/sysctl.d
+
+    # Files in /etc/binfmt.d/?*.conf contain a list of binfmt_misc kernel binary
+    # format rules. Those are used to configure additional binary formats to register
+    # during boot in the kernel.
+    keepdir /etc/binfmt.d
+
+    # Files in /etc/tmpfiles.d/?*.conf contain a list of files and/or directories.
+    # Those are automatically (re)created, removed, truncated,... during boot or after a specified time
+    # with specified owner, group and access mode.
+    keepdir /etc/tmpfiles.d
+
+    # Helper dirs for the kernel-install utility.
+    keepdir /etc/kernel/install.d
+    keepdir /usr/${host}/lib/kernel/install.d
+
+    # udev link-config rules files
+    keepdir /etc/systemd/network
+    keepdir /usr/${host}/lib/systemd/network
+
+    # Keep the administrator's udev rules dir.
+    keepdir /etc/udev/rules.d
+
+    # Keep the administrator's udev hardware database dir.
+    keepdir /etc/udev/hwdb.d
+
+    # Keep the administrator's override directives directories.
+    keepdir /etc/systemd/{coredump,journald,logind,resolved,system,timesyncd,user}.conf.d
+
+    # module loading configuration
+    insinto /etc/modprobe.d
+    doins "${FILES}"/blacklist.conf
+
+    # config protection
+    hereenvd 20udev <<EOT
+CONFIG_PROTECT_MASK="${UDEVRULESDIR}"
+EOT
+
+    # Create compatibility symlinks
+    dosym ../lib/systemd/systemd-udevd /usr/${host}/bin/udevd
+
+    # Exclude /var/tmp/paludis/build from cleaning
+    edo echo "x /var/tmp/paludis/build" >> "${IMAGE}"/usr/${host}/lib/tmpfiles.d/tmp.conf
+
+    # Remove unselected languages
+    for i in "${LANGUAGES[@]}"; do
+        local objects=()
+        objects=(
+            "${IMAGE}"/usr/${host}/lib/systemd/catalog/systemd.${i}.catalog
+            "${IMAGE}"/usr/share/locale/${i}
+        )
+        if ! option "linguas:${i}"; then
+            for o in "${objects[@]}"; do
+                [[ -e ${o} ]] && edo rm -r "${o}"
+            done
+            # Remove the mortal remains, empty shells of their former glory... ;-)
+            edo find "${IMAGE}"/usr/share/locale -type d -empty -delete
+        fi
+    done
+}
+
+systemd_pkg_postinst() {
+    default
+
+    if exhost --is-native -q && [[ ${ROOT} == / ]]; then
+        nonfatal edo /usr/${CHOST}/bin/systemd-machine-id-setup || ewarn "systemd-machine-id-setup failed"
+        nonfatal edo mkdir -p /var/lib/dbus || ewarn "mkdir /var/lib/dbus failed"
+        nonfatal edo ln -snf /etc/machine-id /var/lib/dbus/machine-id || ewarn "creating machine-id symlink failed"
+
+        # systemd >= 215 expects /usr to be touched at install phase
+        nonfatal edo touch /usr
+
+        # if the root of init does not match our root, we are in a chroot and should not perform the
+        # restart of the udev process
+        if [[ -r /proc/1/root && /proc/1/root -ef /proc/self/root/ ]]; then
+            if [[ -S /run/systemd/private ]]; then
+                # We are running systemd, use systemctl
+                esandbox allow_net --connect unix:/run/systemd/private
+                nonfatal edo systemctl --system daemon-reexec
+                nonfatal edo systemctl --system restart systemd-udevd.service
+                nonfatal edo systemctl --system restart systemd-journald.service
+            else
+                # No need to ewarn or something because udevd might not be running.
+                nonfatal edo pkill -TERM udevd
+                nonfatal edo sleep 1
+                nonfatal edo pkill -KILL udevd
+
+                case "$(esandbox api)" in
+                1)
+                    esandbox exec /usr/${CHOST}/bin/udevd --daemon || ewarn "udevd couldn't be restarted"
+                    ;;
+                0)
+                    # Change the wait mode to wait/eldest so
+                    # sydbox doesn't wait for udevd to exit.
+                    esandbox wait_eldest
+                    # Allow access to /run/udev/control for udevd
+                    esandbox allow_net unix:/run/udev/control
+                    nonfatal edo /usr/${CHOST}/bin/udevd --daemon || ewarn "udevd couldn't be restarted."
+                    ;;
+                esac
+            fi
+        fi
+    fi
+
+    # Update the hwdb index
+    nonfatal edo /usr/${CHOST}/bin/udevadm hwdb --root="${ROOT}" --update || ewarn "Updating hwdb failed (udevadm hwdb --update)"
+
+    # Update the message catalogue index
+    nonfatal edo /usr/${CHOST}/bin/journalctl --root="${ROOT}" --update-catalog || ewarn "Updating journal message catalogue failed (journalctl --update-catalog)"
+
+    # remove the old directories so systemd can automatically create symlinks for them pointing
+    # to the new location under /var/lib/private/systemd.
+    if [[ ! -L /var/lib/systemd/journal-upload ]] ; then
+        nonfatal edo rm -rf /var/lib/systemd/journal-upload
+    fi
+    # timesyncd changed the place where it stores its state
+    if [[ -L /var/lib/systemd/timesync ]] ; then
+        nonfatal edo rm /var/lib/systemd/timesync
+        nonfatal edo rm -rf /var/lib/private/systemd/timesync
+    fi
+    # Earlier the location was /var/lib/systemd/clock, so let's also clean it up.
+    # https://github.com/systemd/systemd/commit/53d133ea1bb4c4ed44c4b6aae42f1feb33d9cb78
+    if [[ -f /var/lib/systemd/clock ]] ; then
+        nonfatal edo rm -f /var/lib/systemd/clock
+    fi
+
+    if has_version 'sys-apps/systemd[>=242]'; then
+        ewarn "Prior to systemd 242, some services were enabled by default."
+        ewarn "You now need to enable those manually if you want to use them:"
+        ewarn "systemd-networkd systemd-timesyncd systemd-resolved getty@tty1"
+    fi
+
+    local cruft=(
+        "${ROOT}"/etc/init.d/sysinit.bash
+        "${ROOT}"/etc/systemd/{systemd-journald.conf,systemd-logind.conf}
+    )
+    for file in "${cruft[@]}"; do
+        if [[ -f ${file} || -L ${file} ]]; then
+            nonfatal edo rm "${file}" || ewarn "removing ${file} failed"
+        fi
+    done
+
+    local renamed=( "${ROOT}"/etc/locale "${ROOT}"/etc/vconsole )
+    for file in "${renamed[@]}"; do
+        if [[ -f ${file} ]] ; then
+            nonfatal edo mv "${file}" "${file}".conf || ewarn "moving ${file} failed"
+        fi
+    done
+
+    alternatives_pkg_postinst
+}
+

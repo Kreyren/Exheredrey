@@ -1,0 +1,47 @@
+# Copyright 2014 Jorge Aparicio
+# Copyright 2018 Rasmus Thomsen <cogitri@exherbo.org>
+# Distributed under the terms of the GNU General Public License v2
+
+require qmake [ slot=5 ]
+
+SUMMARY="Qt build suite"
+HOMEPAGE="https://doc.qt.io/${PN}"
+DOWNLOADS="mirror://qt/official_releases/${PN}/${PV}/${PN}-src-${PV}.tar.gz"
+
+LICENCES="LGPL-2.1"
+SLOT="0"
+PLATFORMS="~amd64"
+
+DEPENDENCIES="
+    build+run:
+        x11-libs/qtbase:5[>=5.9.0]
+        x11-libs/qtscript:5[>=5.9.0]
+"
+
+WORK="${WORKBASE}/${PN}-src-${PV}"
+
+# Wants to write to /etc/xdg and fails multiple tests
+RESTRICT="test"
+
+EQMAKE_PARAMS=(
+    QBS_INSTALL_PREFIX=/usr/$(exhost --target)
+    QBS_LIBRARY_DIRNAME=lib
+    CONFIG+="qbs_enable_project_file_updates nostrip"
+)
+
+src_compile() {
+    esandbox allow_net "unix:${TEMP}/qbs_processlauncher-*"
+
+    default
+
+    esandbox disallow_net "unix:${TEMP}/qbs_processlauncher-*"
+}
+
+src_test() {
+    esandbox allow_net "unix:${TEMP}/qbs_processlauncher-*"
+
+    default
+
+    esandbox disallow_net "unix:${TEMP}/qbs_processlauncher-*"
+}
+

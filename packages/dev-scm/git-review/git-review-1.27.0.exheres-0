@@ -1,0 +1,36 @@
+# Copyright 2013 Jorge Aparicio
+# Distributed under the terms of the GNU General Public License v2
+
+require pypi setup-py [ import=setuptools has_bin=true ]
+
+SUMMARY="A git command for submitting branches to Gerrit"
+DESCRIPTION="
+git-review is a tool that helps submitting git branches to gerrit for review.
+"
+HOMEPAGE+="
+    https://git.openstack.org/cgit/openstack-infra/${PN}
+    https://launchpad.net/${PN}
+"
+
+BUGS_TO="philantrop@exherbo.org"
+
+LICENCES="Apache-2.0"
+SLOT="0"
+PLATFORMS="~amd64 ~arm ~armv7 ~x86"
+MYOPTIONS=""
+
+# "Running tests for git-review means running a local copy of Gerrit"
+RESTRICT="test"
+
+DEPENDENCIES="
+    build+run:
+        dev-python/pbr[python_abis:*(-)?]
+        dev-python/pip[python_abis:*(-)?]
+        dev-python/requests[>=1.1][python_abis:*(-)?]
+    test:
+        dev-python/fixtures[>=0.3.14][python_abis:*(-)?]
+        dev-python/hacking[>=0.10.0&<0.11][python_abis:*(-)?]
+        dev-python/testrepository[>=0.0.18][python_abis:*(-)?]
+        dev-python/testtools[>=0.9.34][python_abis:*(-)?]
+"
+
