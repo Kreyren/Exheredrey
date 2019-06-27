@@ -1,0 +1,38 @@
+# Copyright 2008 Kim Højgaard-Hansen
+# Distributed under the terms of the GNU General Public License v2
+
+require sourceforge [ suffix=tar.xz ]
+
+SUMMARY="The Multiple Network Graphics reference library"
+
+LICENCES="ZLIB"
+SLOT="0"
+PLATFORMS="~amd64 ~armv8 ~x86"
+MYOPTIONS="
+    lcms
+    ( providers: ijg-jpeg jpeg-turbo ) [[ number-selected = exactly-one ]]
+"
+
+DEPENDENCIES="
+    build+run:
+        sys-libs/zlib
+        lcms? ( media-libs/lcms2 )
+        providers:ijg-jpeg? ( media-libs/jpeg:= )
+        providers:jpeg-turbo? ( media-libs/libjpeg-turbo )
+"
+
+DEFAULT_SRC_PREPARE_PATCHES=( "${FILES}"/${PNV}-jpeg-9a.patch )
+
+DEFAULT_SRC_CONFIGURE_PARAMS=( --disable-static --without-lcms )
+DEFAULT_SRC_CONFIGURE_OPTION_WITHS=( 'lcms lcms2' )
+
+DEFAULT_SRC_INSTALL_EXTRA_DOCS=( README.examples doc/{${PN}.txt,doc.readme} )
+
+src_prepare() {
+    default
+
+    # fix build with lcms option disabled
+    # source directory already configured; run "make distclean" there first
+    edo rm config.{h,status}
+}
+

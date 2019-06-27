@@ -1,0 +1,77 @@
+# Copyright 2007, 2009 Bryan Østergaard <kloeri@exherbo.org>
+# Distributed under the terms of the GNU General Public License v2
+
+require gnu [ suffix=tar.xz ] elisp [ with_opt=true ] toolchain-funcs
+
+SUMMARY="GNU localization utilties"
+
+LICENCES="GPL-3"
+SLOT="0"
+PLATFORMS="~amd64 ~arm ~armv7 ~armv8 ~x86"
+MYOPTIONS="
+    acl
+    emacs
+    examples
+    openmp
+"
+
+DEPENDENCIES="
+    build:
+        sys-devel/bison
+    build+run:
+        dev-libs/libxml2:2.0[>=2.9.3]
+        sys-libs/ncurses
+        acl? ( sys-apps/acl )
+        emacs? ( app-editors/emacs )
+        openmp? ( sys-libs/libgomp:= )
+"
+
+src_configure() {
+    econf \
+        --htmldir=/usr/share/doc/${PNVR}/html   \
+        --enable-curses                         \
+        --disable-csharp                        \
+        --disable-java                          \
+        --disable-native-java                   \
+        --disable-rpath                         \
+        --disable-static                        \
+        --with-included-glib                    \
+        --with-included-libcroco                \
+        --with-included-libunistring            \
+        --without-cvs                           \
+        --without-git                           \
+        --without-included-gettext              \
+        --without-included-libxml               \
+        $(option_enable acl)                    \
+        $(option_enable openmp)                 \
+        $(option_with emacs)                    \
+        $(if [[ $(exhost --target) == *-musl* ]];then
+            # NOTE(somasis) musl provides its own gettext API; we only need the utilities, basically.
+            echo --disable-nls
+        else
+            echo --enable-nls
+        fi)
+}
+
+src_compile() {
+    default
+}
+
+src_test() {
+    esandbox allow_net --bind "inet:127.0.0.1@80"
+    esandbox allow_net --connect "inet:127.0.0.1@80"
+
+    default
+
+    esandbox disallow_net --connect "inet:127.0.0.1@80"
+    esandbox disallow_net --bind "inet:127.0.0.1@80"
+}
+
+src_install() {
+    default
+
+    option emacs && elisp-install-site-file
+    option examples || edo rm -r "${IMAGE}"/usr/share/doc/${PNVR}/examples
+    edo rm -r "${IMAGE}"/usr/share/doc/${PNVR}/html/{csharpdoc,javadoc2}
+}
+

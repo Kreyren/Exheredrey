@@ -1,0 +1,11 @@
+# Copyright 2018 Bjorn Pagen <bjornpagen@gmail.com>
+# Distributed under the terms of the GNU General Public License v2
+
+require fribidi
+
+PLATFORMS="~amd64 ~armv7 ~armv8 ~x86"
+
+DEFAULT_SRC_PREPARE_PATCHES=(
+    "${FILES}"/${PN}-Build-generator-executables-natively.patch
+)
+

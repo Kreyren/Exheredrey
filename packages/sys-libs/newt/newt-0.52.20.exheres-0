@@ -1,0 +1,46 @@
+# Copyright 2010 Maxime Coste
+# Distributed under the terms of the GNU General Public License v2
+
+require pagure
+
+SUMMARY="Programming library for color text mode, widget based user interfaces"
+
+BUGS_TO="frrrwww@gmail.com"
+
+LICENCES="LGPL-2"
+SLOT="0"
+PLATFORMS="~amd64 ~x86"
+MYOPTIONS="
+    python
+    tcl
+"
+
+DEPENDENCIES="
+    build:
+        sys-devel/gettext
+    build+run:
+        dev-libs/popt
+        sys-libs/slang
+        python? ( dev-lang/python:= )
+        tcl? ( dev-lang/tcl )
+    suggestion:
+        sys-libs/gpm [[ description = [ Console-based mouse input support via sys-libs/gpm ] ]]
+"
+
+DEFAULT_SRC_CONFIGURE_PARAMS=(
+    --enable-nls
+    --with-gpm-support
+)
+DEFAULT_SRC_CONFIGURE_OPTION_WITHS=( python tcl )
+
+DEFAULT_SRC_INSTALL_PARAMS=( INSTALL=install )
+
+src_prepare() {
+    # TODO: report upstream
+    edo sed \
+        -e "s/ar rv/${AR} rv/" \
+        -i Makefile.in
+
+    default
+}
+

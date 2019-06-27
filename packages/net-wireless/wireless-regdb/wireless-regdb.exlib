@@ -1,0 +1,43 @@
+# Copyright 2009 Daniel Mierswa <impulze@impulze.org>
+# Distributed under the terms of the GNU General Public License v2
+
+export_exlib_phases src_prepare src_configure src_compile
+
+SUMMARY="Regulatory domain database"
+DESCRIPTION="
+Provides 'regulatory.bin'. A signed newly maintained regulatory database
+which can be used by other programs or operating systems.
+"
+HOMEPAGE="https://wireless.wiki.kernel.org/en/developers/regulatory/${PN}"
+DOWNLOADS="mirror://kernel/software/network/${PN}/${PNV}.tar.xz"
+
+UPSTREAM_DOCUMENTATION="https://wireless.wiki.kernel.org/en/developers/Regulatory#Theregulatorydatabase"
+
+LICENCES="ISC"
+SLOT="0"
+MYOPTIONS=""
+
+DEPENDENCIES=""
+
+DEFAULT_SRC_INSTALL_PARAMS=(
+    CRDA_PATH=/usr/share/crda
+    FIRMWARE_PATH=/usr/$(exhost --target)/lib/firmware
+)
+
+wireless-regdb_src_prepare() {
+    default
+
+    # sed "/^install: /s:regulatory.bin.5.gz::"
+    edo sed \
+        -e "/regulatory.bin.5.gz/s:.gz::g" \
+        -i Makefile
+}
+
+wireless-regdb_src_configure() {
+    :
+}
+
+wireless-regdb_src_compile() {
+    :
+}
+

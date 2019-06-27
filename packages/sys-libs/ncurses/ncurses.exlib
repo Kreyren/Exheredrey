@@ -1,0 +1,191 @@
+# Copyright 2009, 2012 Saleem Abdulrasool <compnerd@compnerd.org>
+# Distributed under the terms of the GNU General Public License v2
+
+# TODO: UPDATE when SONAME changes
+NCURSES_SO_MAJOR="6"
+NCURSES_COMPAT_SO_MAJOR="5"
+
+require gnu [ suffix=tar.gz ]
+
+export_exlib_phases pkg_pretend src_configure src_compile src_install
+
+SUMMARY="Free software emulation of curses using terminfo formats"
+
+LICENCES="as-is"
+SLOT="0"
+MYOPTIONS="
+    compat-libs [[ description = [ Install ABI 5 libraries for upgrading ] ]]
+    gpm
+    parts: binaries data development documentation libraries
+"
+
+DEPENDENCIES="
+    build+run:
+        gpm? ( sys-libs/gpm )
+"
+
+ECONF_SOURCE=${WORK}
+
+ncurses_pkg_pretend() {
+    if exhost --is-native >/dev/null 2>&1 && ! option compat-libs && \
+        has_version ${CATEGORY}/${PN} && \
+        ! has_version ${CATEGORY}/${PN}[=$(ever major)*] ; then
+        ewarn "To install a different major version of ncurses, you have to enable the compat-libs"
+        ewarn "option and re-install all packages depending on ncurses before being able to disable"
+        ewarn "it again, else bash and with it paludis will be broken. gcc and gmp seem affected as well."
+        ewarn "cave resolve -D ncurses gmp gcc"
+        die "Set the compat-libs option before doing a major version upgrade of ncurses."
+    fi
+}
+
+ncurses_src_configure() {
+    local myconf=(
+        --hates=datarootdir
+        --hates=docdir
+        --enable-colorfgbg
+        --enable-hard-tabs
+        --enable-overwrite
+        --enable-pc-files
+        --enable-termcap
+        --with-build-cc=/usr/$(exhost --build)/bin/$(exhost --build)-cc
+        --with-cxx-shared
+        --with-normal
+        --with-pkg-config=/usr/$(exhost --target)/lib/pkgconfig
+        --with-pkg-config-libdir=/usr/$(exhost --target)/lib/pkgconfig
+        --with-shared
+        --with-xterm-kbs=DEL
+        --without-ada
+        --without-hashed-db
+        $(option_with gpm)
+    )
+
+    if ever at_least 6.1 ; then
+        myconf+=(
+            --without-debug
+            --disable-stripping
+        )
+    fi
+
+    if option compat-libs ; then
+        edo mkdir -p "${WORKBASE}/build/narrow5"
+        edo cd "${WORKBASE}/build/narrow5"
+            econf \
+                "${myconf[@]}" \
+                --disable-widec \
+                --with-chtype=long \
+                --with-abi-version=5 \
+                --without-progs
+        edo mkdir -p "${WORKBASE}/build/wide5"
+        edo cd "${WORKBASE}/build/wide5"
+            econf \
+                "${myconf[@]}" \
+                --includedir=/usr/$(exhost --target)/include/ncursesw \
+                --enable-widec \
+                --with-chtype=long \
+                --with-abi-version=5 \
+                --without-progs
+    fi
+
+    edo mkdir -p "${WORKBASE}/build/narrow"
+    edo cd "${WORKBASE}/build/narrow"
+
+    # TODO(compnerd) figure out how to deal with clang
+    #    --localstatedir=/var \ # <- needed?
+    econf \
+        "${myconf[@]}" \
+        --disable-widec
+
+    edo mkdir -p "${WORKBASE}/build/wide"
+    edo cd "${WORKBASE}/build/wide"
+
+    # TODO(compnerd) figure out how to deal with clang
+    #    --localstatedir=/var \ # <- needed?
+    econf \
+        "${myconf[@]}" \
+        --includedir=/usr/$(exhost --target)/include/ncursesw \
+        --enable-widec
+
+    edo mkdir -p "${WORKBASE}/build/narrowthreads"
+    edo cd "${WORKBASE}/build/narrowthreads"
+
+    # TODO(compnerd) figure out how to deal with clang
+    #    --localstatedir=/var \ # <- needed?
+    econf \
+        "${myconf[@]}" \
+        --includedir=/usr/$(exhost --target)/include/ncursest \
+        --enable-reentrant \
+        --disable-widec \
+        --with-pthread
+
+    edo mkdir -p "${WORKBASE}/build/widethreads"
+    edo cd "${WORKBASE}/build/widethreads"
+
+    # TODO(compnerd) figure out how to deal with clang
+    #    --localstatedir=/var \ # <- needed?
+    econf \
+        "${myconf[@]}" \
+        --includedir=/usr/$(exhost --target)/include/ncursestw \
+        --enable-reentrant \
+        --enable-widec \
+        --with-pthread
+}
+
+ncurses_src_compile() {
+    if option compat-libs ; then
+        edo cd "${WORKBASE}/build/narrow5"
+        default
+        edo cd "${WORKBASE}/build/wide5"
+        default
+    fi
+
+    edo cd "${WORKBASE}/build/narrow"
+    default
+
+    edo cd "${WORKBASE}/build/wide"
+    default
+
+    edo cd "${WORKBASE}/build/narrowthreads"
+    default
+
+    edo cd "${WORKBASE}/build/widethreads"
+    default
+}
+
+ncurses_src_install() {
+    if option compat-libs ; then
+        edo cd "${WORKBASE}/build/narrow5"
+        emake -j1 DESTDIR="${IMAGE}" install.libs
+        edo cd "${WORKBASE}/build/wide5"
+        emake -j1 DESTDIR="${IMAGE}" install.libs
+        edo rm "${IMAGE}"/usr/$(exhost --target)/bin/ncurses{,w}5-config
+
+        # binary compatibility with debian etc.
+        edo ln -s libncurses.so.${NCURSES_COMPAT_SO_MAJOR} \
+            "${IMAGE}"/usr/$(exhost --target)/lib/libtinfo.so.${NCURSES_COMPAT_SO_MAJOR}
+    fi
+
+    edo cd "${WORKBASE}/build/narrow"
+    emake -j1 DESTDIR="${IMAGE}" install
+
+    edo cd "${WORKBASE}/build/wide"
+    emake -j1 DESTDIR="${IMAGE}" install
+
+    edo cd "${WORKBASE}/build/narrowthreads"
+    emake -j1 DESTDIR="${IMAGE}" install
+
+    edo cd "${WORKBASE}/build/widethreads"
+    emake -j1 DESTDIR="${IMAGE}" install
+
+    # binary compatibility with debian etc.
+    edo ln -s libncurses.so.${NCURSES_SO_MAJOR} \
+        "${IMAGE}"/usr/$(exhost --target)/lib/libtinfo.so.${NCURSES_SO_MAJOR}
+    edo ln -s libncurses.so \
+        "${IMAGE}"/usr/$(exhost --target)/lib/libtinfo.so
+
+    expart binaries /usr/$(exhost --target)/bin
+    expart data /usr/share
+    expart documentation /usr/share/man
+    expart libraries /usr/$(exhost --target)/lib
+    expart development /usr/$(exhost --target)/{include,lib/pkgconfig}
+}
+

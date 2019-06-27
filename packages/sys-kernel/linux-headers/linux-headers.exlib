@@ -1,0 +1,120 @@
+# Copyright 2007 Bryan Østergaard <kloeri@exherbo.org>
+# Copyright 2010 Sterling X. Winter <replica@exherbo.org>
+# Copyright 2012 Saleem Abdulrasool <compnerd@compnerd.org>
+# Distributed under the terms of the GNU General Public License v2
+
+require kernel.org [ repo=linux/kernel/git/stable/linux-stable ]
+require kernel
+
+export_exlib_phases pkg_pretend src_prepare src_compile src_install
+
+myexparam path=
+
+if ever at_least 3.0 ; then
+    DOWNLOADS="mirror://kernel/linux/kernel/v$(ever major).x/$(exparam path)/linux-${PV}.tar.xz"
+else
+    DOWNLOADS="mirror://kernel/linux/kernel/v$(ever range 1-2)/$(exparam path)/linux-${PV}.tar.bz2"
+fi
+
+SUMMARY="Linux kernel headers"
+HOMEPAGE="https://www.kernel.org"
+
+LICENCES="GPL-2"
+SLOT="0"
+MYOPTIONS=""
+
+RESTRICT="test"
+
+DEPENDENCIES=""
+
+WORK="${WORKBASE}/linux-${PV}"
+
+_linux_headers_arch() {
+    local host=$(exhost --target)
+
+    case "${host}" in
+    aarch64-*-linux-*)
+        echo arm64
+        ;;
+    arm*-*-linux-*)
+        echo arm
+        ;;
+    i686-*-linux-*)
+        echo i386
+        ;;
+    ia64-*-linux-*)
+        echo ia64
+        ;;
+    powerpc64-*-linux-*)
+        echo powerpc
+        ;;
+    x86_64-*-linux-*)
+        echo x86_64
+        ;;
+    *)
+        die "Unsupported host '${host}', please update linux-headers.exlib"
+        ;;
+    esac
+}
+
+linux-headers_pkg_pretend() {
+    if ! kernel_version_at_least ${PV} ; then
+        ewarn "Kernel headers version mismatch: Installing kernel headers newer than the"
+        ewarn "running kernel can break your system. Do not proceed unless you know what"
+        ewarn "you're doing."
+    fi
+
+    if [[ $(exhost --target) == *-musl* ]] && ! ever at_least 4.4;then
+        eerror "This kernel version is not supported for musl targets as it will result in errors"
+        eerror "when attempting to build packages that use the headers. If you really need an older"
+        eerror "version of the kernel, please submit a patch."
+        die "Kernel version v${PV} is unsupported on musl."
+    fi
+}
+
+linux-headers_src_prepare() {
+    default
+    if [[ $(exhost --target) == *-musl* ]] && ! ever at_least 4.15;then
+        # NOTE(somasis): 4.4 uses backported patches from 4.15
+        if ever at_least 4.5;then
+            einfo "Please note that patches are being applied to ${PN} for musl support."
+            einfo "This means you will likely not get any support from the kernel upstream with issues"
+            einfo "relating to the userspace headers."
+        fi
+        einfo "It is recommended that you upgrade to sys-kernel/linux-headers-4.15, as that is the"
+        einfo "first version to have official, non-backported musl support."
+
+        if [[ -f "${FILES}"/${PNV}-musl.patch ]];then
+            expatch "${FILES}"/${PNV}-musl.patch
+        else
+            die "No patch for musl support could be found. A patch is required for musl support" \
+                "for versions earlier than 4.15. Please upgrade your kernel version, or submit a patch."
+        fi
+    fi
+}
+
+linux-headers_src_compile() {
+    :
+}
+
+# TODO(?) need to sanitize headers at some point
+linux-headers_src_install() {
+    local target=$(exhost --target)
+
+    edo mkdir -p "${IMAGE}/usr/${target}"
+    edo emake                                     \
+        ARCH=$(_linux_headers_arch)               \
+        CROSS_COMPILE=$(exhost --tool-prefix)     \
+        HOSTCC="${CHOST}-cc"                      \
+        INSTALL_HDR_PATH="${IMAGE}/usr/${target}" \
+        headers_install
+    edo find "${IMAGE}/usr/${target}/include" -name '.install' -delete -or \
+                                              -name '..install.cmd' -delete
+
+    # scsi.h is now provided by sys-libs/glibc
+    ever at_least 2.6.35 || edo rm "${IMAGE}"/usr/${target}/include/scsi/scsi.h
+
+    # nuke empty directory
+    ever at_least 3.8 && ! ever at_least 4.12 && edo rmdir "${IMAGE}"/usr/${target}/include/uapi
+}
+

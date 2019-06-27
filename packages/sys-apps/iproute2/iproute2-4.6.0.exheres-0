@@ -1,0 +1,12 @@
+# Copyright 2008 Daniel Mierswa <impulze@impulze.org>
+# Distributed under the terms of the GNU General Public License v2
+
+require iproute2
+
+PLATFORMS="~amd64 ~arm ~x86"
+
+DEFAULT_SRC_PREPARE_PATCHES=(
+    "${FILES}"/${PNV}-musl.patch
+    "${FILES}"/${PN}-tc-include-stdint.h-explicitly-for-UINT16_MAX.patch
+)
+

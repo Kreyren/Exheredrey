@@ -1,0 +1,325 @@
+# Copyright 2018 Bjorn Pagen <bjornpagen@gmail.com>
+# Copyright 2012 Elias Pipping <pipping@exherbo.org>
+# Distributed under the terms of the GNU General Public License v2
+
+if ever is_scm ; then
+    SCM_REPOSITORY="https://git.llvm.org/git/clang.git"
+
+    SCM_llvm_REPOSITORY="https://git.llvm.org/git/llvm.git"
+    # We need that to keep compatibility with the below -DLLVM_MAIN_SRC_DIR
+    SCM_llvm_UNPACK_TO="llvm-${PV}.src"
+    SCM_tools_extra_REPOSITORY="https://git.llvm.org/git/clang-tools-extra.git"
+    SCM_SECONDARY_REPOSITORIES="llvm tools_extra"
+
+    require scm-git
+else
+    MY_PNV=cfe-${PV}.src
+    WORK=${WORKBASE}/${MY_PNV}
+
+    if [[ ${PV} == *rc* ]]; then
+        DOWNLOADS="
+            https://prereleases.llvm.org/${PV%*rc*}/rc${PV#*rc}/cfe-${PV}.src.tar.xz
+            https://prereleases.llvm.org/${PV%*rc*}/rc${PV#*rc}/clang-tools-extra-${PV}.src.tar.xz
+            https://prereleases.llvm.org/${PV%*rc*}/rc${PV#*rc}/llvm-${PV}.src.tar.xz"
+    else
+        DOWNLOADS="
+            https://llvm.org/releases/${PV}/cfe-${PV}.src.tar.xz
+            https://llvm.org/releases/${PV}/clang-tools-extra-${PV}.src.tar.xz
+            https://llvm.org/releases/${PV}/llvm-${PV}.src.tar.xz"
+    fi
+fi
+
+require alternatives
+require cmake [ api=2 ]
+require python [ blacklist=none with_opt=true multibuild=false ]
+
+export_exlib_phases src_unpack src_prepare src_configure src_compile src_test src_install
+
+SUMMARY="C language family frontend for LLVM"
+HOMEPAGE="https://clang.llvm.org/"
+
+if ever at_least 9.0; then
+    LICENCES="Apache-2.0-with-LLVM-exception"
+else
+    LICENCES="UoI-NCSA"
+fi
+
+# See http://blog.llvm.org/2016/12/llvms-new-versioning-scheme.html for more info
+# In "X.Y.Z", X is major release, Y is minor release, and Z is "patch" release
+# Major version is the slot, except for any LLVM with major-release < 4
+
+if [[ ${PV} == scm ]]; then
+    SLOT="9"
+elif ever is_scm ; then
+    SLOT="${PV%-scm}"
+else
+    SLOT="$(ever major)"
+fi
+
+DEPENDENCIES="
+    build:
+        dev-lang/perl:*
+        sys-devel/flex
+        doc? ( dev-python/Sphinx )
+    build+run:
+        dev-lang/llvm:${SLOT}
+        dev-libs/libxml2:2.0[>=2.5.3]
+    run:
+        sys-libs/libgcc:*
+        !dev-lang/clang:0[<5.0.1-r1] [[
+            description = [ Old, unslotted clang not supported ]
+            resolution = upgrade-blocked-before
+        ]]
+        !sys-devel/gcc:4.9[<4.9.2-r8] [[
+            description = [ Alternatives conflict ]
+            resolution = upgrade-blocked-before
+        ]]
+        !sys-devel/gcc:5.1[<5.2.0-r2] [[
+            description = [ Alternatives conflict ]
+            resolution = upgrade-blocked-before
+        ]]
+    post:
+        app-admin/eclectic-clang[targets:*(-)?]
+    suggestion:
+        dev-libs/compiler-rt [[
+            description = [ Sanitizer runtimes for clang ]
+        ]]
+        sys-libs/openmp [[
+            description = [ OpenMP runtime for clang ]
+        ]]
+"
+
+# clang is a cross compiler and can compile for any target without a
+# new binary being compiled for the target. this is only used for the
+# creation of the symlinks for targets; /usr/${CHOST}/bin/${target}-clang
+CROSS_COMPILE_TARGETS="
+    aarch64-unknown-linux-gnueabi
+    armv7-unknown-linux-gnueabi
+    armv7-unknown-linux-gnueabihf
+    i686-pc-linux-gnu
+    i686-pc-linux-musl
+    powerpc64-unknown-linux-gnu
+    x86_64-pc-linux-gnu
+    x86_64-pc-linux-musl
+"
+
+MYOPTIONS="
+    doc python
+    ( targets: ${CROSS_COMPILE_TARGETS} ) [[ number-selected = at-least-one ]]
+"
+
+DEFAULT_SRC_PREPARE_PATCHES=(
+    "${FILES}"/clang-scm-lit.cfg-use-PATH.patch
+)
+
+LLVM_PREFIX="/usr/$(exhost --target)/lib/llvm/${SLOT}"
+
+clang_src_unpack() {
+    cmake_src_unpack
+
+    if ever is_scm; then
+        edo mv tools_extra "${CMAKE_SOURCE}"/tools/extra
+    else
+        edo mv clang-tools-extra-${PV}.src "${CMAKE_SOURCE}"/tools/extra
+    fi
+}
+
+clang_src_prepare() {
+    edo pushd "${CMAKE_SOURCE}"
+
+    # ld tests will fail because of Exherbo's non-standard path for ld
+    edo rm test/Driver/{dyld-prefix.c,linux-ld.c,mips-cs.cpp}
+
+    # The build system doesn't pick up that LLVM has zlib support when doing a standalone build
+    edo rm test/Driver/nozlibcompress.c
+
+    # Fix the use of dot
+    edo sed -e 's/@DOT@//g' -i docs/doxygen.cfg.in
+    default
+
+    edo popd
+}
+
+clang_src_configure() {
+    # TODO(compnerd) hidden inline visibility causes test tools to fail to build as a required
+    # method is hidden; move the definition out of line, and export the interface
+    local args=(
+        -DCLANG_INCLUDE_TESTS:BOOL=$(expecting_tests TRUE FALSE)
+        -DLLVM_CONFIG:STRING=${LLVM_PREFIX}/bin/llvm-config
+
+        # install clang to a slotted directory to prevent collisions with other clangs
+        -DCMAKE_INSTALL_PREFIX:STRING=${LLVM_PREFIX}
+        -DCMAKE_INSTALL_MANDIR:STRING=${LLVM_PREFIX}/share/man
+
+        -DSUPPORTS_FVISIBILITY_INLINES_HIDDEN_FLAG:BOOL=NO
+
+        # these options don't get propagated correctly
+        -DLLVM_ENABLE_EH:BOOL=TRUE
+        -DLLVM_ENABLE_RTTI:BOOL=TRUE
+
+        # Required for lit ( tests )
+        -DLLVM_MAIN_SRC_DIR="${WORKBASE}/llvm-${PV}.src"
+        -DLLVM_LIT_ARGS:STRING="-sv"
+
+        -DPYTHON_EXECUTABLE:PATH="${PYTHON}"
+    )
+
+    ecmake "${args[@]}"
+}
+
+clang_src_compile() {
+    default
+
+    if option doc; then
+        edo pushd "${CMAKE_SOURCE}"/docs
+        emake -f Makefile.sphinx man html
+        edo popd
+    fi
+}
+
+clang_src_test() {
+    PATH="${LLVM_PREFIX}/libexec:${PATH}" \
+        CLANG="${PWD}/bin/clang" \
+        emake clang-test
+}
+
+clang_src_install() {
+    default
+
+    # CMake gives us:
+    # - clang-X.Y
+    # - clang -> clang-X.Y
+    # - clang++, clang-cl, clang-cpp -> clang
+    # We want:
+    # - clang-X
+    # - clang++-X, clang-cl-X, clang-cpp-X -> clang-X
+    # - clang, clang++, clang-cl, clang-cpp -> clang*-X
+
+    edo pushd "${IMAGE}${LLVM_PREFIX}"/bin
+
+    # Change clang-X.Y to clang-X
+    # We do this since that is what upstream does all LLVM releases > 6
+    if ! ever at_least 7; then
+        edo mv clang-${SLOT}.* clang-${SLOT}
+        # Compatibility symlink to keep reference in cmake config intact
+        edo ln -s clang-${SLOT} clang-$(ever range 1-2)
+    fi
+
+    # Symlink versioned clang binaries
+    for bin in {clang++,clang-cl,clang-cpp}-${SLOT}; do
+        edo ln -s clang-${SLOT} ${bin}
+    done
+
+    # Symlink unversioned clang binaries
+    for bin in {clang,clang++,clang-cl,clang-cpp}; do
+        edo nonfatal rm ${bin}
+        edo ln -s ${bin}-${SLOT} ${bin}
+    done
+
+    edo popd
+
+    edo pushd "${CMAKE_SOURCE}"
+
+    if option doc; then
+        edo pushd docs/_build
+        edo cp -t "${IMAGE}${LLVM_PREFIX}"/share/man/man1 man/*
+        dodoc -r html
+        edo popd
+    fi
+
+    edo popd
+
+    if option doc; then
+        edo pushd "${IMAGE}${LLVM_PREFIX}"/share/man/man1
+        edo ln -s clang.1 clang++.1
+        edo ln -s clang.1 clang-cl.1
+        edo ln -s clang.1 clang-cpp.1
+        dodir "/usr/share/man/man1"
+        for bin in {clang,clang++,clang-cl,clang-cpp}; do
+            edo ln -s ${bin}.1 ${bin}-${SLOT}.1
+            dosym "${LLVM_PREFIX}/share/man/man1/${bin}-${SLOT}.1" "/usr/share/man/man1/${bin}-${SLOT}.1"
+        done
+        edo popd
+    fi
+
+    if option python ; then
+        for abi in ${PYTHON_FILTERED_ABIS} ; do
+            if option python_abis:${abi} ; then
+                insinto $(python_get_sitedir)/clang
+                doins "${CMAKE_SOURCE}"/bindings/python/clang/*.py
+            fi
+        done
+        python_bytecompile
+    fi
+
+    # Symlinked versioned clang binaries to /usr/$(exhost --target)/bin
+    dodir "/usr/$(exhost --target)/bin"
+    for bin in {clang,clang++,clang-cl,clang-cpp}-${SLOT}; do
+        dosym "${LLVM_PREFIX}/bin/${bin}" "/usr/$(exhost --target)/bin/${bin}"
+    done
+
+    # Symlink libclang
+    dodir "/usr/$(exhost --target)/lib"
+    edo pushd "${IMAGE}${LLVM_PREFIX}"/lib
+    for lib in $(ls libclang.so.${SLOT}*); do
+        dosym "${LLVM_PREFIX}/lib/${lib}" "/usr/$(exhost --target)/lib/${lib}"
+    done
+    edo popd
+
+    # We manage alternatives for clang here, and manage alternatives for cc in "app-admin/eclectic-clang"
+    local alternatives=()
+
+    # Symlink all clang tools
+    edo pushd "${IMAGE}${LLVM_PREFIX}"/bin
+    for bin in $(ls); do
+        if [[ ${bin} == *-${SLOT} ]]; then
+            dosym "${LLVM_PREFIX}/bin/${bin}" "/usr/$(exhost --target)/bin/${bin}"
+        else
+            alternatives+=("/usr/$(exhost --target)/bin/${bin}" "${LLVM_PREFIX}/bin/${bin}")
+        fi
+    done
+    edo popd
+
+    # Ban unwanted binaries
+    for bin in {clang,clang++}; do
+        dobanned "${bin}-${SLOT}"
+        alternatives+=("${BANNEDDIR}/${bin}" "${bin}-${SLOT}")
+    done
+
+    # Symlink manpages
+    edo pushd "${IMAGE}${LLVM_PREFIX}"/share/man/man1
+    for page in $(ls); do
+        if [[ ${page} == *-${SLOT}.1 ]]; then
+            dosym "${LLVM_PREFIX}/share/man/man1/${page}" "/usr/share/man/man1/${page}"
+        else
+            alternatives+=("/usr/share/man/man1/${page}" "${LLVM_PREFIX}/share/man/man1/${page}")
+        fi
+    done
+    edo popd
+
+    # Symlink clang targets
+    for bin in {clang,clang-cpp,clang++}; do
+        for target in ${CROSS_COMPILE_TARGETS}; do
+            if option targets:${target}; then
+                edo pushd "${IMAGE}${LLVM_PREFIX}"/bin
+                edo ln -s ${bin} ${target}-${bin}
+                edo ln -s ${bin}-${SLOT} ${target}-${bin}-${SLOT}
+                edo popd
+                alternatives+=( /usr/$(exhost --target)/bin/${target}-${bin} ${LLVM_PREFIX}/bin/${target}-${bin} )
+                dosym "${LLVM_PREFIX}/bin/${target}-${bin}-${SLOT}" "/usr/$(exhost --target)/bin/${target}-${bin}-${SLOT}"
+
+                if option doc; then
+                    edo pushd "${IMAGE}${LLVM_PREFIX}"/share/man/man1
+                    edo ln -s ${bin}.1 ${target}-${bin}.1
+                    edo ln -s ${bin}-${SLOT}.1 ${target}-${bin}-${SLOT}.1
+                    edo popd
+                    alternatives+=( /usr/share/man/man1/${target}-${bin}.1 ${LLVM_PREFIX}/share/man/man1/${target}-${bin}.1 )
+                    dosym "${LLVM_PREFIX}/share/man/man1/${target}-${bin}-${SLOT}.1" "/usr/share/man/man1/${target}-${bin}-${SLOT}.1"
+                fi
+            fi
+        done
+    done
+
+    alternatives_for "clang" "${SLOT}" "${SLOT}" "${alternatives[@]}"
+}
+

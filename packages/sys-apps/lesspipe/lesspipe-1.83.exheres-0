@@ -1,0 +1,144 @@
+# Copyright 2007 Bryan Østergaard <kloeri@exherbo.org>
+# Copyright 2008 Saleem Abdulrasool <compnerd@compnerd.org>
+# Copyright 2008, 2009 David Leverton <dleverton@exherbo.org>
+# Distributed under the terms of the GNU General Public License v2
+
+SUMMARY="A preprocessor for less"
+
+BASE_URL="https://www-zeuthen.desy.de/~friebel/unix"
+HOMEPAGE="${BASE_URL}/lesspipe.html"
+DOWNLOADS="${BASE_URL}/less/${PNV}.tar.gz"
+
+LICENCES="GPL-2"
+SLOT="0"
+PLATFORMS="~amd64 ~x86"
+MYOPTIONS="
+    hilight [[
+        description = [
+            Enable syntax highlighting for various languages (upstream
+            considers this experimental and not recommended)
+        ]
+    ]]
+"
+
+DEPENDENCIES="
+    build:
+        virtual/unzip [[ note = [ Used for one test ] ]]
+    build+run:
+        dev-lang/perl:*
+        sys-apps/file
+    run:
+        virtual/gzip
+        virtual/tar
+        sys-apps/less
+        sys-devel/binutils [[ note = [ For ar, nm, strings; strings used without checking it exists ] ]]
+    suggestion:
+        app-arch/bzip2           [[ description = [ Support for bzipped files and tarballs ] ]]
+        virtual/unzip            [[ description = [ Support for Zip archives and OpenDocument/OpenOffice documents ] ]]
+
+        ( app-arch/unrar app-arch/rar ) [[
+            *description = [ Support for RAR archives ]
+        ]]
+
+        app-arch/lzip            [[ description = [ Support for lzipped files and tarballs ] ]]
+        app-arch/xz              [[ description = [ Support for lzma-compressed files and tarballs ] ]]
+        app-arch/p7zip           [[ description = [ Support for the contents of 7-zip archives ] ]]
+        virtual/cpio             [[ description = [ Support for RPM packages, together with app-arch/rpm ] ]]
+
+        ( app-text/html2text net-www/elinks net-www/links net-www/lynx net-www/w3m ) [[
+            *description = [ Support for HTML documents ]
+        ]]
+
+        sys-apps/groff           [[ description = [ Support for *roff documents of various kinds ] ]]
+        sys-libs/glibc           [[ description = [ Support for some character encoding conversions on viewed files ] ]]
+        app-arch/rpm             [[ description = [ Support for RPM packages, together with app-arch/cpio ] ]]
+
+        ( base/antiword app-doc/catdoc ) [[
+            *description = [ Support for Microsoft Word documents ]
+        ]]
+
+        ( app-text/texlive app-text/dvi2tty ) [[
+            *description = [ Support for TeX DVI documents ]
+        ]]
+
+        ( app-text/pstotext app-text/ghostscript ) [[
+            *description = [ Support for PostScript documents ]
+        ]]
+
+        app-crypt/gnupg          [[ description = [ Support for data encrypted by PGP or compatible programs ] ]]
+        app-text/poppler         [[ description = [ Support for PDF documents ] ]]
+
+        app-arch/cabextract      [[ description = [ Support for Windows cabinet archives ] ]]
+        app-text/djvu            [[ description = [ Support for DjVu documents ] ]]
+
+        ( media-sound/id3v2 media-sound/mp3info ) [[
+            *description = [ Support for ID3 tags in MP3 files ]
+        ]]
+
+        media-gfx/ImageMagick    [[ description = [ Support for metadata about images in various formats ] ]]
+
+        ( app-cdr/cdrtools app-cdr/cdrkit ) [[
+            *description = [ Support for information about ISO9660 filesystem images ]
+        ]]
+
+        app-text/o3read          [[ description = [ Support for OpenDocument/OpenOffice documents, together with a suitable text-mode HTML viewer ] ]]
+        app-text/unrtf           [[ description = [ Support for RTF documents ] ]]
+        app-text/xlhtml          [[ description = [ Support for Microsoft Excel spreadsheets and Microsoft Powerpoint presentations, together with a suitable text-mode HTML viewer ] ]]
+
+        app-arch/dpkg            [[ description = [ Support for metadata of Debian packages ] ]]
+"
+
+lesspipe_set() {
+    edo sed -i -e '/^__END__/,${s/^\('"${1}"'[ \t]\+\)[yYnN]\([ \t].*\)$/\1'"${2}"'\2/}' configure
+}
+
+src_prepare() {
+    default
+
+    # use "ar" with appropriate target prefix
+    edo sed -i -re "s:\<ar :${AR} :g" lesspipe.sh.in
+
+    # remove tests which fail as of 1.82
+    tmp=$(mktemp)
+    echo "grep -Ev '(a\\ b|symlink|test\.deb|test\.utf16|b\.gz)' TESTCMDS > \"$tmp\""
+    grep -Ev '(a\\ b|symlink|test\.deb|test\.utf16|b\.gz)' TESTCMDS > "$tmp"
+    edo mv "$tmp" "TESTCMDS"
+}
+
+src_configure() {
+    lesspipe_set '.*'      Y
+    lesspipe_set rpmunpack N # dead and just a fallback for rpm2cpio
+    lesspipe_set fastjar   N # dead and unzip works fine
+    lesspipe_set lsbom     N # OS X only
+    lesspipe_set plutil    N # OS X only (portable version exists but with different syntax)
+    option hilight || lesspipe_set HILITE N
+
+    # Can't use econf as it's not autotools, just a hand-written perl script
+    edo ./configure --prefix="/usr/$(exhost --target)" --fixed
+}
+
+src_compile() {
+    # Don't run ./configure twice
+    :
+}
+
+src_test() {
+    export LESSOPEN="| ./lesspipe.sh %s"
+    export LESS_ADVANCED_PREPROCESSOR=yes
+
+    default
+}
+
+src_install() {
+    default
+
+    # man-pages are platform-independent
+    edo mv "${IMAGE}"/usr/{$(exhost --target),}/share/man
+    edo rmdir "${IMAGE}"/usr/$(exhost --target)/share
+
+    hereenvd 70lesspipe <<EOF
+LESSOPEN="| lesspipe.sh %s"
+LESS_ADVANCED_PREPROCESSOR=yes
+EOF
+}
+

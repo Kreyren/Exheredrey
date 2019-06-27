@@ -1,0 +1,8 @@
+# Copyright 2010-2016 Wulf C. Krueger <philantrop@exherbo.org>
+# Copyright 2018 Jonathon Kowalski <worz@tuta.io>
+# Distributed under the terms of the GNU General Public License v2
+
+require systemd
+
+PLATFORMS="~amd64 ~arm ~armv7 ~armv8 ~x86"
+

@@ -1,0 +1,165 @@
+# Copyright 2012 Paul Seidler
+# Copyright 2015 Kylie McClain <somasis@exherbo.org>
+# Distributed under the terms of the GNU General Public License v2
+# Based in part on pkg-config-0.28.exheres-0 which is
+#   Copyright 2007 Bryan Østergaard
+
+require github alternatives
+
+SUMMARY="Provides compiler and linker configuration for development frameworks"
+DESCRIPTION="
+pkgconf is a program which helps to configure compiler and linker flags for development frameworks.
+It is similar to pkg-config, but was written from scratch in the summer of 2011 to replace
+pkg-config.
+"
+DOWNLOADS="https://distfiles.dereferenced.org/${PN}/${PNV}.tar.xz"
+
+CROSS_COMPILE_TARGETS="
+    aarch64-unknown-linux-gnueabi
+    aarch64-unknown-linux-musleabi
+    arm-exherbo-linux-gnueabi
+    armv4-unknown-linux-gnueabi
+    armv4-unknown-linux-gnueabihf
+    armv4-unknown-linux-musleabi
+    armv4-unknown-linux-musleabihf
+    armv5-unknown-linux-gnueabi
+    armv5-unknown-linux-gnueabihf
+    armv5-unknown-linux-musleabi
+    armv5-unknown-linux-musleabihf
+    armv6-unknown-linux-gnueabi
+    armv6-unknown-linux-gnueabihf
+    armv6-unknown-linux-musleabi
+    armv6-unknown-linux-musleabihf
+    armv7-unknown-linux-gnueabi
+    armv7-unknown-linux-gnueabihf
+    armv7-unknown-linux-musleabi
+    armv7-unknown-linux-musleabihf
+    i686-pc-linux-gnu
+    i686-pc-linux-musl
+    x86_64-pc-linux-gnu
+    x86_64-pc-linux-musl
+"
+
+LICENCES="as-is"
+SLOT="0"
+PLATFORMS="~amd64 ~armv7 ~armv8"
+MYOPTIONS="
+    ( targets: ${CROSS_COMPILE_TARGETS} ) [[ number-selected = at-least-one ]]
+"
+
+# TODO: package kyua, https://github.com/jmmv/kyua
+RESTRICT="test"
+
+DEPENDENCIES="
+    build+run:
+        !dev-util/pkg-config[<=0.27.1] [[
+            description = [ aclocal file will collide ]
+            resolution = upgrade-blocked-before
+        ]]
+"
+
+ECONF_SOURCE=${WORK}
+
+src_configure() {
+    local target=
+
+    for target in ${CROSS_COMPILE_TARGETS}; do
+        local pc_path=/usr/${target}/lib/pkgconfig:/usr/share/pkgconfig
+        if option !targets:${target};then
+            echo "     Cross-Compile Target: ${target} (disabled)"
+            continue
+        fi
+
+        echo "     Cross-Compile Target: ${target}"
+
+        edo mkdir -p "${WORKBASE}/build/${target}"
+        edo cd "${WORKBASE}/build/${target}"
+
+        # NOTE(mixi): --with-pkg-config-dir only affects the library, so we need
+        #             to install one for every target.
+        econf \
+            --libdir=/usr/$(exhost --target)/${target}/lib      \
+            --disable-static                                    \
+            --with-pkg-config-dir="${pc_path}"                  \
+            --with-system-libdir="/usr/${target}/lib"           \
+            --with-system-includedir="/usr/${target}/include"
+    done
+}
+
+src_compile() {
+    local target=
+
+    for target in ${CROSS_COMPILE_TARGETS};do
+        if option !targets:${target};then
+            echo "     Cross-Compile Target: ${target} (disabled)"
+            continue
+        fi
+
+        echo "     Cross-Compile Target: ${target}"
+
+        edo cd "${WORKBASE}/build/${target}"
+        default
+    done
+}
+
+src_test() {
+    local target=
+
+    for target in ${CROSS_COMPILE_TARGETS};do
+        if option !targets:${target};then
+            echo "     Cross-Compile Target: ${target} (disabled)"
+            continue
+        fi
+
+        echo "     Cross-Compile Target: ${target}"
+
+        edo cd "${WORKBASE}/build/${target}"
+        edo cp -r "${WORKBASE}"/${PNV}/tests/* ./tests/
+        default
+    done
+}
+
+src_install() {
+    local alternatives=( pkg-config ${PN} 0 )
+    local target=
+
+    for target in ${CROSS_COMPILE_TARGETS};do
+        if option !targets:${target};then
+            echo "     Cross-Compile Target: ${target} (disabled)"
+            continue
+        fi
+        echo "     Cross-Compile Target: ${target}"
+
+        edo cd "${WORKBASE}/build/${target}"
+        emake -j1 DESTDIR="${IMAGE}" install
+        edo mv "${IMAGE}"/usr/$(exhost --target)/bin/${PN}  "${IMAGE}"/usr/$(exhost --target)/bin/${target}-pkgconf
+        edo mv "${IMAGE}"/usr/share/man/man1/${PN}.1        "${IMAGE}"/usr/share/man/man1/${target}-pkgconf.1
+
+        alternatives+=(
+            /usr/$(exhost --target)/bin/${target}-pkg-config    ${target}-pkgconf
+            /usr/share/man/man1/${target}-pkg-config.1          ${target}-pkgconf.1
+        )
+    done
+
+    dodir /usr/$(exhost --target)/lib
+    dosym ../$(exhost --target)/lib/libpkgconf.la       /usr/$(exhost --target)/lib/libpkgconf.la
+    dosym ../$(exhost --target)/lib/libpkgconf.so.2.0.0 /usr/$(exhost --target)/lib/libpkgconf.so.2.0.0
+    dosym libpkgconf.so.2.0.0                           /usr/$(exhost --target)/lib/libpkgconf.so
+
+    dosym $(exhost --target)-pkgconf                    /usr/$(exhost --target)/bin/pkgconf
+    dosym $(exhost --target)-pkgconf.1                  /usr/share/man/man1/pkgconf.1
+    dobanned pkgconf
+
+    alternatives+=(
+        /usr/share/aclocal/pkg.m4               pkg_${PN}.m4
+        /usr/share/man/man1/pkg-config.1        pkgconf.1
+
+        # install the unprefixed tool for the native target
+        /usr/$(exhost --target)/bin/pkg-config  pkgconf
+        "${BANNEDDIR}"/pkg-config               pkgconf
+    )
+
+    alternatives_for "${alternatives[@]}"
+    emagicdocs
+}
+

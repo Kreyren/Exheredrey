@@ -1,0 +1,143 @@
+From 6d728b168c68fb5402b3122572ecf3581be288a6 Mon Sep 17 00:00:00 2001
+From: Saleem Abdulrasool <compnerd@compnerd.org>
+Date: Fri, 17 Jun 2016 18:19:03 +0000
+Subject: [PATCH] support canonical windows targets
+
+This adds support for the canonical Windows target spellings as observed by
+LLVM/clang.
+---
+ bfd/config.bfd        | 14 +++++++-------
+ binutils/configure    |  2 +-
+ binutils/configure.ac |  2 +-
+ gas/configure.tgt     | 10 +++++-----
+ ld/configure.tgt      |  6 +++---
+ 5 files changed, 17 insertions(+), 17 deletions(-)
+
+diff --git a/bfd/config.bfd b/bfd/config.bfd
+index c5688cb..a7feb1c 100644
+--- a/bfd/config.bfd
++++ b/bfd/config.bfd
+@@ -706,9 +706,9 @@ case "${targ}" in
+     targ_archs="$targ_archs bfd_arm_arch"
+     want64=true
+     ;;
+-  x86_64-*-mingw* | x86_64-*-pe | x86_64-*-pep | x86_64-*-cygwin)
++  x86_64-*-mingw* | x86_64-*-pe | x86_64-*-pep | x86_64-*-cygwin | x86_64-*-windows-*)
+     targ_defvec=x86_64_pe_vec
+-    targ_selvecs="x86_64_pe_vec x86_64_pei_vec x86_64_pe_be_vec x86_64_elf64_vec l1om_elf64_vec k1om_elf64_vec i386_pe_vec i386_pei_vec i386_elf32_vec iamcu_elf32_vec"
++    targ_selvecs="x86_64_pe_vec x86_64_pei_vec x86_64_pe_be_vec i386_pe_vec i386_pei_vec" # x86_64_elf64_vec l1om_elf64_vec k1om_elf64_vec i386_elf32_vec iamcu_elf32_vec"
+     want64=true
+     targ_underscore=no
+     ;;
+@@ -721,6 +721,11 @@ case "${targ}" in
+     targ_defvec=i386_elf32_vec
+     targ_selvecs="iamcu_elf32_vec i386_coff_lynx_vec i386_aout_lynx_vec"
+     ;;
++  i[3-7]86-*-mingw32* | i[3-7]86-*-cygwin* | i[3-7]86-*-winnt | i[3-7]86-*-pe | i[3-7]86-*-windows-*)
++    targ_defvec=i386_pe_vec
++    targ_selvecs="i386_pe_vec i386_pei_vec" # i386_elf32_vec iamcu_elf32_vec"
++    targ_underscore=yes
++    ;;
+   i[3-7]86-*-gnu*)
+     targ_defvec=i386_elf32_vec
+     targ_selvecs=iamcu_elf32_vec
+@@ -759,11 +764,6 @@ case "${targ}" in
+     targ_defvec=i386_elf32_vec
+     targ_selvecs="iamcu_elf32_vec i386_coff_vec"
+     ;;
+-  i[3-7]86-*-mingw32* | i[3-7]86-*-cygwin* | i[3-7]86-*-winnt | i[3-7]86-*-pe)
+-    targ_defvec=i386_pe_vec
+-    targ_selvecs="i386_pe_vec i386_pei_vec i386_elf32_vec iamcu_elf32_vec"
+-    targ_underscore=yes
+-    ;;
+   i[3-7]86-none-*)
+     targ_defvec=i386_coff_vec
+     ;;
+diff --git a/binutils/configure b/binutils/configure
+index d4f3e1e..774ae50 100755
+--- a/binutils/configure
++++ b/binutils/configure
+@@ -14424,7 +14424,7 @@ do
+ 	  BUILD_WINDMC='$(WINDMC_PROG)$(EXEEXT)'
+ 	  BUILD_DLLWRAP='$(DLLWRAP_PROG)$(EXEEXT)'
+ 	  ;;
+-	i[3-7]86-*-pe* | i[3-7]86-*-cygwin* | i[3-7]86-*-mingw32** | i[3-7]86-*-netbsdpe*)
++	i[3-7]86-*-pe* | i[3-7]86-*-cygwin* | i[3-7]86-*-mingw32** | i[3-7]86-*-netbsdpe* | i[3-7]86-*-windows-*)
+   	  BUILD_DLLTOOL='$(DLLTOOL_PROG)$(EXEEXT)'
+ 	  if test -z "$DLLTOOL_DEFAULT"; then
+ 	    DLLTOOL_DEFAULT="-DDLLTOOL_DEFAULT_I386"
+diff --git a/binutils/configure.ac b/binutils/configure.ac
+index defe781..6897d83 100644
+--- a/binutils/configure.ac
++++ b/binutils/configure.ac
+@@ -326,7 +326,7 @@ changequote([,])dnl
+ 	  BUILD_DLLWRAP='$(DLLWRAP_PROG)$(EXEEXT)'
+ 	  ;;
+ changequote(,)dnl
+-	i[3-7]86-*-pe* | i[3-7]86-*-cygwin* | i[3-7]86-*-mingw32** | i[3-7]86-*-netbsdpe*)
++	i[3-7]86-*-pe* | i[3-7]86-*-cygwin* | i[3-7]86-*-mingw32** | i[3-7]86-*-netbsdpe* | i[3-7]86-*-windows-*)
+ changequote([,])dnl
+   	  BUILD_DLLTOOL='$(DLLTOOL_PROG)$(EXEEXT)'
+ 	  if test -z "$DLLTOOL_DEFAULT"; then
+diff --git a/gas/configure.tgt b/gas/configure.tgt
+index 0b490d4..adfb2f8 100644
+--- a/gas/configure.tgt
++++ b/gas/configure.tgt
+@@ -262,6 +262,11 @@ case ${generic_target} in
+   i386-*-msdosdjgpp* \
+   | i386-*-go32*)			fmt=coff em=go32 ;;
+   i386-*-rtems*)			fmt=elf ;;
++  i386-*-mingw* | *-*-windows-*)
++    case ${cpu} in
++      x86_64*)				fmt=coff em=pep ;;
++      i*)				fmt=coff em=pe ;;
++    esac ;;
+   i386-*-gnu*)				fmt=elf em=gnu ;;
+   i386-*-mach*)				fmt=aout em=mach ;;
+   i386-*-msdos*)			fmt=aout ;;
+@@ -273,11 +278,6 @@ case ${generic_target} in
+      i*)				fmt=coff em=pe ;;
+    esac ;;
+   i386-*-interix*)			fmt=coff em=interix ;;
+-  i386-*-mingw*)
+-    case ${cpu} in
+-      x86_64*)				fmt=coff em=pep ;;
+-      i*)				fmt=coff em=pe ;;
+-    esac ;;
+   i386-*-nto-qnx*)			fmt=elf ;;
+   i386-*-*nt*)				fmt=coff em=pe ;;
+   i386-*-chaos)				fmt=elf ;;
+diff --git a/ld/configure.tgt b/ld/configure.tgt
+index 6b6bbf2..a3eb0c0 100644
+--- a/ld/configure.tgt
++++ b/ld/configure.tgt
+@@ -342,6 +342,8 @@ x86_64-*-freebsd* | x86_64-*-kfreebsd*-gnu)
+ i[3-7]86-*-sysv*)	targ_emul=i386coff ;;
+ i[3-7]86-*-ptx*)	targ_emul=i386coff ;;
+ i[3-7]86-*-mach*)	targ_emul=i386mach ;;
++i[3-7]86-*-mingw32* | i[3-7]86-*-windows-*)	targ_emul=i386pe ;
++			targ_extra_ofiles="deffilep.o pe-dll.o" ;;
+ i[3-7]86-*-gnu*)	targ_emul=elf_i386
+ 			targ_extra_emuls=elf_iamcu ;;
+ i[3-7]86-*-msdos*)	targ_emul=i386msdos; targ_extra_emuls=i386aout ;;
+@@ -353,8 +355,6 @@ i[3-7]86-*-pe)		targ_emul=i386pe ;
+ i[3-7]86-*-cygwin*)	targ_emul=i386pe ;
+ 			targ_extra_ofiles="deffilep.o pe-dll.o" ;
+ 			test "$targ" != "$host" && LIB_PATH='${tooldir}/lib/w32api' ;;
+-i[3-7]86-*-mingw32*)	targ_emul=i386pe ;
+-			targ_extra_ofiles="deffilep.o pe-dll.o" ;;
+ x86_64-*-pe | x86_64-*-pep) targ_emul=i386pep ;
+ 			targ_extra_emuls=i386pe ;
+ 			targ_extra_ofiles="deffilep.o pep-dll.o pe-dll.o" ;;
+@@ -362,7 +362,7 @@ x86_64-*-cygwin)	targ_emul=i386pep ;
+ 			targ_extra_emuls=i386pe
+ 			targ_extra_ofiles="deffilep.o pep-dll.o pe-dll.o"
+ 			test "$targ" != "$host" && LIB_PATH='${tooldir}/lib/w32api' ;;
+-x86_64-*-mingw*)	targ_emul=i386pep ;
++x86_64-*-mingw* | x86_64-*-windows-*)	targ_emul=i386pep ;
+ 			targ_extra_emuls=i386pe
+ 			targ_extra_ofiles="deffilep.o pep-dll.o pe-dll.o" ;;
+ i[3-7]86-*-interix*)	targ_emul=i386pe_posix;
+-- 
+2.8.1
+

@@ -1,0 +1,170 @@
+# Copyright 2007, 2008 Richard Brown <rbrown@exherbo.org>
+# Copyright 2009, 2010 Ingmar Vanhassel <ingmar@exherbo.org>
+# Copyright 2013 Elias Pipping <pipping@exherbo.org>
+# Distributed under the terms of the GNU General Public License v2
+# Based in part upon 'ruby-1.8.6_p111.ebuild' from Gentoo, which is:
+#     Copyright 1999-2007 Gentoo Foundation
+
+require alternatives
+require autotools [ supported_autoconf=[ 2.5 ] supported_automake=[ 1.16 ] ]
+
+export_exlib_phases src_prepare src_configure src_test src_install pkg_preinst
+
+MY_PNV="${PN}-$(ever replace 3 '-')"
+SLOT=$(ever range 1-2)
+
+SUMMARY="An object-oriented scripting language"
+DESCRIPTION="
+    A dynamic, open source programming language with a focus on simplicity and
+    productivity. It has an elegant syntax that is natural to read and easy to
+    write.
+"
+HOMEPAGE="https://www.ruby-lang.org"
+DOWNLOADS="mirror://ruby/${SLOT}/${MY_PNV}.tar.bz2"
+
+MYOPTIONS="berkdb doc examples gdbm ncurses readline tk
+    ( providers: libressl openssl ) [[ number-selected = exactly-one ]]
+"
+
+tag_number=$(ever replace_all '_' ${PV})
+UPSTREAM_CHANGELOG="http://svn.ruby-lang.org/repos/ruby/tags/v${tag_number/p}/ChangeLog"
+UPSTREAM_DOCUMENTATION="${HOMEPAGE}/en/documentation [[ lang = en ]]"
+
+DEPENDENCIES="
+    build:
+        virtual/pkg-config
+        doc? (
+            app-doc/doxygen
+            media-gfx/graphviz
+        )
+    build+run:
+        dev-libs/libffi
+        dev-libs/libyaml
+        sys-libs/zlib
+        berkdb? ( sys-libs/db:= )
+        gdbm? ( sys-libs/gdbm )
+        ncurses? ( sys-libs/ncurses )
+        providers:libressl? ( dev-libs/libressl:= )
+        providers:openssl? ( dev-libs/openssl )
+        readline? ( sys-libs/readline:= )
+        tk? ( dev-lang/tk )
+"
+
+# Q= disables silent compilation
+DEFAULT_SRC_COMPILE_PARAMS=( Q= EXTLDFLAGS="${LDFLAGS}" )
+
+WORK="${WORKBASE}/${MY_PNV}"
+
+ruby-2_src_prepare() {
+    # Disable test that hangs in sydbox
+    edo rm bootstraptest/test_fork.rb
+
+    # Doesn't seem to be configurable during the build process
+    edo sed -e "s/pkg-config/${PKG_CONFIG}/g" -i lib/mkmf.rb
+
+    autotools_src_prepare
+}
+
+ruby-2_src_configure() {
+    # picked up by ext/socket/extconf
+    unset SOCKS_SERVER
+
+    local cfargs=(
+        --program-suffix=${SLOT}
+        --with-soname=ruby-${SLOT}
+
+        --with-ruby-version=minor
+        --with-rubylibprefix=/usr/$(exhost --target)/lib/ruby
+        --with-rubyhdrdir=/usr/$(exhost --target)/include/ruby-${SLOT}
+
+        # Possible dbm providers
+        --with-dbm-type=db,gdbm
+
+        --without-jemalloc
+
+        --enable-ipv6
+        --enable-shared
+
+        $(option_enable doc install-doc)
+    )
+
+    # Disable modules that were not requested
+    local opt_ext opt ext disabled_opts=() opts=(
+        'gdbm'
+        'ncurses curses'
+        'readline'
+        'tk'
+    )
+    for opt_ext in "${opts[@]}"; do
+        opt=${opt_ext% *}
+        ext=${opt_ext#* }
+        option ${opt} || disabled_opts+=( ${ext} )
+    done
+    option berkdb || option gdbm || disabled_opts+=( dbm )
+    if [[ -n ${disabled_opts[@]} ]]; then
+        cfargs+=( $(IFS=,; echo "--with-out-ext=${disabled_opts[*]}") )
+    fi
+
+    # NOTE(somasis): stops redefinition of isnan and isinf when attempting to use ruby headers
+    if [[ $(exhost --target) == *-musl* ]];then
+        export ac_cv_func_isnan=yes
+        export ac_cv_func_isinf=yes
+    fi
+
+    econf "${cfargs[@]}"
+}
+
+ruby-2_src_test() {
+    emake test TERM="dumb"
+}
+
+ruby-2_src_install() {
+    # otherwise install fails weirdly
+    emake yes-fake
+
+    default
+
+    local \
+        rubylibprefix=$(PKG_CONFIG_PATH=. ${PKG_CONFIG} ruby-${SLOT} --variable=rubylibprefix) \
+        rubylibdir=$(PKG_CONFIG_PATH=. ${PKG_CONFIG} ruby-${SLOT} --variable=rubylibdir) \
+        sitearchdir=$(PKG_CONFIG_PATH=. ${PKG_CONFIG} ruby-${SLOT} --variable=sitearchdir) \
+        vendordir=$(PKG_CONFIG_PATH=. ${PKG_CONFIG} ruby-${SLOT} --variable=vendordir) \
+        vendorarchdir=$(PKG_CONFIG_PATH=. ${PKG_CONFIG} ruby-${SLOT} --variable=vendorarchdir)
+    keepdir "${vendorarchdir}" "${sitearchdir}"
+
+    if option examples; then
+        insinto /usr/share/doc/${PNVR}
+        doins -r sample
+    fi
+
+    edo pushd "${IMAGE}"
+    local src target alternatives=()
+    for src in usr/$(exhost --target)/bin/*${SLOT} usr/share/man/man1/*${SLOT}.1; do
+        target=${src/${SLOT}}
+        alternatives+=( /${target} ${src##*/} )
+    done
+
+    local gem_vendordir=${vendordir}/gems/${SLOT} # based on Ruby 2.2 defaults.rb (Gem.vendor_dir)
+
+    # move provided gems into Gem.vendor_dir directory
+    dodir ${gem_vendordir}
+    edo mv "${IMAGE}"/${rubylibprefix}/gems/${SLOT}/* "${IMAGE}"/${gem_vendordir}/
+
+    # Gem.default_dir and Gem.vendor_dir
+    keepdir ${rubylibprefix}/gems/${SLOT}/{build_info,cache,doc,extensions,gems,specifications}
+    keepdir ${gem_vendordir}/{build_info,cache,doc,extensions,gems,specifications}
+
+    # FIXME: I don't know what this is
+    keepdir ${rubylibprefix}/${SLOT}/racc/rdoc
+
+    # if dependencies are met, C API docs are installed and for some versions an empty rake lib dir too
+    edo find "${IMAGE}"/usr/ -empty -type d -delete
+
+    alternatives_for ${PN} ${SLOT} ${SLOT} "${alternatives[@]}"
+    edo popd
+}
+
+ruby-2_pkg_preinst() {
+    # Some libraries were mistakenly added to alternatives, breaking non selected versions
+    eclectic ${PN} files | grep -q /usr/$(exhost --target)/lib/lib${PN}.so.${SLOT} && eclectic ${PN} unset
+}

@@ -1,0 +1,29 @@
+Upstream: yes
+Source: https://git.kernel.org/cgit/linux/kernel/git/torvalds/linux.git/commit/?id=be955b2984822e2a66176bccb3e0dbaf9cd569b6
+
+From be955b2984822e2a66176bccb3e0dbaf9cd569b6 Mon Sep 17 00:00:00 2001
+From: Dave Taht <dave.taht@bufferbloat.net>
+Date: Thu, 6 Nov 2014 08:10:14 -0800
+Subject: rtnetlink: add babel protocol recognition
+
+Babel uses rt_proto 42. Add to userspace visible header file.
+
+Signed-off-by: Dave Taht <dave.taht@bufferbloat.net>
+Signed-off-by: Stephen Hemminger <stephen@networkplumber.org>
+Signed-off-by: David S. Miller <davem@davemloft.net>
+
+diff --git a/include/uapi/linux/rtnetlink.h b/include/uapi/linux/rtnetlink.h
+index eb0f1a5..9c9b8b4 100644
+--- a/include/uapi/linux/rtnetlink.h
++++ b/include/uapi/linux/rtnetlink.h
+@@ -235,6 +235,7 @@ enum {
+ #define RTPROT_NTK	15	/* Netsukuku */
+ #define RTPROT_DHCP	16      /* DHCP client */
+ #define RTPROT_MROUTED	17      /* Multicast daemon */
++#define RTPROT_BABEL	42      /* Babel daemon */
+ 
+ /* rtm_scope
+ 
+-- 
+cgit v0.10.2
+

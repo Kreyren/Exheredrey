@@ -1,0 +1,61 @@
+# Copyright 2014 Timo Gurr <tgurr@exherbo.org>
+# Distributed under the terms of the GNU General Public License v2
+
+SUMMARY="Check JavaScript code for common mistakes"
+DESCRIPTION="
+With JavaScript Lint, you can check all your JavaScript source code for
+common mistakes without actually running the script or opening the web page.
+
+JavaScript Lint holds an advantage over competing lints because it is based
+on the JavaScript engine for the Firefox browser. This provides a robust
+framework that can not only check JavaScript syntax but also examine the
+coding techniques used in the script and warn against questionable
+practices.
+"
+HOMEPAGE="http://javascriptlint.com"
+DOWNLOADS="${HOMEPAGE}/download/${PNV}-src.tar.gz"
+
+LICENCES="MPL-1.1"
+SLOT="0"
+PLATFORMS="~amd64"
+MYOPTIONS=""
+
+DEPENDENCIES="
+    build+run:
+        sys-libs/ncurses
+        sys-libs/readline
+"
+
+DEFAULT_SRC_PREPARE_PATCHES=(
+    "${FILES}"/${PN}-0.3.0-cflags.patch
+    "${FILES}"/${PN}-0.3.0-smash.patch
+    "${FILES}"/${PN}-0.3.0-tests.patch
+)
+
+src_prepare() {
+    default
+
+    edo sed -e 's:-ltermcap:-lncurses:' \
+            -i src/Makefile.ref
+}
+
+src_compile() {
+    emake -j1 -C src -f Makefile.ref \
+        JS_EDITLINE=0 \
+        JS_READLINE=1 \
+        OBJDIR=. \
+        OS_CFLAGS="-DXP_UNIX -DHAVE_VA_COPY -DVA_COPY=va_copy" \
+        SHARED_LIBRARY= \
+        XCFLAGS="${CFLAGS}"
+}
+
+src_test() {
+    pushd tests
+    edo perl run_tests.pl ../src/jsl
+    popd
+}
+
+src_install() {
+    dobin src/jsl
+}
+

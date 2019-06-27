@@ -1,0 +1,22 @@
+# Copyright 2014-2016 Timo Gurr <tgurr@exherbo.org>
+# Distributed under the terms of the GNU General Public License v2
+
+require sourceforge [ suffix=tar.gz ]
+
+SUMMARY="Non-interactive SSH authentication utility"
+DESCRIPTION="
+Tool for non-interactively performing password authentication with so called
+\"interactive keyboard password authentication\" of SSH. Most users should use
+more secure public key authentication of SSH instead.
+"
+
+LICENCES="GPL-2"
+SLOT="0"
+PLATFORMS="~amd64"
+MYOPTIONS=""
+
+DEPENDENCIES="
+    run:
+        net-misc/openssh
+"
+

@@ -1,0 +1,11 @@
+# Copyright 2007 Bryan Østergaard
+# Distributed under the terms of the GNU General Public License v2
+
+# NOTE(moben): I rolled the snapshot from the git mirror at https://github.com/devzero2000/POPT
+#              I removed -Werror from AM_INIT_AUTOMAKE
+
+require popt
+
+DOWNLOADS="https://dev.exherbo.org/distfiles/${PN}/${PNV}.tar.xz"
+PLATFORMS="~amd64 ~arm ~armv7 ~armv8 ~x86"
+

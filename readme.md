@@ -1,11 +1,13 @@
 # Exheredrey
 krey's personal repository on exherbo
 
-This is overlay ~~or how do you call that on exherbo~~ of exherbo packages + tweaks for personal usage.
+!!! NOT PART OF EXHERBO !!!
+
+This is personal repository of Jacob Hrbek for personal use.
 
 ##TODOs
 Sync with Arbor(system packages), Hasufell (OpenRC), others? That automatically merge into master if no conflicts; else make TODO in TODO.md asking for resolution with required info.
-1.1) Add Arbor branch
+1.1) Add Arbor branch - DONE
 1.1.1) Sync Arbor branch with master
 1.2) Add Hasufell branch
 1.2.1) Sync Hasufell with master
@@ -19,7 +21,7 @@ LOW_PRIO: Adapt logic from Gentoo's RXT067 project to automatically make version
 3.2) LOW_PRIO: Try to add dependendies if recognized error is grabbed.
 
 
-LOW_PRIO: Adapt custom Tensorflow IA to resolve issues depending on context.
+EXPERIMENT: Adapt custom Tensorflow IA to resolve issues depending on context.
 
 
 HIGH_PRIO: Adapt passive compilation using MuQSS scaling and give paludis full power on jobs that won't hardbrick system nor affect end-user task on DREAMON.
@@ -29,7 +31,7 @@ LOW_PRIO: Mirror with Github
 
 LOW_PRIO: Integrate pbins (https://paludis.exherbo.org/overview/pbins.html)
 
-LOW_PRIO: Exherbo doesn't provide checksum -> Integrate 
+HIGH_PRIO: Exherbo doesn't provide checksum -> Integrate
 
 ### Installation (WIP)
 Parse following in /etc/paludis/repositories/exheredrey.conf

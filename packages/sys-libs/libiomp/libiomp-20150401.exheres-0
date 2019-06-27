@@ -1,0 +1,44 @@
+# Copyright 2015 Saleem Abdulrasool <compnerd@compnerd.org>
+# Distributed under the terms of the GNU General Public License v2
+
+require cmake [ api=2 ]
+
+SUMMARY="Intel OpenMP Runtime"
+HOMEPAGE="https://www.openmprtl.org/"
+DOWNLOADS="https://www.openmprtl.org/sites/default/files/libomp_${PV}_oss.tgz"
+
+LICENCES="BSD-3"
+SLOT="0"
+PLATFORMS="~amd64"
+MYOPTIONS="fortran"
+
+DEPENDENCIES="
+"
+
+CMAKE_SOURCE=${WORKBASE}/libomp_oss
+
+CMAKE_SRC_CONFIGURE_PARAMS=( -DCMAKE_BUILD_TYPE=Release
+                             -DCMAKE_Fortran_COMPILER="$(exhost --tool-prefix)fc"
+                             -DUSER_C_FLAGS="${CFLAGS} -D\"__forceinline=__attribute__((always_inline))\""
+                             -DUSER_CXX_FLAGS="${CXXFLAGS} -D\"__forceinline=__attribute__((always_inline))\""
+                             -DUSER_ASM_FLAGS="${ASFLAGS}"
+                             -DUSER_LD_FLAGS="${LDFLAGS}"
+                             -DUSER_F_FLAGS="${FFLAGS}" )
+CMAKE_SRC_CONFIGURE_OPTIONS=( 'fortran create_fortran_modules' )
+
+src_install() {
+    local header=
+
+    # TODO(compnerd) figure out how to install this package properly
+    # cmake is stupid and does not provide an install rule.  Perhaps we should just use the perl
+    # based build system?
+
+    insinto /usr/$(exhost --target)/include
+    for header in iomp.h iomp_lib.h omp.h omp_lib.h ; do
+        doins "${header}"
+    done
+
+    insinto /usr/$(exhost --target)/lib
+    doins libiomp5.so
+}
+

@@ -1,0 +1,18 @@
+# Copyright 2012-2015 Wulf C. Krueger <philantrop@exherbo.org>
+# Distributed under the terms of the GNU General Public License v2
+
+SUMMARY="libestr - some essentials for string handling (and a bit more)"
+HOMEPAGE="http://libestr.adiscon.com"
+DOWNLOADS="${HOMEPAGE}/files/download/${PNV}.tar.gz"
+
+LICENCES="LGPL-2.1"
+SLOT="0"
+PLATFORMS="~amd64 ~armv7 ~armv8 ~x86"
+MYOPTIONS=""
+
+DEPENDENCIES=""
+
+DEFAULT_SRC_CONFIGURE_PARAMS=(
+    --disable-static
+)
+

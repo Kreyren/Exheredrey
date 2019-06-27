@@ -1,0 +1,9 @@
+# Copyright 2017 Rasmus Thomsen <Rasmus.thomsen@protonmail.com>
+# Distributed under the terms of the GNU General Public License v2
+
+require libc++
+
+PLATFORMS="~amd64"
+
+CMAKE_SOURCE="${WORKBASE}/libcxx-${PV}.src"
+

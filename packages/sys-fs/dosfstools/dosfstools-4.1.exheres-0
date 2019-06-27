@@ -1,0 +1,7 @@
+# Copyright 2008 Daniel Mierswa <impulze@impulze.org>
+# Distributed under the terms of the GNU General Public License v2
+
+require dosfstools
+
+PLATFORMS="~amd64 ~armv7 ~armv8 ~x86"
+

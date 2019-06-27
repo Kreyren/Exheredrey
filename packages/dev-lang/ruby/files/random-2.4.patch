@@ -1,0 +1,26 @@
+From e124fe938998c5ed2d1b723ee10711a906982029 Mon Sep 17 00:00:00 2001
+From: Marc-Antoine Perennou <Marc-Antoine@Perennou.com>
+Date: Tue, 6 Sep 2016 14:51:57 +0200
+Subject: [PATCH] random: don't block at startup because of lack of entropy
+
+Signed-off-by: Marc-Antoine Perennou <Marc-Antoine@Perennou.com>
+---
+ random.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/random.c b/random.c
+index 6ddf4d186e..dec85f7bcf 100644
+--- a/random.c
++++ b/random.c
+@@ -552,7 +552,7 @@ fill_random_seed(uint32_t *seed, size_t cnt)
+ 
+     memset(seed, 0, len);
+ 
+-    fill_random_bytes(seed, len, TRUE);
++    fill_random_bytes(seed, len, FALSE);
+ 
+     gettimeofday(&tv, 0);
+     seed[0] ^= tv.tv_usec;
+-- 
+2.11.0
+

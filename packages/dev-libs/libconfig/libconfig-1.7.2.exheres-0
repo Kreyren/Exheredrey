@@ -1,0 +1,24 @@
+# Copyright 2009 Daniel Mierswa <impulze@impulze.org>
+# Distributed under the terms of the GNU General Public License v2
+
+SUMMARY="A simple and small library for manipulating structured configuration files"
+DESCRIPTION="
+A simple and small library (38K - 66K) POSIX and Windows 2000 or later compliant configuration
+file parser.
+"
+HOMEPAGE="https://hyperrealm.github.io/${PN}"
+DOWNLOADS="${HOMEPAGE}/dist/${PNV}.tar.gz"
+
+UPSTREAM_DOCUMENTATION="${HOMEPAGE}/${PN}_manual.html [[ lang = en description = [ Manual ] ]]"
+
+LICENCES="LGPL-2.1"
+SLOT="0"
+PLATFORMS="~amd64 ~x86"
+MYOPTIONS=""
+
+DEPENDENCIES=""
+
+DEFAULT_SRC_CONFIGURE_PARAMS=(
+    --disable-static
+)
+

@@ -1,0 +1,13 @@
+# Copyright 2008 Mike Kelly
+# Distributed under the terms of the GNU General Public License v2
+
+require vim-plugin [ vim_version=7.0 script_id=1876 src_id=8598 src_suffix=vim script_type=plugin ]
+
+SUMMARY="Secure, user-configurable modeline support for Vim 7."
+DESCRIPTION="
+Vim's internal modeline support allows all sorts of annoying and potentially insecure options to be set. This script implements a much more heavily restricted modeline parser that permits only user-specified options to be set.
+"
+
+SLOT="0"
+PLATFORMS="~amd64 ~x86"
+

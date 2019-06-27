@@ -1,0 +1,107 @@
+# Copyright 2007 Bryan Østergaard <kloeri@exherbo.org>
+# Copyright 2008 Saleem Abdulrasool <compnerd@compnerd.org>
+# Distributed under the terms of the GNU General Public License v2
+
+require bash-completion meson glib
+
+SLOT="2"
+PLATFORMS="~amd64 ~arm ~armv7 ~armv8 ~x86"
+MYOPTIONS="
+    gtk-doc
+    ( providers: elfutils libelf ) [[ number-selected = exactly-one ]]
+"
+
+DEPENDENCIES="
+    build:
+        sys-devel/gettext
+        virtual/pkg-config
+        (
+            app-text/docbook-xml-dtd:4.1.2 [[ note = [ Checked in configure.ac but not used ] ]]
+            app-text/docbook-xsl-stylesheets
+            dev-libs/libxslt
+        ) [[ description = [ For man pages ] ]]
+        gtk-doc? ( dev-doc/gtk-doc[>=1.20] )
+    build+run:
+        dev-libs/libffi[>=3.0.0]
+        dev-libs/pcre[>=8.31]
+        sys-apps/util-linux[>=2.28.1]
+        sys-libs/zlib
+        providers:elfutils? ( dev-util/elfutils[>=0.142] )
+        providers:libelf? ( dev-libs/libelf[>=0.8.12] )
+    test:
+        dev-libs/libxml2:2.0 [[ note = xmllint ]]
+        dev-util/desktop-file-utils
+        gnome-bindings/pygobject:3
+        sys-apps/dbus[>=1.2.14] [[
+            note = [ Required for building GDBus tests ]
+        ]]
+        x11-misc/shared-mime-info
+    recommendation:
+        dev-libs/glib-networking [[ description = [ Required for GNet ] ]]
+        sys-apps/dbus[>=1.2.14] [[ note = [ Required for GDBus ] ]]
+    suggestion:
+        gnome-desktop/dconf [[ description = [ default GSettings backend ] ]]
+        gnome-desktop/gvfs [[ description = [ Provides utilities and support for GIO ] ]]
+"
+
+# NOTE: glib:2 is used by sydbox, and thus in system. For this reason it shouldn't hard depend on
+# anything not in ::arbor, that means no recommendations, just suggestions
+
+DEFAULT_SRC_PREPARE_PATCHES=(
+    "${FILES}"/0001-timer-test-use-volatile-for-locals.patch
+    "${FILES}"/skip-broken-timer-test.patch
+)
+
+# Disable FAM support as FAM is no longer necessary with GIO's inotify support
+#
+# xattr support is also provided by libc.  glib will prefer to use glibc's xattr support over
+# libattr.  As a result, there is no dependency added for attr support.
+#
+# Enable libelf (via elf-utils) to read compressed module data
+MESON_SRC_CONFIGURE_PARAMS=(
+    -Dfam=false
+    -Dinstalled_tests=false
+    -Dinternal_pcre=false
+    -Dlibmount=true
+    -Dman=true
+    -Dnls=enabled
+    -Dselinux=disabled
+    -Dsystemtap=false
+    -Dxattr=true
+)
+
+MESON_SRC_CONFIGURE_OPTION_SWITCHES=(
+    'gtk-doc gtk_doc'
+)
+
+src_prepare() {
+    meson_src_prepare
+
+    edo sed -e "s/'ld'/'${LD}'/"           \
+            -e "s/'objcopy'/'${OBJCOPY}'/" \
+            -e "/gsubprocess/d"            \
+            -i gio/tests/meson.build
+
+
+    # use inet:127.0.0.1:31337 instead of inet:0.0.0.0@0
+    edo sed -e 's:new_any (G_SOCKET_FAMILY_IPV4):new_from_string ("127.0.0.1"):' \
+            -e '/g_inet_socket_address_new (addr, 0)/s:0:31337:' \
+            -i gio/tests/socket.c
+
+    # tries to access to root's dconf stuff
+    edo sed -e '/network-monitor\/default/d'         \
+            -e '/network-monitor\/add_networks/d'    \
+            -e '/network-monitor\/remove_networks/d' \
+            -i gio/tests/network-monitor.c
+}
+
+src_install() {
+    meson_src_install
+
+    keepdir "/usr/$(exhost --target)/lib/gio/modules"
+
+    if option !bash-completion ; then
+        edo rm -r "${IMAGE}"/usr/share/bash-completion/
+    fi
+}
+

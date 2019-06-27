@@ -1,0 +1,112 @@
+# Copyright 2010-2016 Wulf C. Krueger
+# Distributed under the terms of the GNU General Public License v2
+# Based in part upon 'mc-4.6.2_pre1.ebuild' from Gentoo, which is:
+#       Copyright 1999-2008 Gentoo Foundation
+
+require flag-o-matic \
+    autotools [ supported_autoconf=[ 2.5 ] supported_automake=[ 1.16 ] ]
+
+export_exlib_phases src_prepare src_install
+
+SUMMARY="GNU Midnight Commander is a s-lang based file manager"
+DESCRIPTION="
+GNU Midnight Commander is a text-mode full-screen file manager. It uses a two panel
+interface and a subshell for command execution. It includes an internal editor
+with syntax highlighting and an internal viewer with support for binary files.
+Also included is Virtual Filesystem (VFS), that allows files on remote systems
+(e.g. FTP servers) and files inside archives to be manipulated like real files.
+"
+HOMEPAGE="https://www.midnight-commander.org"
+DOWNLOADS="${HOMEPAGE}/downloads/${PNV/_/-}.tar.xz"
+
+REMOTE_IDS="freshcode:midnightcommander"
+
+LICENCES="GPL-3"
+SLOT="0"
+MYOPTIONS="
+    gpm
+    samba
+    X
+    ( linguas: az be bg ca cs da de de_CH el en_GB eo es et eu fa fi fr fr_CA gl hr hu ia id id it
+               ja ka kk ko lt lv mn nb nl pl pt pt_BR ro ru sk sl sr sv szl ta te tr uk vi wa zh_CN
+               zh_TW )
+"
+
+DEPENDENCIES="
+    build:
+        virtual/pkg-config
+        sys-devel/gettext[>=0.18.1]
+    build+run:
+        dev-libs/glib:2[>=2.26.0]
+        net-libs/libssh2
+        sys-libs/slang[>=2.1.3]
+        sys-fs/e2fsprogs
+        gpm? ( sys-libs/gpm )
+        samba? ( net-fs/samba[>=3.3.1] )
+        X? (
+            x11-libs/libX11
+            x11-libs/libICE
+            x11-libs/libXau
+            x11-libs/libXdmcp
+            x11-libs/libSM
+        )
+    test:
+        dev-libs/check[>=0.9.8]
+    suggestion:
+        app-arch/zip [[ description = [ Support zip compression format ] ]]
+        app-arch/zstd [[ description = [ Support zstd compression format ] ]]
+        virtual/unzip [[ description = [ Support zip compression format ] ]]
+"
+
+DEFAULT_SRC_CONFIGURE_PARAMS=(
+    --enable-background
+    --enable-charset
+    --enable-extcharset
+    --enable-largefile
+    --enable-mclib
+    --enable-netcode
+    --enable-nls
+    --enable-vfs-sftp
+    --disable-aspell
+    --disable-werror
+    --with-configdir=/etc/samba
+    --with-codepagedir=/usr/$(exhost --target)/lib/samba/charset
+    --with-diff-viewer
+    --with-edit
+    --with-ext2undel
+    --with-homedir=XDG
+    --with-mmap
+    --with-screen=slang
+    --with-vfs
+    --without-mcfs
+)
+
+DEFAULT_SRC_CONFIGURE_OPTION_ENABLES=(
+    "samba vfs-smb"
+)
+
+DEFAULT_SRC_CONFIGURE_OPTION_WITHS=(
+    "gpm gpm-mouse"
+    "X x"
+)
+
+WORK=${WORKBASE}/${PNV/_/-}
+
+mc_src_prepare() {
+    # remove failing test, last checked: 4.8.22
+    edo sed \
+        -e 's:TESTS += mc_realpath::g' \
+        -i tests/lib/Makefile.am
+
+    autotools_src_prepare
+}
+
+mc_src_install() {
+    default
+
+    # Install cons.saver setuid to make it actually work
+    edo chmod u+s "${IMAGE}"/usr/$(exhost --target)/libexec/mc/cons.saver
+
+    edo find "${IMAGE}"/usr/ -type d -empty -delete
+}
+

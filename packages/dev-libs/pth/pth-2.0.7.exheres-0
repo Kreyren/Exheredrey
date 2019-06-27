@@ -1,0 +1,31 @@
+# Copyright 2008, 2009, 2014 Ingmar Vanhassel <ingmar@exherbo.org>
+# Based in part upon previous work copyrighted to Gentoo Foundation.
+# Distributed under the terms of the GNU General Public License v2
+
+require autotools [ supported_autoconf=[ 2.5 ] supported_automake=[ none ] ] gnu [ suffix=tar.gz ]
+
+SUMMARY="GNU Portable Threads"
+
+LICENCES="LGPL-2.1"
+SLOT="0"
+PLATFORMS="~amd64 ~x86"
+MYOPTIONS=""
+# When passing --enable-debug to ./configure, pth doesn't install a shared
+# library, gentoo bug 205875. Thus, no debug option added.
+
+DEPENDENCIES=""
+
+DEFAULT_SRC_PREPARE_PATCHES=(
+    -p0 "${FILES}/${PN}-2.0.7-parallelfix.patch"
+    -p1 "${FILES}/${PN}-2.0.7-ldflags.patch"
+    "${FILES}/${PN}-2.0.7-sigstack.patch"
+)
+DEFAULT_SRC_CONFIGURE_PARAMS=( --hates=docdir --hates=datarootdir )
+DEFAULT_SRC_INSTALL_EXTRA_DOCS=( USERS )
+
+src_prepare() {
+    default
+    # pth doesn't use automake
+    eautoconf
+}
+

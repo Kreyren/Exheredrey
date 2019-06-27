@@ -1,0 +1,10 @@
+# Copyright 2009-2017 Wulf C. Krueger <philantrop@exherbo.org>
+# Distributed under the terms of the GNU General Public License v2
+
+# Revision of the tag for ${PV} on http://git.opensvc.com/?p=multipath-tools/.git;a=tag
+REV=be1191b1d2726ed94498dac3505ca455bb6cb64e
+
+require multipath-tools
+
+PLATFORMS="~amd64 ~armv7 ~x86"
+

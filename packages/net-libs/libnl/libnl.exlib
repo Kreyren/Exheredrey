@@ -1,0 +1,47 @@
+# Copyright 2008 Saleem Abdulrasool <compnerd@compnerd.org>
+# Copyright 2011 Wulf C. Krueger <philantrop@exherbo.org>
+# Distributed under the terms of the GNU General Public License v2
+
+require github [ user=thom311 release=${PN}$(ever replace_all _) suffix=tar.gz ]
+
+SUMMARY="libnl is a library for applications dealing with netlink sockets"
+DESCRIPTION="
+This library provides an interface for raw netlink messaging and various netlink
+family specific interfaces.
+"
+HOMEPAGE="https://www.infradead.org/~tgr/${PN}"
+
+UPSTREAM_DOCUMENTATION="${HOMEPAGE}/doc/index.html [[ lang = en ]]"
+
+LICENCES="LGPL-2.1"
+MYOPTIONS=""
+
+DEPENDENCIES="
+    build:
+        virtual/pkg-config
+"
+
+DEFAULT_SRC_CONFIGURE_PARAMS=( --disable-static )
+
+if ever at_least 3.2.17 ; then
+    # doc? (
+    #    mscgen - http://www.mcternan.me.uk/mscgen/
+    #    mscgen-filter - http://code.google.com/p/asciidoc-mscgen-filter/
+    #    app-doc/asciidoc[>=8.6]
+    #    app-doc/doxygen[>=1.8.0]
+    # TODO: There is no switch to easily toggle the building of the test suite.
+    DEPENDENCIES+="
+        build:
+            sys-devel/bison
+            sys-devel/flex
+            virtual/pkg-config[>=0.9.0]
+        test:
+            dev-libs/check[>=0.9]
+    "
+
+    DEFAULT_SRC_CONFIGURE_PARAMS+=(
+        --enable-pthreads
+        --disable-doc
+    )
+fi
+

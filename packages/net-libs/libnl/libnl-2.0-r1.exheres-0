@@ -1,0 +1,23 @@
+# Copyright 2011 Paul Seidler <sepek@exherbo.org>
+# Distributed under the terms of the GNU General Public License v2
+
+require libnl
+
+DOWNLOADS="${HOMEPAGE}/files/${PNV}.tar.gz"
+
+SLOT="1"
+PLATFORMS="~amd64 ~x86"
+
+DEPENDENCIES+="
+    run:
+        net-libs/libnl:3.0 [[ note = [ Installs the same file in /etc ] ]]
+"
+
+src_install() {
+    default
+
+    # :3.0 installs the same file so remove it and depend on :3.0
+    edo rm "${IMAGE}"/etc/libnl/pktloc
+    edo rmdir "${IMAGE}"/etc/{libnl/,}
+}
+

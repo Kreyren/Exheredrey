@@ -1,0 +1,72 @@
+# Copyright 2017 Heiko Becker <heirecka@exherbo.org>
+# Distributed under the terms of the GNU General Public License v2
+
+require github [ tag=v${PV} ]
+
+export_exlib_phases src_configure src_test src_install
+
+SUMMARY="Console utility and library for computing and verifying hash sums"
+
+DESCRIPTION="
+It supports CRC32, MD4, MD5, SHA1, SHA256, SHA512, Tiger, DC++ TTH, BitTorrent
+BTIH, ED2K, AICH, GOST R 34.11-94, RIPEMD-160, HAS-160, EDON-R 256/512,
+Whirlpool and Snefru-128/256 algorithms. Hash sums are used to ensure and
+verify integrity of large volumes of data for a long-term storing or
+transferring.
+
+Features:
+* Can calculate Magnet links
+* Output in a predefined (SFV, BSD-like) or user defined format
+* Ability to process directories recursively
+* Updating of existing hash files (adding sums of files missing in the hash file)
+* Calculates several hash sums in one pass
+* Portability: the program works the same under Linux, *BSD, or Windows"
+
+LICENCES="MIT"
+SLOT="0"
+MYOPTIONS="
+    ( providers: libressl openssl ) [[ number-selected = exactly-one ]]
+"
+
+DEPENDENCIES="
+    build:
+        sys-devel/gettext
+    build+run:
+        providers:libressl? ( dev-libs/libressl:= )
+        providers:openssl? ( dev-libs/openssl )
+"
+
+WORK="${WORKBASE}/RHash-${PV}"
+
+rhash_src_configure() {
+    local myconf=(
+        --cc="${CC}"
+        --ar="${AR}"
+        --extra-cflags="${CFLAGS}"
+        --extra-ldflags="${LDFLAGS}"
+        --prefix=/usr/$(exhost --target)
+        --localedir=/usr/share/locale
+        --mandir=/usr/share/man
+        --sysconfdir=/etc
+        --enable-gettext
+        --enable-lib-shared
+        --enable-openssl
+        --disable-debug
+        --disable-openssl-runtime
+        --disable-static
+    )
+
+    edo ./configure "${myconf[@]}"
+}
+
+rhash_src_test() {
+    emake test-shared
+}
+
+rhash_src_install() {
+    emake DESTDIR="${IMAGE}" -j1 install{,-lib-so-link,-pkg-config} install-gmo
+    emake DESTDIR="${IMAGE}" -j1 -C librhash install-lib-headers
+
+    emagicdocs
+}
+

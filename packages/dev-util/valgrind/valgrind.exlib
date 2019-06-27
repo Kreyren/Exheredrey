@@ -1,0 +1,57 @@
+# Copyright 2008, 2009, 2011, 2012 Ingmar Vanhassel <ingmar@exherbo.org>
+# Distributed under the terms of the GNU General Public License v2
+# Based in part upon 'valgrind-3.3.0.ebuild' from Gentoo, which is:
+#     Copyright 1999-2008 Gentoo Foundation.
+
+require flag-o-matic autotools [ supported_autoconf=[ 2.5 ] supported_automake=[ 1.16 1.15 ] ]
+
+export_exlib_phases src_prepare src_configure
+
+SUMMARY="An open-source memory debugger for GNU/Linux"
+HOMEPAGE="http://www.valgrind.org/"
+DOWNLOADS="mirror://sourceware/${PN}/${PNV}.tar.bz2"
+
+UPSTREAM_RELEASE_NOTES="${HOMEPAGE}/docs/manual/dist.news.html"
+
+LICENCES="
+    FDL-1.2 [[ note = [ documentation ] ]]
+    GPL-2
+"
+SLOT="0"
+MYOPTIONS="
+    ( libc: musl )
+"
+
+DEPENDENCIES="
+    build+run:
+        !libc:musl? ( sys-libs/glibc[>=2.2] )
+"
+
+valgrind_src_prepare() {
+    # fix doc install path
+    edo sed \
+        -e "s:doc/${PN}:doc/${PNVR}:" \
+        -i docs/Makefile.am
+
+    autotools_src_prepare
+}
+
+valgrind_src_configure() {
+    local myconf=()
+
+    filter-flags -fomit-frame-pointer
+    # -ggdb3 causes segfaults at startup
+    replace-flags -ggdb3 -ggdb2
+    # stack-protector breaks the build. configure tries to filter it unsuccessfully
+    # https://sourceware.org/git/?p=valgrind.git;a=blob;f=configure.ac;hb=HEAD#l2143
+    filter-flags -fstack-protector -fstack-protector-all -fstack-protector-strong
+
+    if [[ $(exhost --target) =~ x86_64-pc-linux-(gnu|musl) ]] ; then
+            myconf+=( --enable-only64bit )
+    else
+            myconf+=( --enable-only32bit )
+    fi
+
+    econf "${myconf[@]}"
+}
+

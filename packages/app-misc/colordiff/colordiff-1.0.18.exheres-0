@@ -1,0 +1,38 @@
+# Copyright 2007-2009 Bo Ørsted Andresen
+# Distributed under the terms of the GNU General Public License v2
+
+SUMMARY="Colour-highlighted diff output"
+
+HOMEPAGE="https://www.${PN}.org"
+DOWNLOADS="${HOMEPAGE}/${PNV}.tar.gz"
+
+UPSTREAM_CHANGELOG="${HOMEPAGE}/changes.html [[ lang = en ]]"
+
+LICENCES="GPL-2"
+SLOT="0"
+PLATFORMS="~amd64 ~armv8 ~x86"
+MYOPTIONS=""
+
+DEPENDENCIES="
+    build:
+        sys-apps/diffutils
+"
+
+src_compile() {
+    # has a Makefile with various targets, but none we want here
+    :
+}
+
+DEFAULT_SRC_INSTALL_PARAMS=(
+    INSTALL_DIR="/usr/$(exhost --target)/bin"
+    MAN_DIR="/usr/share/man/man1"
+)
+DEFAULT_SRC_INSTALL_EXTRA_DOCS=( BUGS CHANGES )
+
+src_install() {
+    default
+
+    # Don't clutter /etc with alternative colour schemes
+    dodoc colordiffrc-{gitdiff,lightbg}
+}
+

@@ -1,0 +1,68 @@
+# Copyright 2009-2016 Wulf C. Krueger <philantrop@exherbo.org>
+# Copyright 2014 Julien Pivotto <roidelapluie@inuits.eu>
+# Distributed under the terms of the GNU General Public License v2
+
+require libnetfilter autotools [ supported_autoconf=[ 2.5 ] supported_automake=[ 1.16 ] ]
+
+export_exlib_phases src_prepare
+
+SUMMARY="nftables user space utility"
+DESCRIPTION="
+nftables is the project that aims to replace the existing {ip,ip6,arp,eb}tables
+framework. Basically, this project provides a new packet filtering framework, a
+new userspace utility and also a compatibility layer for {ip,ip6}tables. nftables
+is built upon the building blocks of the Netfilter infrastructure such as the
+existing hooks, the connection tracking system, the userspace queueing component
+and the logging subsystem.
+"
+
+BUGS_TO+=" roidelapluie@inuits.eu"
+
+LICENCES="GPL-2"
+MYOPTIONS="
+    debug
+    json [[ description = [ Enable JSON output support ] ]]
+"
+
+DEPENDENCIES="
+    build:
+        app-text/xmlto
+        sys-devel/bison
+        sys-devel/flex
+    build+run:
+        dev-libs/gmp:=
+        net-libs/libmnl[>=1.0.4]
+        net-libs/libnftnl[>=1.1.1]
+        json? ( dev-libs/jansson )
+"
+
+DEFAULT_SRC_CONFIGURE_PARAMS=(
+    --enable-man-doc
+    --disable-pdf-doc
+    --with-cli
+    --without-mini-gmp
+)
+
+DEFAULT_SRC_CONFIGURE_OPTION_WITHS=(
+    json
+)
+
+DEFAULT_SRC_CONFIGURE_OPTION_ENABLES=(
+    debug
+)
+
+nftables_src_prepare() {
+    # docbook2X is weird, has annoying dependencies, the latest release is from
+    # 2007 and nftables doesn't find it even if it's installed. Let's just use
+    # xmlto.
+    edo sed \
+        -e "s:docbook2x-man:xmlto:g" \
+        -e "s:db2x_docbook2man:xmlto:g" \
+        -i configure.ac
+    edo sed \
+        -e "s:--xinclude:man --skip-validation:" \
+        -i doc/Makefile.am
+
+    autotools_src_prepare
+}
+

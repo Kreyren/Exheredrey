@@ -1,0 +1,18 @@
+# Copyright 2018 Timo Gurr <tgurr@exherbo.org>
+# Distributed under the terms of the GNU General Public License v2
+
+require github [ user=google tag=v${PV} ] cmake [ api=2 ]
+
+SUMMARY="Generic-purpose lossless compression algorithm"
+
+LICENCES="MIT"
+SLOT="0"
+PLATFORMS="~amd64 ~armv7 ~armv8"
+MYOPTIONS=""
+
+DEPENDENCIES=""
+
+CMAKE_SRC_CONFIGURE_TESTS=(
+    '-DBUILD_TESTING:BOOL=TRUE -DBUILD_TESTING:BOOL=FALSE'
+)
+

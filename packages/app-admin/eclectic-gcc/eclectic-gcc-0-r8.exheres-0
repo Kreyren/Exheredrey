@@ -1,0 +1,130 @@
+# Copyright 2013 Marc-Antoine Perennou <keruspe@exherbo.org>
+# Copyright 2015 Kylie McClain <somasis@exherbo.org>
+# Distributed under the terms of the GNU General Public License v2
+
+require alternatives
+
+SUMMARY="Manages GCC's symlinks"
+HOMEPAGE="https://www.exherbo.org"
+DOWNLOADS=""
+
+LICENCES="GPL-2"
+PLATFORMS="~amd64 ~armv7 ~armv8 ~x86"
+
+SLOT="0"
+
+CROSS_COMPILE_TARGETS="
+    aarch64-unknown-linux-gnueabi
+    aarch64-unknown-linux-musleabi
+    armv4-unknown-linux-gnueabi
+    armv4-unknown-linux-gnueabihf
+    armv4-unknown-linux-musleabi
+    armv4-unknown-linux-musleabihf
+    armv5-unknown-linux-gnueabi
+    armv5-unknown-linux-gnueabihf
+    armv5-unknown-linux-musleabi
+    armv5-unknown-linux-musleabihf
+    armv6-unknown-linux-gnueabi
+    armv6-unknown-linux-gnueabihf
+    armv6-unknown-linux-musleabi
+    armv6-unknown-linux-musleabihf
+    armv7-unknown-linux-gnueabi
+    armv7-unknown-linux-gnueabihf
+    armv7-unknown-linux-musleabi
+    armv7-unknown-linux-musleabihf
+    i686-pc-linux-gnu
+    i686-pc-linux-musl
+    i686-unknown-windows-gnu
+    ia64-unknown-linux-gnu
+    powerpc64-unknown-linux-gnu
+    x86_64-pc-linux-gnu
+    x86_64-pc-linux-musl
+"
+
+MYOPTIONS="
+    ( targets: ${CROSS_COMPILE_TARGETS} ) [[ number-selected = at-least-one ]]
+"
+
+DEPENDENCIES="
+    run:
+        app-admin/eclectic[>=2.0.20]
+        sys-devel/gcc:*[>=4.9.2-r10]
+        !sys-devel/gcc:4.9[<4.9.2-r10]  [[
+            description = [ Alternatives conflict ]
+            resolution = uninstall-blocked-after
+        ]]
+        !sys-devel/gcc:5.1[<5.2.0-r6]   [[
+            description = [ Alternatives conflict ]
+            resolution = uninstall-blocked-after
+        ]]
+"
+
+WORK="${WORKBASE}"
+
+eclectic-gcc_alternatives() {
+    local target=${1} name=${2} gnu_name=${3}
+
+    local bin_subdir=/usr/$(exhost --target)/libexec/${PN}
+
+    dodir ${bin_subdir}
+    insinto ${bin_subdir}
+    insopts -m0755
+
+    # Use an executable instead of a direct symlink so ${PATH} is respected.
+    # This makes eclectic script gcc ${VER} work.
+    hereins ${target}-${gnu_name} <<EOF
+#!/bin/sh
+if [ "\${gcc_PROVIDER:+x}" = "x" ]; then
+    exec /usr/$(exhost --target)/bin/${target}-${gnu_name}-\${gcc_PROVIDER} "\${@}"
+else
+    exec /usr/$(exhost --target)/bin/${target}-${gnu_name} "\${@}"
+fi
+EOF
+    hereins ${gnu_name} << EOF
+#!/bin/sh
+if [ "\${gcc_PROVIDER:+x}" = "x" ]; then
+    exec /usr/$(exhost --target)/bin/${gnu_name}-\${gcc_PROVIDER} "\${@}"
+else
+    exec /usr/$(exhost --target)/bin/${gnu_name} "\${@}"
+fi
+EOF
+
+    local alternatives=(
+        /usr/$(exhost --target)/bin/${target}-${name}   ${bin_subdir}/${target}-${gnu_name}
+        /usr/share/man/man1/${target}-${name}.1         ${target}-${gnu_name}.1
+        /usr/$(exhost --target)/bin/${name}             ${bin_subdir}/${gnu_name}
+        "${BANNEDDIR}"/${name}                          ${gnu_name}
+    )
+    alternatives_for ${name} gcc 1000 "${alternatives[@]}"
+}
+
+src_install() {
+    for target in ${CROSS_COMPILE_TARGETS};do
+        if option targets:${target};then
+            eclectic-gcc_alternatives ${target} cc  gcc
+            eclectic-gcc_alternatives ${target} c++ g++
+            eclectic-gcc_alternatives ${target} cpp gcc-cpp
+            eclectic-gcc_alternatives ${target} fc  gfortran
+        fi
+    done
+}
+
+pkg_postinst() {
+    alternatives_pkg_postinst
+    if [[ "$(eclectic cpp show)" == gcc ]];then
+        for target in ${CROSS_COMPILE_TARGETS};do
+            if option targets:${target};then
+                if has_version "sys-devel/gcc:5.1[<5.2.0-r6][targets:${target}]";then
+                    edo ln -s ${target}-cpp-5.1 "${ROOT}"/usr/$(exhost --target)/bin/${target}-cpp
+                elif has_version "sys-devel/gcc:4.9[<4.9.2-r10][targets:${target}]";then
+                    # fix upgrading from latest stage...
+                    [[ -f $(readlink "${ROOT}"/usr/$(exhost --target)/bin/${target}-cpp-4.9) ]] && \
+                        edo ln -sf ${target}-cpp-4.9 "${ROOT}"/usr/$(exhost --target)/bin/${target}-cpp
+                    [[ -f $(readlink "${ROOT}"/usr/$(exhost --target)/bin/${target}-gcc-cpp-4.9) ]] && \
+                        edo ln -sf ${target}-cpp-5.1 "${ROOT}"/usr/$(exhost --target)/bin/${target}-cpp
+                fi
+            fi
+        done
+    fi
+}
+

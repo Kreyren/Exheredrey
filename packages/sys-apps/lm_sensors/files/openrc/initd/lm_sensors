@@ -1,0 +1,25 @@
+#!/usr/bin/openrc-run
+
+description="Initialize hardware monitoring sensors"
+
+depend() {
+    need localmount
+}
+
+my_modprobe() {
+    /usr/bin/modprobe -qab "$@"
+}
+
+start() {
+    if [ -n "${BUS_MODULES}" ] || [ -n "${HWMON_MODULES}" ]; then
+        my_modprobe ${BUS_MODULES} ${HWMON_MODULES}
+    fi
+    /usr/bin/sensors -s
+}
+
+stop() {
+    if [ -n "${BUS_MODULES}" ] || [ -n "${HWMON_MODULES}" ]; then
+        my_modprobe -r ${BUS_MODULES} ${HWMON_MODULES}
+    fi
+}
+

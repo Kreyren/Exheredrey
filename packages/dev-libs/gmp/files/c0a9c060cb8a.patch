@@ -1,0 +1,38 @@
+Upstream: yes
+
+# HG changeset patch
+# User Marc Glisse <marc.glisse@inria.fr>
+# Date 1382084245 -7200
+# Node ID c0a9c060cb8ac5c021a33d6a3ec13bd05b7402b2
+# Parent  a1fb56b967ffe80ea5031d67e02fadf6e580275d
+Backport __need_size_t removal, necessary for g++-4.9 -std=c++11.
+
+diff -r a1fb56b967ff -r c0a9c060cb8a ChangeLog
+--- a/ChangeLog	Tue Oct 01 16:57:06 2013 +0200
++++ b/ChangeLog	Fri Oct 18 10:17:25 2013 +0200
+@@ -1,3 +1,7 @@
++2013-10-08  Marc Glisse  <marc.glisse@inria.fr>
++
++	* gmp-h.in: Remove __need_size_t. Include <stddef.h>, not <cstddef>.
++
+ 2013-09-29  Torbjorn Granlund  <tege@gmplib.org>
+ 
+ 	* Version 5.1.3 released.
+diff -r a1fb56b967ff -r c0a9c060cb8a gmp-h.in
+--- a/gmp-h.in	Tue Oct 01 16:57:06 2013 +0200
++++ b/gmp-h.in	Fri Oct 18 10:17:25 2013 +0200
+@@ -46,13 +46,7 @@
+ #ifndef __GNU_MP__
+ #define __GNU_MP__ 5
+ 
+-#define __need_size_t  /* tell gcc stddef.h we only want size_t */
+-#if defined (__cplusplus)
+-#include <cstddef>     /* for size_t */
+-#else
+ #include <stddef.h>    /* for size_t */
+-#endif
+-#undef __need_size_t
+ 
+ /* Instantiated by configure. */
+ #if ! defined (__GMP_WITHIN_CONFIGURE)
+

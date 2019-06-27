@@ -1,0 +1,13 @@
+# Copyright 2012-2015 Wulf C. Krueger <philantrop@exherbo.org>
+# Distributed under the terms of the GNU General Public License v2
+
+[Unit]
+Description=ulog daemon
+After=network.target
+
+[Service]
+ExecStart=/usr/host/bin/ulogd
+ExecReload=/bin/kill -HUP $MAINPID
+
+[Install]
+WantedBy=multi-user.target

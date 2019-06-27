@@ -1,0 +1,42 @@
+# Copyright 2012 Elias Pipping <pipping@exherbo.org>
+# Copyright 2015 Kylie McClain <somasis@exherbo.org>
+# Distributed under the terms of the GNU General Public License v2
+
+require alternatives
+
+SUMMARY="Parallel implementation of gzip"
+HOMEPAGE="https://www.zlib.net/${PN}"
+DOWNLOADS="${HOMEPAGE}/${PNV}.tar.gz"
+
+LICENCES="ZLIB"
+SLOT="0"
+PLATFORMS="~amd64 ~armv7"
+
+MYOPTIONS=""
+
+src_prepare() {
+    edo sed \
+            -e "s/^CC=.*/CC=$(exhost --tool-prefix)cc/" \
+            -e "s/^CFLAGS=.*//"                         \
+            -i Makefile
+}
+
+src_install() {
+    edo rm unpigz # makefile just makes a hardlink by default, replace with symlink
+    edo ln -s pigz unpigz
+    edo ln -s pigz pigz.zcat
+    edo ln -s pigz.1 unpigz.1
+    edo ln -s pigz.1 pigz.zcat.1
+    dobin pigz unpigz pigz.zcat
+    doman pigz.1 unpigz.1 pigz.zcat.1
+    dodoc README ${PN}.pdf
+
+    alternatives_for gzip ${PN} 500 \
+                     /usr/$(exhost --target)/bin/gzip       pigz        \
+                     /usr/$(exhost --target)/bin/gunzip     unpigz      \
+                     /usr/$(exhost --target)/bin/zcat       pigz.zcat   \
+                     /usr/share/man/man1/gzip.1             pigz.1      \
+                     /usr/share/man/man1/gunzip.1           unpigz.1    \
+                     /usr/share/man/man1/zcat.1             pigz.zcat.1
+}
+

@@ -1,0 +1,22 @@
+# Copyright 2007 Bryan Østergaard
+# Distributed under the terms of the GNU General Public License v2
+
+require gnu [ suffix=tar.gz ]
+
+SUMMARY="Utility showing the full path of commands"
+DESCRIPTION="
+Which takes one or more arguments. For each of its arguments it prints to stdout the full path of
+the executables that would have been executed when this argument had been entered at the shell
+prompt. It does this by searching for an executable or script in the directories listed in the
+environment variable PATH using the same algorithm as bash.
+"
+
+LICENCES="GPL-3"
+SLOT="0"
+PLATFORMS="~amd64 ~arm ~armv7 ~armv8 ~x86"
+MYOPTIONS=""
+
+DEPENDENCIES=""
+
+DEFAULT_SRC_INSTALL_EXTRA_DOCS=( README.alias )
+

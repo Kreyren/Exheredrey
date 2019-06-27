@@ -1,0 +1,28 @@
+From f64ee67a739caff0430868429d2eebda76484d72 Mon Sep 17 00:00:00 2001
+From: Julian Ospald <hasufell@posteo.de>
+Date: Fri, 26 May 2017 12:59:58 +0200
+Subject: [PATCH] Fix build with libressl-2.5.x
+
+Also see https://github.com/libressl-portable/portable/issues/247
+
+This patch should be obsolete with later libressl versions.
+---
+ WWW/Library/Implementation/HTTP.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/WWW/Library/Implementation/HTTP.c b/WWW/Library/Implementation/HTTP.c
+index 581cb5e..391b5f7 100644
+--- a/WWW/Library/Implementation/HTTP.c
++++ b/WWW/Library/Implementation/HTTP.c
+@@ -926,7 +926,7 @@ static int HTLoadHTTP(const char *arg,
+ #elif SSLEAY_VERSION_NUMBER >= 0x0900
+ #ifndef USE_NSS_COMPAT_INCL
+ 	if (!try_tls) {
+-#if OPENSSL_VERSION_NUMBER >= 0x10100000L
++#if OPENSSL_VERSION_NUMBER >= 0x10100000L && !defined (LIBRESSL_VERSION_NUMBER)
+ 	    SSL_set_min_proto_version(handle, TLS1_1_VERSION);
+ #else
+ 	    SSL_set_options(handle, SSL_OP_NO_TLSv1);
+-- 
+2.13.0
+

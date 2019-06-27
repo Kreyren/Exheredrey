@@ -1,0 +1,75 @@
+# Copyright 2011 saleem Abdulrasool <compnerd@compnerd.org>
+# Distributed under the terms of the GNU General Public License v2
+
+require github [ user=p11-glue release=${PV} suffix=tar.gz ] \
+    systemd-service \
+    autotools [ supported_autoconf=[ 2.5 ] supported_automake=[ 1.16 ] ]
+
+SUMMARY="PKCS#11 crypto framework for multiple consumers"
+HOMEPAGE="https://p11-glue.freedesktop.org/p11-kit.html"
+
+LICENCES="BSD-3"
+SLOT="1"
+PLATFORMS="~amd64 ~x86"
+MYOPTIONS="
+    doc
+    systemd
+    ( linguas: ar as az bg bn_IN ca ca@valencia cs cy da de el en_GB eo es et eu fa fi fo fr ga gl
+               gu he hi hr hu ia id it ja ka kk kn ko lt lv ml mr ms nb nl nn oc or pa pl pt_BR pt
+               ro ru sk sl sq sr sr@latin sv ta te th tr uk vi wa zh_CN zh_HK zh_TW )
+"
+
+DEPENDENCIES="
+    build:
+        sys-devel/gettext[>=0.19]
+        virtual/pkg-config[>=0.29]
+        doc? (
+            dev-doc/gtk-doc[>=1.21]
+            dev-libs/libxslt
+        )
+    build+run:
+        dev-libs/libffi[>=3.0.0]
+        dev-libs/libtasn1[>=2.3]
+        systemd? ( sys-apps/systemd )
+"
+
+DEFAULT_SRC_CONFIGURE_PARAMS=(
+    systemduserunitdir="${SYSTEMDUSERUNITDIR}"
+)
+DEFAULT_SRC_CONFIGURE_OPTION_ENABLES=(
+    doc
+    'doc doc-html'
+)
+DEFAULT_SRC_CONFIGURE_OPTION_WITHS=(
+    systemd
+)
+
+src_prepare() {
+    # Currently fail under sydbox (https://bugs.exherbo.org/show_bug.cgi?id=369)
+    edo sed \
+        -e '/\/compat\/getauxval/d' \
+        -e '/\/compat\/mmap/d' \
+        -e '/\/compat\/secure_getenv/d' \
+        -i common/test-compat.c
+    edo sed \
+        -e '/\/conf\/setuid/d' \
+        -i p11-kit/test-conf.c
+    edo sed \
+        -e '/p11-kit\/test-server.sh/d' \
+        -i p11-kit/Makefile.am
+
+    autotools_src_prepare
+}
+
+src_test() {
+    esandbox allow_net "unix:${TEMP%/}/p11-test-server.*/p11-kit/pkcs11"
+    esandbox allow_net "unix:${TEMP%/}/p11-test-transport.*/pkcs11"
+    esandbox allow_net "unix:${WORK}/test-server-*/p11-kit/pkcs11-*"
+
+    default
+
+    esandbox disallow_net "unix:${TEMP%/}/p11-test-server.*/p11-kit/pkcs11"
+    esandbox disallow_net "unix:${TEMP%/}/p11-test-transport.*/pkcs11"
+    esandbox disallow_net "unix:${WORK}/test-server-*/p11-kit/pkcs11-*"
+}
+

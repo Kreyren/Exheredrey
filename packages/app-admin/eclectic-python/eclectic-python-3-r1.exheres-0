@@ -1,0 +1,7 @@
+# Copyright 2013 Marc-Antoine Perennou <keruspe@exherbo.org>
+# Distributed under the terms of the GNU General Public License v2
+
+require eclectic-python
+
+PLATFORMS="~amd64 ~arm ~armv7 ~armv8 ~x86"
+

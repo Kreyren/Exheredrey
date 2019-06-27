@@ -1,0 +1,28 @@
+# Copyright 2016-2018 Timo Gurr <tgurr@exherbo.org>
+# Distributed under the terms of the GNU General Public License v2
+
+require github [ user=graeme-hill tag=v${PV} ] cmake [ api=2 ]
+
+SUMMARY="Lightweight cross platform C++ GUID/UUID library"
+
+LICENCES="MIT"
+SLOT="0"
+PLATFORMS="~amd64"
+MYOPTIONS=""
+
+DEPENDENCIES="
+    build+run:
+        sys-apps/util-linux [[ note = [ libuuid ] ]]
+"
+
+src_test() {
+    edo ./xgtest
+}
+
+src_install() {
+    insinto /usr/$(exhost --target)/include
+    doins "${CMAKE_SOURCE}"/Guid.hpp
+
+    dolib libxg.a
+}
+

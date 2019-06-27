@@ -1,0 +1,17 @@
+# Copyright 2019 Heiko Becker <heirecka@exherbo.org>
+# Distributed under the terms of the GNU General Public License v2
+
+require github [ user='BLAKE2' tag=v${PV} ]
+require autotools [ supported_autoconf=[ 2.5 ] supported_automake=[ 1.16 ] ]
+
+SUMMARY="C library providing BLAKE2b, BLAKE2s, BLAKE2bp and BLAKE2sp"
+
+LICENCES="CC0"
+SLOT="0"
+MYOPTIONS=""
+
+DEPENDENCIES="
+    build+run:
+        sys-libs/libgomp:=
+"
+

@@ -1,0 +1,10 @@
+# Copyright 2011 Maxime Coste
+# Distributed under the terms of the GNU General Public License v2
+
+SCM_REPOSITORY="git://sourceware.org/git/valgrind.git"
+
+require scm-git valgrind
+
+DOWNLOADS=""
+PLATFORMS="-* ~amd64 ~x86"
+

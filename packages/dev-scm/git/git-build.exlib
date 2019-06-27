@@ -1,0 +1,246 @@
+# Copyright 2008, 2009, 2010, 2011 Ingmar Vanhassel <ingmar@exherbo.org>
+# Copyright 2013-2016 Wulf C. Krueger <philantrop@exherbo.org>
+# Distributed under the terms of the GNU General Public License v2
+
+myexparam -b htmldocs=true
+myexparam -b manpages=true
+myexparam git_remote_helpers=[ ]
+
+exparam -v GIT_REMOTE_HELPERS git_remote_helpers[@]
+
+require perl-module python bash-completion systemd-service zsh-completion
+require option-renames [ renames=[ 'libsecret keyring' ] ]
+
+export_exlib_phases src_unpack src_configure src_compile src_test src_install
+
+SUMMARY="A distributed VCS focused on speed, effectivity and real-world usability on large projects"
+DESCRIPTION="
+Git is a fast, scalable, distributed revision control system with an unusually
+rich command set that provides both high-level operations and full access to internals
+"
+HOMEPAGE="https://git-scm.com/"
+DOWNLOADS="mirror://kernel/software/scm/git/${PNV}.tar.xz"
+exparam -b htmldocs && DOWNLOADS+=" doc? ( mirror://kernel/software/scm/${PN}/${PN}-htmldocs-${PV}.tar.xz )"
+exparam -b manpages && DOWNLOADS+=" mirror://kernel/software/scm/${PN}/${PN}-manpages-${PV}.tar.xz"
+
+BUGS_TO="ingmar@exherbo.org philantrop@exherbo.org"
+
+REMOTE_IDS="freshcode:${PN}"
+
+LICENCES="GPL-2"
+SLOT="0"
+MYOPTIONS="
+    curl
+    examples [[ description = [ Install various contributions (i. e. the contrib/ directory) ] ]]
+    keyring [[ description = [ Install libsecret credential helper ] ]]
+    pcre [[ description = [ Allow for using Perl-compatible regular expressions in \`git grep\` ] ]]
+    python [[ description = [ Install helper scripts for git remote helpers, a compatibility layer with other SCMs ] ]]
+    sha1-collision-detection [[ description = [ Enable the (slower) collision-detecting SHA1 algorithm ] ]]
+    tk
+    webdav [[ requires = curl description = [ Adds support for pushing using http:// and https:// transports ] ]]
+    xinetd
+    ( providers: libressl openssl ) [[ number-selected = exactly-one ]]
+"
+exparam -b htmldocs && MYOPTIONS+=" doc"
+
+DEPENDENCIES="
+    build+run:
+        dev-lang/perl:=[>=5.21.5] [[ note = [ Net::SMTP->starttls (libnet-3.0.1) ] ]]
+        sys-libs/zlib
+        curl? ( net-misc/curl[>=7.34] )
+        keyring? (
+            dev-libs/glib:2
+            dev-libs/libsecret:1
+        )
+        pcre? ( dev-libs/pcre2 )
+        providers:libressl? ( dev-libs/libressl:= )
+        providers:openssl? ( dev-libs/openssl )
+        sha1-collision-detection? ( dev-libs/sha1collisiondetection )
+        tk? (
+          dev-lang/tcl[>=8.4]
+          dev-lang/tk[>=8.4]
+        )
+        webdav? ( dev-libs/expat )
+    run:
+        dev-perl/Error
+        xinetd? ( sys-apps/xinetd ) [[ description = [ Enables support for the xinetd super-server ] ]]
+    test:
+        dev-perl/MailTools
+    suggestion:
+        app-crypt/gnupg             [[ description = [ Needed for signing and verifying tags ] ]]
+        dev-scm/cvsps               [[ description = [ Dependency for 'git cvsimport' ] ]]
+        dev-scm/git-remote-helpers  [[ description = [ Allows usage of mercurial and bazaar with git ] ]]
+        dev-perl/DBI                [[ description = [ Dependency for 'git cvsserver' ] ]]
+        dev-lang/python:*           [[ description = [ Dependency for 'git p4' ] ]]
+        dev-perl/CGI                [[ description = [ Dependency for 'gitweb' ] ]]
+        dev-perl/TermReadKey        [[ description = [ Dependency for 'git add --interactive, git svn' ] group-name = [ git-svn ] ]]
+        net-misc/openssh            [[ description = [ Enables support for ssh:// URIs ] ]]
+        net-misc/rsync              [[ description = [ Enables support for rsync:// URIs ] ]]
+
+        (
+            dev-perl/Authen-SASL
+            dev-perl/MailTools [[ note = [ Mail::Address ] ]]
+            virtual/mta
+        ) [[ *description = [ Dependency for 'git send-email' ] *group-name = [ git-send-email ] ]]
+        (
+            dev-perl/libwww-perl
+            dev-scm/subversion[perl]
+        ) [[ *description = [ Dependency for 'git svn' ] *group-name = [ git-svn ] ]]
+
+        curl? ( net-misc/curl[ssl(+)]  [[ description = [ Enables support for https:// URIs ] ]] )
+"
+
+WORK=${WORKBASE}/${PNV/_/.}
+
+git-build_src_unpack() {
+    unpack ${PNV}.tar.xz
+    edo cd "${WORK}"
+    exparam -b manpages && unpack ${PN}-manpages-${PV}.tar.xz
+
+    if exparam -b htmldocs && option doc; then
+        edo cd Documentation
+        unpack ${PN}-htmldocs-${PV}.tar.xz
+    fi
+}
+
+# No option: mozsha1/ppcsha1
+# TODO Check whether we want NO_CROSS_DIRECTORY_HARDLINKS wrt pbins
+git-build_src_configure() {
+    # Note(tanderson): Run perlinfo here to set ${VENDOR_LIB} for INSTALLSITELIB;
+    # Really, this is used in src_{compile,install} but set it here so we don't
+    # have to modify 'myoptions' later.
+    perlinfo
+    myoptions=(
+        'NO_GETTEXT=YesPlease'
+        DESTDIR="${IMAGE}"
+        CFLAGS="${CFLAGS} -Wall"
+        LDFLAGS="${LDFLAGS}"
+        CC="${CC}"
+        AR="${AR}"
+        INSTALLSITELIB="${VENDOR_LIB}"
+        PKG_CONFIG="${PKG_CONFIG}"
+        PERL_PATH=/usr/$(exhost --build)/bin/perl
+        PYTHON_PATH="${PYTHON}"
+        # /usr/host/lib/perl5/vendor_perl/<perl-version>-pure
+        perllibdir=/usr/$(exhost --target)/$(perl -MConfig -wle 'print substr $Config{installvendorlib}, 1 + length $Config{vendorprefixexp}')
+        # Don't install bundled perl modules, e.g. Error
+        'NO_PERL_CPAN_FALLBACKS=YesPlease'
+    )
+
+    option curl || myoptions+=( 'NO_CURL=YesPlease' )
+    option pcre && myoptions+=( 'USE_LIBPCRE=YesPlease' )
+    option python || myoptions+=( 'NO_PYTHON=YesPlease' )
+    if option sha1-collision-detection ; then
+        myoptions+=(
+            DC_SHA1=YesPlease
+            DC_SHA1_EXTERNAL=YesPlease
+        )
+    fi
+    option tk || myoptions+=( 'NO_TCLTK=YesPlease' )
+    option webdav || myoptions+=( 'NO_EXPAT=YesPlease' )
+
+    # Note(tanderson): Yes, this is correct; we need to run *both* configure
+    # and make with these options. Before multiarch we only did the emake call,
+    # but this is actually now needed since we need to set both --exec-prefix
+    # and --prefix for the perl man pages and tcl scripts. Without the configure
+    # script we cannot set --exec-prefix since that is not exposed through the
+    # resulting Makefile but instead generated here by configure.
+    emake configure
+
+    if ! exhost --is-native -q; then
+        myoptions+=( 'ac_cv_fread_reads_directories=no' )
+        myoptions+=( 'ac_cv_snprintf_returns_bogus=no' )
+    fi
+
+    edo ./configure \
+        --build=$(exhost --build) \
+        --host=$(exhost --target) \
+        --exec-prefix=/usr/$(exhost --target) \
+        --prefix=/usr \
+        --with-perl=/usr/$(exhost --build)/bin/perl \
+        --with-python="${PYTHON}" \
+        $(option curl && echo "--with-curl=/usr/$(exhost --target)") \
+        "${myoptions[@]}"
+}
+
+myemake() {
+    emake \
+        gitexecdir=/usr/$(exhost --target)/libexec/${PN} \
+        gitwebdir=/usr/share/gitweb \
+        template_dir=/usr/share/${PN}/templates \
+        "${myoptions[@]}" \
+        "${@}"
+}
+
+git-build_src_compile() {
+    myemake V=1 all
+    option keyring && myemake -C contrib/credential/libsecret
+}
+
+git-build_src_test() {
+    esandbox allow_net "unix:${WORK%/}/t/trash directory.t0301-credential-cache/.cache/git/credential/socket";
+    esandbox allow_net "unix:${WORK%/}/t/trash directory.t0301-credential-cache/dir";
+    esandbox allow_net "unix:${WORK%/}/t/trash directory.t0301-credential-cache/xdg/git/credential";
+    esandbox allow_net "unix:${WORK%/}/t/trash directory.t0301-credential-cache/.git-credential-cache/socket";
+
+    # default_src_test executes the wrong target, "make check", first
+    myemake -j1 test
+
+    esandbox disallow_net "unix:${WORK%/}/t/trash directory.t0301-credential-cache/.cache/git/credential/socket";
+    esandbox disallow_net "unix:${WORK%/}/t/trash directory.t0301-credential-cache/dir";
+    esandbox disallow_net "unix:${WORK%/}/t/trash directory.t0301-credential-cache/xdg/git/credential";
+    esandbox disallow_net "unix:${WORK%/}/t/trash directory.t0301-credential-cache/.git-credential-cache/socket";
+}
+
+git-build_src_install() {
+    myemake install
+
+    if exparam -b manpages ; then
+        doman man?/*
+    else
+        myemake ASCIIDOC8=YesPlease ASCIIDOC_NO_ROFF=YesPlease install-man
+    fi
+
+    dodoc README.md Documentation/{SubmittingPatches,CodingGuidelines}
+    for d in / /howto/ /technical/ ; do
+        docinto ${d}
+        dodoc Documentation${d}*.txt
+        if exparam -b htmldocs && option doc; then
+            dodir /usr/share/doc/${PNVR}/html/
+            insinto /usr/share/doc/${PNVR}/html/
+            doins Documentation${d}*.html
+        fi
+    done
+    docinto /
+
+    option examples && dodoc -r contrib
+
+    dobashcompletion contrib/completion/git-completion.bash
+    # zsh completion uses bash completion internally
+    dozshcompletion contrib/completion/git-completion.zsh _git
+    dozshcompletion contrib/completion/git-completion.bash
+
+    exeinto /usr/$(exhost --target)/libexec/${PN}
+    newexe contrib/fast-import/import-tars.perl git-import-tars
+    option keyring && doexe contrib/credential/libsecret/git-credential-libsecret
+
+    docinto /gitweb/
+    dodoc gitweb/{INSTALL,README}
+
+    if option xinetd ; then
+        dodir /etc/xinetd.d
+        insinto /etc/xinetd.d
+        newins "${FILES}"/git-daemon.xinetd git-daemon
+    fi
+
+    hereconfd ${PN}-daemon.conf <<EOF
+GIT_OPTS="/var/git"
+
+GIT_USER="nobody"
+GIT_GROUP="nobody"
+EOF
+    install_systemd_files
+
+    keepdir /usr/share/${PN}/templates/branches
+}
+

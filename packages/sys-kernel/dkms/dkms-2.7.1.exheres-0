@@ -1,0 +1,47 @@
+# Copyright 2012 William Orr <will@worrbase.com>
+# Distributed under the terms of the GNU General Public License v2
+
+require github [ user=dell tag="v${PV}" ] \
+    systemd-service [ systemd_files=[ dkms.service ] ]
+
+SUMMARY="Dynamically rebuild kernel modules"
+DESCRIPTION="
+DKMS includes utilities to dynamically rebuild kernel modules when the kernel is updated. It also
+allows developers to build DKMS-enabled tarballs, rpms and debs that will be rebuilt on kernel
+update.
+"
+
+LICENCES="GPL-2"
+SLOT="0"
+PLATFORMS="~amd64"
+MYOPTIONS=""
+
+DEPENDENCIES="
+    run:
+        app-shells/bash
+    suggestion:
+        app-arch/dpkg [[
+            description = [ Build DKMS-enabled debs ]
+        ]]
+        app-arch/rpm [[
+            description = [ Build DKMS-enabled rpms ]
+        ]]
+"
+
+BUGS_TO="will@worrbase.com"
+
+DEFAULT_SRC_INSTALL_PARAMS=(
+    SBIN="${IMAGE}/usr/$(exhost --target)/bin"
+    LIBDIR="${IMAGE}/usr/$(exhost --target)/lib/dkms"
+)
+
+src_compile() {
+    :
+}
+
+src_install() {
+    default
+
+    install_systemd_files
+}
+

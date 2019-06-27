@@ -1,0 +1,12 @@
+# Copyright 2009 Daniel Mierswa <impulze@impulze.org>
+# Distributed under the terms of the GNU General Public License v2
+
+require wpa_supplicant
+
+PLATFORMS="~amd64 ~armv7 ~armv8 ~x86"
+
+DEFAULT_SRC_PREPARE_PATCHES+=(
+    "${FILES}"/${PNV}-Fix-build-with-LibreSSL.patch
+    "${FILES}"/${PNV}-DPP-Fix-build-with-LibreSSL-2.8.3.patch
+)
+

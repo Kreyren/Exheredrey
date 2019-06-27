@@ -1,0 +1,155 @@
+# Copyright 2008 Bryan Østergaard
+# Copyright 2008, 2009, 2010 Ingmar Vanhassel
+# Distributed under the terms of the GNU General Public License v2
+
+MY_PV=${PV%_p*}
+PATCH_LEVEL=${PNV##*_p}
+
+require alternatives
+
+export_exlib_phases src_prepare src_configure src_install src_test_expensive
+
+SUMMARY="Berkeley DB embeddable database engine"
+HOMEPAGE="https://www.oracle.com/database/berkeley-${PN}/index.html"
+DOWNLOADS="http://download.oracle.com/berkeley-${PN}/${PN}-${MY_PV}.tar.gz
+    $(for ((i=1 ; i<=PATCH_LEVEL ; i++ )) ; do
+        echo "http://download.oracle.com/berkeley-${PN}/patches/${PN}/${MY_PV}/patch.${MY_PV}.${i} -> ${PN}-${MY_PV}.${i}.patch"
+    done)
+"
+
+if ever at_least 6.0.20 ; then
+    LICENCES="AGPL-3"
+else
+    LICENCES="as-is"
+fi
+
+SLOT="$(ever range 1-2)"
+MYOPTIONS="
+    doc
+    tcl [[ description = [ Build tcl bindings. Should be enabled if you want to run expensive tests ] ]]
+"
+
+DEPENDENCIES="
+    build+run:
+        !sys-libs/db:0 [[ description = [ Uninstall sys-libs/db:0 before installing slotted versions of Berkely DB ] ]]
+        tcl? ( dev-lang/tcl )
+    test-expensive:
+        dev-lang/tcl
+"
+
+WORK="${WORKBASE}/${PN}-${MY_PV}/build_unix"
+
+AT_M4DIR=( aclocal aclocal_java )
+
+DEFAULT_SRC_INSTALL_PARAMS=( STRIP=: )
+
+db_src_prepare() {
+    edo cd "${WORKBASE}/${PN}-${MY_PV}/"
+
+    local patches=()
+    for ((i=1; i<=PATCH_LEVEL; i++)); do
+        patches+=( "${FETCHEDDIR}/${PN}-${MY_PV}.${i}.patch" )
+    done
+    [[ -z ${patches} ]] || expatch -p0 "${patches[@]}"
+
+    default
+
+    edo cd "${WORKBASE}/${PN}-${MY_PV}/dist/"
+
+    # Allow --docdir to work
+    edo sed -re "/^docdir/s:=\s+.*:= @docdir@:" -i ./Makefile.in
+
+    if ! ever at_least 5.3.21; then
+        # Hack in something similar --program-transform-name, simplifies slotting
+        edo sed -e '/INSTALLER.*bindir/s:$(bindir)/$$i:$(bindir)/`echo $$i | sed '"'s/${PN}/${PN}${SLOT}/'"'`:' \
+                -e '/CHMOD.*bindir/s:$(bindir)/$$i:$(bindir)/`echo $$i | sed '"'s/${PN}/${PN}${SLOT}/'"'`:' \
+                -i ./Makefile.in
+    fi
+}
+
+db_src_configure() {
+    local myconf=()
+    ever at_least 5.3.21 && myconf+=( --program-transform-name="'s/${PN}/${PN}${SLOT}/'" )
+
+    ECONF_SOURCE=../dist econf \
+        --includedir=/usr/$(exhost --target)/include/${PN}${SLOT} \
+        --enable-compat185 \
+        --enable-cxx \
+        --disable-java \
+        $(option_enable tcl) \
+        $(option_enable tcl test) \
+        $(option_with tcl tcl "/usr/$(exhost --target)/lib") \
+        ${myconf[@]} \
+        LDFLAGS="-L/usr/$(exhost --target)/lib ${LDFLAGS}"
+}
+
+db_src_test_expensive() {
+    if option !tcl ; then
+        ewarn "${CATEGORY}/${PN} needs the 'tcl' option enabled to run expensive tests"
+        return
+    fi
+
+cat <<EOF > testrunner.tcl
+source "${WORK}/../test/test.tcl"
+run_std
+EOF
+    tclsh testrunner.tcl
+    grep -qs '^FAIL' ALL.OUT && die "Some tests failed, see ${WORK}/ALL.OUT"
+}
+
+db_src_install() {
+    default
+
+    edo rm "${IMAGE}"/usr/$(exhost --target)/lib/libdb{,_cxx}{.so,.a,-$(ever major).so}
+
+    option tcl && edo rm "${IMAGE}"/usr/$(exhost --target)/lib/libdb_tcl{,-$(ever major)}.so
+    ever at_least 5.3.21 && option tcl && edo rm "${IMAGE}"/usr/$(exhost --target)/lib/libdb_tcl.a
+
+    local alternatives=() replace_me replace_me_by src
+    edo pushd "${IMAGE}"
+    # Libraries,    /usr/lib/lib*.*                 -> /usr/lib/lib*-${SLOT}.*
+    replace_me=-${SLOT}
+    for src in usr/$(exhost --target)/lib/lib*${replace_me}.* ; do
+        target=${src/${replace_me}}
+        alternatives+=( /${target} ${src##*/} )
+    done
+
+    # Libraries,    /usr/lib/lib*-$(ever major).so   -> /usr/lib/lib*-${SLOT}.so
+    replace_me_by=-$(ever major)
+    for src in usr/$(exhost --target)/lib/libdb{,_cxx}${replace_me}.so ; do
+        target=${src/${replace_me}/${replace_me_by}}
+        alternatives+=( /${target} ${src##*/} )
+    done
+    if option tcl; then
+        src=usr/$(exhost --target)/lib/libdb_tcl${replace_me}.so
+        target=${src/${replace_me}/${replace_me_by}}
+        alternatives+=( /${target} ${src##*/} )
+    fi
+    edo popd
+
+    alternatives_for ${PN} ${SLOT} ${SLOT} "${alternatives[@]}"
+
+    if option !doc ; then
+        edo rm -r "${IMAGE}"/usr/share
+    fi
+
+    local alternatives=() replace_me
+    edo pushd "${IMAGE}"
+
+    # Binaries,     /usr/bin/${PN}_*                -> /usr/bin/${PN}${SLOT}_*
+    for src in usr/$(exhost --target)/bin/${PN}${SLOT}_* ; do
+        target=${src/${SLOT}/}
+        alternatives+=( /${target} ${src##*/} )
+    done
+
+    # Includes      /usr/include/*.h                -> /usr/include/${PN}${SLOT}/*.h
+    replace_me=${PN}${SLOT}/
+    for src in usr/$(exhost --target)/include/${replace_me}/*.h ; do
+        target=${src/${replace_me}}
+        alternatives+=( /${target} ${src##usr/$(exhost --target)/include/} )
+    done
+    edo popd
+
+    alternatives_for ${PN} ${SLOT} ${SLOT} "${alternatives[@]}"
+}
+

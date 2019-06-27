@@ -1,0 +1,112 @@
+# Copyright 2008-2011 Wulf C. Krueger
+# Distributed under the terms of the GNU General Public License v2
+# Based in part upon 'sysvinit-2.86-r10.ebuild' from Gentoo, which is:
+#     Copyright 1999-2008 Gentoo Foundation
+
+require flag-o-matic alternatives
+
+PATCHTXZ_VER="1.2"
+
+SUMMARY="System V init system"
+HOMEPAGE="https://savannah.nongnu.org/projects/${PN}"
+DOWNLOADS="https://download.savannah.gnu.org/releases/${PN}/${PNV}.tar.xz
+    https://dev.exherbo.org/distfiles/${PN}-2.94-patches-${PATCHTXZ_VER}.tar.xz"
+
+LICENCES="GPL-2"
+SLOT="0"
+PLATFORMS="~amd64 ~arm ~x86"
+MYOPTIONS="static"
+
+DEPENDENCIES="
+    build:
+        sys-kernel/linux-headers
+    build+run:
+        !sys-apps/sysvinit-tools [[
+            description = [ sys-apps/sysvinit-tools and this package collide. You probably want sys-apps/sysvinit-tools. ]
+            resolution = manual
+        ]]
+        !sys-apps/util-linux[<2.24] [[
+            description = [ sys-apps/util-linux 2.24 installs tools previously provided by this package ]
+            resolution = uninstall-blocked-after
+        ]]
+"
+
+DEFAULT_SRC_PREPARE_PATCHES=(
+    -p1 "${WORKBASE}/${PN}-2.86-kexec.patch"
+    -p1 "${WORKBASE}/${PN}-2.94-shutdown-single.patch"
+)
+
+src_compile() {
+    option static && append-ldflags -static
+    emake -C src \
+        CC="${CC}" \
+        all
+}
+
+src_install() {
+    emake -C src install ROOT="${IMAGE}"
+
+    # Installing "Install", too, because it contains some information beyond
+    # simple installation instructions.
+    dodoc README doc/Changelog doc/Install doc/Propaganda doc/bootlogd.README
+
+    insinto /etc
+    doins "${WORKBASE}"/inittab
+
+    edo mkdir -p "${IMAGE}"/usr/$(exhost --target)/{bin,include}
+    edo mv "${IMAGE}"/usr/bin/* "${IMAGE}"/usr/$(exhost --target)/bin/
+    edo mv "${IMAGE}"/bin/* "${IMAGE}"/usr/$(exhost --target)/bin/
+    edo mv "${IMAGE}"/sbin/* "${IMAGE}"/usr/$(exhost --target)/bin/
+    edo mv "${IMAGE}"/usr/include/* "${IMAGE}"/usr/$(exhost --target)/include/
+
+    # alternatives
+    local a t alternatives=( init ${PN} 10 )
+    for a in halt init poweroff reboot runlevel shutdown telinit; do
+        if [[ -L "${IMAGE}"/usr/$(exhost --target)/bin/${a} ]]; then
+            t=$(readlink "${IMAGE}"/usr/$(exhost --target)/bin/${a})
+            edo rm "${IMAGE}"/usr/$(exhost --target)/bin/${a}
+        else
+            t=${a}
+        fi
+        alternatives+=( /usr/$(exhost --target)/bin/${a} ${PN}.${t}
+                        /usr/share/man/man8/${a}.8 ${PN}.${a}.8 )
+    done
+    alternatives+=( /usr/share/man/man5/inittab.5 ${PN}.inittab.5 )
+    alternatives_for "${alternatives[@]}"
+
+    # wall is provided by util-linux
+    edo rm "${IMAGE}"/usr/$(exhost --target)/bin/wall "${IMAGE}"/usr/share/man/man1/wall.1
+
+    # sulogin is provided by util-linux
+    edo rm "${IMAGE}"/usr/$(exhost --target)/bin/sulogin "${IMAGE}"/usr/share/man/man8/sulogin.8
+
+    # utmpdump is provided by util-linux
+    edo rm "${IMAGE}"/usr/$(exhost --target)/bin/utmpdump "${IMAGE}"/usr/share/man/man1/utmpdump.1
+
+    # mesg is provided by util-linux
+    edo rm "${IMAGE}"/usr/$(exhost --target)/bin/mesg "${IMAGE}"/usr/share/man/man1/mesg.1
+
+    # last and lastb are provided by util-linux
+    edo rm "${IMAGE}"/usr/$(exhost --target)/bin/last{,b} "${IMAGE}"/usr/share/man/man1/last{,b}.1
+
+    # pidof is provided by procps
+    edo rm "${IMAGE}"/usr/$(exhost --target)/bin/pidof "${IMAGE}"/usr/share/man/man8/pidof.8
+
+    # logsave is provided by e2fsprogs
+    edo rm "${IMAGE}"/usr/$(exhost --target)/bin/logsave "${IMAGE}"/usr/share/man/man8/logsave.8
+
+    edo find "${IMAGE}" -type d -empty -delete
+
+}
+
+pkg_postinst() {
+    # Reload init to fix unmounting problems of / on next reboot.
+    # This is really needed because without it, init wouldn't quit properly during
+    # the next shutdown and would cause a fsck of / during the next reboot.
+    if [[ ${ROOT} == / ]] ; then
+        # Do not return an error if this fails
+        /sbin/telinit U &>/dev/null
+    fi
+    alternatives_pkg_postinst
+}
+

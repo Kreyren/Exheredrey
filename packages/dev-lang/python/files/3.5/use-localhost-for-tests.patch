@@ -1,0 +1,49 @@
+From a194af5a2d5cf5bfd0e8df9868819d893f1066b4 Mon Sep 17 00:00:00 2001
+From: Paul Seidler <sepek@exherbo.org>
+Date: Sun, 27 Nov 2011 14:09:36 +0100
+Subject: [PATCH 3/3] use localhost for tests
+
+Upstream: no
+---
+ Lib/test/test_httplib.py | 2 +-
+ Lib/test/test_ssl.py     | 4 ++--
+ 2 files changed, 3 insertions(+), 3 deletions(-)
+
+diff --git a/Lib/test/test_httplib.py b/Lib/test/test_httplib.py
+index 30b6c0c..ffc9860 100644
+--- a/Lib/test/test_httplib.py
++++ b/Lib/test/test_httplib.py
+@@ -692,7 +692,7 @@ class SourceAddressTest(TestCase):
+ 
+     def testHTTPConnectionSourceAddress(self):
+         self.conn = client.HTTPConnection(HOST, self.port,
+-                source_address=('', self.source_port))
++                source_address=('localhost', self.source_port))
+         self.conn.connect()
+         self.assertEqual(self.conn.sock.getsockname()[1], self.source_port)
+ 
+diff --git a/Lib/test/test_ssl.py b/Lib/test/test_ssl.py
+index 1a2a9f0..14ccc99 100644
+--- a/Lib/test/test_ssl.py
++++ b/Lib/test/test_ssl.py
+@@ -319,7 +319,7 @@ class BasicSocketTests(unittest.TestCase):
+             self.assertRaises(OSError, ss.recvfrom, 1)
+             self.assertRaises(OSError, ss.recvfrom_into, bytearray(b'x'), 1)
+             self.assertRaises(OSError, ss.send, b'x')
+-            self.assertRaises(OSError, ss.sendto, b'x', ('0.0.0.0', 0))
++            self.assertRaises(OSError, ss.sendto, b'x', ('localhost', 0))
+ 
+     def test_timeout(self):
+         # Issue #8524: when creating an SSL socket, the timeout of the
+@@ -1719,7 +1719,7 @@ else:
+             def __init__(self, certfile):
+                 self.certfile = certfile
+                 sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+-                self.port = support.bind_port(sock, '')
++                self.port = support.bind_port(sock)
+                 asyncore.dispatcher.__init__(self, sock)
+                 self.listen(5)
+ 
+-- 
+1.9.0
+

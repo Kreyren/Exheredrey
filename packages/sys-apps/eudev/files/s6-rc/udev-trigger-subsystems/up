@@ -1,0 +1,3 @@
+#!/bin/execlineb -P
+
+udevadm trigger --type=subsystems --action=add

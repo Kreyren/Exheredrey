@@ -1,0 +1,53 @@
+# Copyright 2008 Bernd Steinhauser <berniyh@exherbo.org>
+# Distributed under the terms of the GNU General Public License v2
+# Based in part upon 'rasqal-0.9.15.ebuild' from Gentoo, which is:
+#     Copyright 1999-2008 Gentoo Foundation.
+
+export_exlib_phases src_prepare src_configure
+
+SUMMARY="Library that handles Resource Description Framework (RDF)"
+HOMEPAGE="http://librdf.org/${PN}"
+DOWNLOADS="http://download.librdf.org/source/${PNV}.tar.gz"
+
+REMOTE_IDS="freecode:${PN}"
+
+UPSTREAM_CHANGELOG="${HOMEPAGE}/ChangeLog [[ lang = en ]]"
+UPSTREAM_DOCUMENTATION="${HOMEPAGE}/docs/api/ [[ lang = en ]]"
+UPSTREAM_RELEASE_NOTES="${HOMEPAGE}/RELEASE.html [[ lang = en ]]"
+
+LICENCES="|| ( LGPL-2.1 GPL-2 Apache-2.0 )"
+SLOT="0"
+MYOPTIONS="gmp pcre"
+
+DEPENDENCIES="
+    build:
+        sys-devel/bison[>=3.0.0]
+        sys-devel/flex[>=2.5.36]
+        virtual/pkg-config[>=0.9.0]
+    build+run:
+        dev-libs/libgcrypt
+        dev-libs/libgpg-error
+        dev-libs/libxml2:2.0[>=2.6.8]
+        media-libs/raptor[>=2.0.7]
+        sys-apps/util-linux [[ note = [ for libuuid ] ]]
+        gmp? ( dev-libs/gmp:= )
+        !gmp? ( dev-libs/mpfr:=[>=2.4.0] )
+        pcre? ( dev-libs/pcre[>=3.9] )
+"
+
+rasqal_src_prepare() {
+    default
+
+    edo sed -e "s:pkg-config:${PKG_CONFIG}:" -i src/rasqal-config.in
+}
+
+rasqal_src_configure() {
+    econf \
+        --enable-xml2 \
+        --disable-static \
+        --with-decimal=$(optionv gmp || echo "mpfr") \
+        --with-digest-library=gcrypt \
+        --with-regex-library=$(optionv pcre || echo "posix") \
+        $(option_enable pcre)
+}
+

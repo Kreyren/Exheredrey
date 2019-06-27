@@ -1,0 +1,144 @@
+# Copyright 1999-2008 Ciaran McCreesh
+# Copyright 2011-2012 Bo Ørsted Andresen
+# Distributed under the terms of the GNU General Public License v2
+
+require cmake [ api=2 ] python [ multibuild=false blacklist="3" with_opt=true ]
+require ruby [ multibuild=false with_opt=true ]
+require bash-completion flag-o-matic zsh-completion
+
+export_exlib_phases pkg_setup src_configure src_install pkg_preinst
+
+SUMMARY="Paludis, the one true package mangler"
+HOMEPAGE="http://paludis.exherbo.org"
+DOWNLOADS="${HOMEPAGE}/download/${PNV}.tar.bz2"
+
+MYOPTIONS="
+    doc
+    gemcutter    [[ description = [ Enable Gemcutter-based support for ruby gems ] ]]
+    pbin         [[ description = [ Experimental binary package support ] ]]
+    pink         [[ description = [ Use an obnoxious girly colour scheme ] ]]
+    python       [[ description = [ Enable the Python bindings ] ]]
+    ruby         [[ description = [ Enable the Ruby bindings ] ]]
+    search-index [[ description = [ Enable cave search --index ] ]]
+    vim-syntax
+    xml          [[ description = [ Enable parsing of xml files, for GLSA and metadata.xml support, only useful with Gentoo repositories ] ]]
+
+    ( platform: armv8 )
+    ( providers: elfutils )
+"
+LICENCES="GPL-2 vim-syntax? ( vim )"
+SLOT="0"
+
+DEPENDENCIES="
+    build:
+        app-doc/asciidoc[>=8.6.3]
+        app-text/tidy
+        app-text/xmlto
+        sys-devel/m4
+        virtual/pkg-config
+        doc? (
+            app-doc/doxygen
+            python? ( dev-python/Sphinx[python_abis:*(-)?] )
+            ruby? ( dev-ruby/syntax[ruby_abis:*(-)?] )
+        )
+    build+run:
+        user/paludisbuild
+        app-admin/eclectic
+        app-shells/bash[>=4]
+        dev-libs/pcre[>=7.8]
+        sys-apps/file
+        gemcutter? ( dev-libs/jansson[>=1.3] )
+        pbin? ( app-arch/libarchive[>=3.1.2] )
+        python? (
+            dev-libs/boost[python(+)][python_abis:*(-)?]
+        )
+        search-index? ( dev-db/sqlite:3 )
+        xml? ( dev-libs/libxml2:2.0[>=2.6] )
+    test:
+        dev-cpp/gtest
+    run:
+        net-misc/rsync[>=3.1.0]
+        virtual/wget
+        bash-completion? ( app-shells/bash-completion[>=1.1] )
+        !platform:armv8? ( sys-apps/sydbox[>=0.7.6] )
+    post:
+        vim-syntax? ( app-editors/vim-runtime:*[>=7] )
+    recommendation:
+        providers:elfutils? (
+            sys-devel/dwz [[
+                description = [ Support for compressing debugging information before merging packages ]
+            ]]
+        )
+"
+
+DEFAULT_SRC_TEST_PARAMS=( "CTEST_PARALLEL_LEVEL=${EXJOBS:-1}" )
+
+paludis_pkg_setup() {
+    replace-flags -Os -O2
+}
+
+paludis_src_configure() {
+    local repositories=$(echo default accounts $(optionv gemcutter) repository | tr -s \  \;)
+    local cmakeparams=()
+
+    cmakeparams+=(
+        -DENABLE_GTEST:BOOL=$(expecting_tests && echo TRUE || echo FALSE)
+        $(cmake_enable doc DOXYGEN)
+        $(cmake_enable pbin PBINS)
+        $(cmake_option pink PALUDIS_COLOUR_PINK)
+        $(cmake_enable PYTHON)
+        -DENABLE_PYTHON_DOCS:BOOL=$(option doc && option python && echo TRUE || echo FALSE)
+        $(cmake_enable RUBY)
+        -DENABLE_RUBY_DOCS:BOOL=$(option doc && option ruby && echo TRUE || echo FALSE)
+        $(option ruby && echo -DRUBY_VERSION=$(ruby_get_abi))
+        $(cmake_enable search-index SEARCH_INDEX)
+        $(cmake_enable vim-syntax VIM)
+        $(cmake_enable XML)
+        -DCMAKE_INSTALL_SYSCONFDIR=/etc
+        -DCMAKE_INSTALL_DOCDIR=/usr/share/doc/${PNVR}
+        -DPALUDIS_VIM_INSTALL_DIR=/usr/share/vim/vimfiles
+        -DPALUDIS_CLIENTS="cave"
+        -DPALUDIS_ENVIRONMENTS="default;test"
+        -DPALUDIS_REPOSITORIES="${repositories}"
+        -DPALUDIS_DEFAULT_DISTRIBUTION=exherbo
+        -DCONFIG_FRAMEWORK=eclectic
+    )
+
+    ecmake "${cmakeparams[@]}"
+}
+
+paludis_src_install() {
+    cmake_src_install
+
+    option python && python_bytecompile
+
+    dobashcompletion "${CMAKE_SOURCE}"/bash-completion/cave cave
+    dozshcompletion "${CMAKE_SOURCE}"/zsh-completion/_cave
+    keepdir /var/lib/exherbo/news
+    edo rm -rf "${IMAGE}"/var/lib/gentoo
+}
+
+paludis_pkg_preinst() {
+    # Do nothing if the current paludis doesn't know cross yet
+    [[ $(type -t exhost) == function ]] || return
+
+    for dir in /usr/lib{,64,exec}/paludis; do
+        newdir=${dir/usr\/lib@(64|)/usr/$(exhost --target)/lib}
+
+        if exhost --is-native -q && [[ $(readlink -f "${ROOT##/}${dir}") == ${ROOT##/}${dir}*([^/]) ]]; then
+            if [[ ! -e ${ROOT}${newdir} && -e ${ROOT}${dir} ]]; then
+                # keep these around to avoid breaking paludis after the old version that expects them in /usr is
+                # unmerged, because that version is still running for the remainder of the resolution
+                # they get cleaned up below the next time paludis is rebuilt.
+                #
+                # we can't use symlinks because sydbox will resolve them and then disallow exec of
+                # paludis_pipe_command (and maybe others?)
+                edo find "${ROOT}${dir}" -exec touch {} \+
+            elif [[ -e ${ROOT}${newdir} && -e ${ROOT}${dir} ]]; then
+                # cleanup directories that were left around for migrating to /usr/${target} (see above)
+                edo rm -rf "${ROOT}${dir}"
+            fi
+        fi
+    done
+}
+

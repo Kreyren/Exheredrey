@@ -1,0 +1,49 @@
+# Copyright 2008 Thomas Anderson
+# Copyright 2009, 2011, 2012 Ingmar Vanhassel
+# Distributed under the terms of the GNU General Public License v2
+
+MY_PN="djvulibre"
+
+require freedesktop-mime gtk-icon-cache sourceforge [ project=${PN} suffix=tar.gz ]
+
+export_exlib_phases pkg_postinst pkg_postrm
+
+SUMMARY="DjVu encoders and utilities"
+
+LICENCES="GPL-2"
+SLOT="0"
+MYOPTIONS="
+    tiff
+    ( providers: ijg-jpeg jpeg-turbo ) [[ number-selected = exactly-one ]]
+"
+
+DEPENDENCIES="
+    build:
+        || (
+            media-gfx/ImageMagick
+            media-gfx/GraphicsMagick
+            gnome-desktop/librsvg:2
+            media-gfx/inkscape
+        ) [[ note = [ for icon generation in desktopfiles/Makefile.in ] ]]
+    build+run:
+        providers:ijg-jpeg? ( media-libs/jpeg:=[>=6b] )
+        providers:jpeg-turbo? ( media-libs/libjpeg-turbo )
+        tiff? ( media-libs/tiff )
+"
+
+DEFAULT_SRC_CONFIGURE_PARAMS=(
+    --with-jpeg
+    --enable-threads
+)
+DEFAULT_SRC_CONFIGURE_OPTION_WITHS=( tiff )
+
+djvu_pkg_postinst() {
+    freedesktop-mime_pkg_postinst
+    gtk-icon-cache_pkg_postinst
+}
+
+djvu_pkg_postrm() {
+    freedesktop-mime_pkg_postrm
+    gtk-icon-cache_pkg_postrm
+}
+

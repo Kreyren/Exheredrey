@@ -1,0 +1,21 @@
+# Copyright 2016 Clever Cloud
+# Distributed under the terms of the GNU General Public License v2
+
+require gem [ multislot=true ]
+
+SUMMARY="The best way to manage a Ruby application's gems"
+
+LICENCES="MIT"
+SLOT="1"
+PLATFORMS="~amd64"
+MYOPTIONS=""
+
+BUGS_TO="keruspe@exherbo.org"
+
+DEPENDENCIES="
+    run:
+        !dev-ruby/bundler:0 [[
+            description = [ Alternatives conflict ]
+            resolution = uninstall-blocked-before
+        ]]
+"

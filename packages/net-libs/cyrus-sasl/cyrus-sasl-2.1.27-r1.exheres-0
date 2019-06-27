@@ -1,0 +1,12 @@
+# Copyright 2009 Fernando J. Pereda
+# Distributed under the terms of the GNU General Public License v2
+
+require cyrus-sasl \
+    autotools [ supported_autoconf=[ 2.5 ] supported_automake=[ 1.16 ] ]
+
+PLATFORMS="~amd64 ~arm ~armv7 ~armv8 ~x86"
+
+DEFAULT_SRC_PREPARE_PATCHES=(
+    "${FILES}"/${PN}-Fix-build-with-Wl-as-needed.patch
+)
+

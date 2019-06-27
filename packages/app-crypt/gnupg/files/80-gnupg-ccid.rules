@@ -1,0 +1,37 @@
+ACTION!="add", GOTO="gnupg-ccid_rules_end"
+
+# USB SmartCard Readers
+## SCM readers (SCR335, SPR532, & Co)
+ACTION=="add", SUBSYSTEM=="usb", ATTRS{idVendor}=="04e6", ATTRS{idProduct}=="e001", GROUP="scard", MODE="0660", RUN+="@UDEVDIR@/gnupg-ccid"
+ACTION=="add", SUBSYSTEM=="usb", ATTRS{idVendor}=="04e6", ATTRS{idProduct}=="e003", GROUP="scard", MODE="0660", RUN+="@UDEVDIR@/gnupg-ccid"
+ACTION=="add", SUBSYSTEM=="usb", ATTRS{idVendor}=="04e6", ATTRS{idProduct}=="5115", GROUP="scard", MODE="0660", RUN+="@UDEVDIR@/gnupg-ccid"
+ACTION=="add", SUBSYSTEM=="usb", ATTRS{idVendor}=="04e6", ATTRS{idProduct}=="5116", GROUP="scard", MODE="0660", RUN+="@UDEVDIR@/gnupg-ccid"
+ACTION=="add", SUBSYSTEM=="usb", ATTRS{idVendor}=="04e6", ATTRS{idProduct}=="511f", GROUP="scard", MODE="0660", RUN+="@UDEVDIR@/gnupg-ccid"
+ACTION=="add", SUBSYSTEM=="usb", ATTRS{idVendor}=="04e6", ATTRS{idProduct}=="5410", GROUP="scard", MODE="0660", RUN+="@UDEVDIR@/gnupg-ccid"
+## Cherry readers
+ACTION=="add", SUBSYSTEM=="usb", ATTRS{idVendor}=="046a", ATTRS{idProduct}=="0005", GROUP="scard", MODE="0660", RUN+="@UDEVDIR@/gnupg-ccid"
+ACTION=="add", SUBSYSTEM=="usb", ATTRS{idVendor}=="046a", ATTRS{idProduct}=="0010", GROUP="scard", MODE="0660", RUN+="@UDEVDIR@/gnupg-ccid"
+ACTION=="add", SUBSYSTEM=="usb", ATTRS{idVendor}=="046a", ATTRS{idProduct}=="002d", GROUP="scard", MODE="0660", RUN+="@UDEVDIR@/gnupg-ccid"
+ACTION=="add", SUBSYSTEM=="usb", ATTRS{idVendor}=="046a", ATTRS{idProduct}=="003e", GROUP="scard", MODE="0660", RUN+="@UDEVDIR@/gnupg-ccid"
+ACTION=="add", SUBSYSTEM=="usb", ATTRS{idVendor}=="046a", ATTRS{idProduct}=="005b", GROUP="scard", MODE="0660", RUN+="@UDEVDIR@/gnupg-ccid"
+## OmniKey USB readers
+ACTION=="add", SUBSYSTEM=="usb", ATTRS{idVendor}=="076b", ATTRS{idProduct}=="4321", GROUP="scard", MODE="0660", RUN+="@UDEVDIR@/gnupg-ccid"
+ACTION=="add", SUBSYSTEM=="usb", ATTRS{idVendor}=="076b", ATTRS{idProduct}=="3021", GROUP="scard", MODE="0660", RUN+="@UDEVDIR@/gnupg-ccid"
+## REINER SCT card readers
+ACTION=="add", SUBSYSTEM=="usb", ATTRS{idVendor}=="0c4b", ATTRS{idProduct}=="0100", GROUP="scard", MODE="0660", RUN+="@UDEVDIR@/gnupg-ccid"
+ACTION=="add", SUBSYSTEM=="usb", ATTRS{idVendor}=="0c4b", ATTRS{idProduct}=="0300", GROUP="scard", MODE="0660", RUN+="@UDEVDIR@/gnupg-ccid"
+ACTION=="add", SUBSYSTEM=="usb", ATTRS{idVendor}=="0c4b", ATTRS{idProduct}=="0400", GROUP="scard", MODE="0660", RUN+="@UDEVDIR@/gnupg-ccid"
+## Gemplus/Gemalto readers
+ACTION=="add", SUBSYSTEM=="usb", ATTRS{idVendor}=="08e6", ATTRS{idProduct}=="3437", GROUP="scard", MODE="0660", RUN+="@UDEVDIR@/gnupg-ccid"
+## Kobil Kaan Advanced
+ACTION=="add", SUBSYSTEM=="usb", ATTRS{idVendor}=="0d46", ATTRS{idProduct}=="3002", GROUP="scard", MODE="0660", RUN+="@UDEVDIR@/gnupg-ccid"
+## Alcor Micro Corp
+ACTION=="add", SUBSYSTEM=="usb", ATTRS{idVendor}=="058f", ATTRS{idProduct}=="9540", GROUP="scard", MODE="0660", RUN+="@UDEVDIR@/gnupg-ccid"
+## Yubico
+ACTION=="add", SUBSYSTEM=="usb", ATTRS{idVendor}=="1050", ATTRS{idProduct}=="0010|0110|0111|0114|0116|0401|0403|0405|0407|0410", GROUP="scard", MODE="0660", RUN+="@UDEVDIR@/gnupg-ccid"
+
+# PCMCIA SmartCard Readers
+## Omnikey CardMan 4040
+SUBSYSTEM=="cardman_4040", GROUP="scard", MODE="0660", RUN+="@UDEVDIR@/gnupg-ccid"
+
+LABEL="gnupg-ccid_rules_end"

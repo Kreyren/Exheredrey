@@ -1,0 +1,25 @@
+# Copyright 2012 NAKAMURA Yoshitaka <arumakanoy@gmail.com>
+# Distributed under the terms of the GNU General Public License v2
+
+SUMMARY="Libray for DNS programming"
+HOMEPAGE="http://www.nlnetlabs.nl/projects/${PN}"
+DOWNLOADS="http://www.nlnetlabs.nl/downloads/${PN}/${PNV}.tar.gz"
+
+LICENCES="BSD-3"
+SLOT="0"
+MYOPTIONS="
+    ( providers: libressl openssl ) [[ number-selected = exactly-one ]]
+"
+
+DEPENDENCIES="
+    build+run:
+        providers:libressl? ( dev-libs/libressl:= )
+        providers:openssl? ( dev-libs/openssl )
+"
+
+DEFAULT_SRC_CONFIGURE_PARAMS=(
+    --enable-sha2
+    --disable-static
+    --with-ssl=/usr/$(exhost --target)
+)
+

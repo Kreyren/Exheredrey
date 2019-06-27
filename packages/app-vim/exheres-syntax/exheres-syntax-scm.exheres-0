@@ -1,0 +1,9 @@
+# Copyright 2013 Bo Ørsted Andresen
+# Distributed under the terms of the GNU General Public License v2
+
+SCM_REPOSITORY="https://git.exherbo.org/exheres-syntax.git"
+require exheres-syntax scm-git
+
+PLATFORMS="~amd64 ~arm ~x86"
+DOWNLOADS=""
+

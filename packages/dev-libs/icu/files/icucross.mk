@@ -1,0 +1,6 @@
+TOOLEXEEXT=
+TOOLBINDIR=/usr/host/bin
+TOOLLIBDIR=/usr/host/lib
+INVOKE=
+PKGDATA_INVOKE=
+

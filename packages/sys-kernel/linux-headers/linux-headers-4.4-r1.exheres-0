@@ -1,0 +1,12 @@
+# Copyright 2007 Bryan Østergaard <kloeri@exherbo.org>
+# Distributed under the terms of the GNU General Public License v2
+
+require linux-headers
+
+PLATFORMS="~amd64 ~arm ~armv7 ~armv8 ~x86"
+
+DEFAULT_SRC_PREPARE_PATCHES=(
+    "${FILES}"/linux-headers-4-musl-sysinfo.patch
+    "${FILES}"/${PNV}-uapi-update-install-list-after-nvme.h-rename.patch
+)
+

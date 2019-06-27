@@ -1,0 +1,31 @@
+# Copyright 2007 Bryan Østergaard
+# Distributed under the terms of the GNU General Public License v2
+
+require autoconf [ suffix=tar.xz ]
+
+SLOT="2.5"
+PLATFORMS="~amd64 ~arm ~armv7 ~armv8 ~x86"
+
+DEPENDENCIES="
+    run:
+        sys-devel/autoconf-wrapper[>=0.2.6]
+"
+
+DELETE_ME_DIR=/usr/share/delete-me
+
+DEFAULT_SRC_PREPARE_PATCHES=(
+    "${FILES}"/7fbb553727ed7e0e689a17594b58559ecf3ea6e9.patch
+    "${FILES}"/e5654a5591884b92633c7785f325626711e7f7aa.patch
+    "${FILES}"/247b02e5a5bb79ca6666e91de02ae2d3cb0cd325.patch
+    "${FILES}"/${PN}-2.69-perl-5.26-2.patch
+)
+
+DEFAULT_SRC_CONFIGURE_PARAMS+=( --with-lispdir=${DELETE_ME_DIR} )
+
+src_install() {
+    autoconf_src_install
+
+    # Emacs bundles an emacs mode for autoconf already
+    edo rm -rf "${IMAGE}${DELETE_ME_DIR}"
+}
+

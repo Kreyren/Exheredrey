@@ -1,0 +1,27 @@
+Upstream: yes
+Source: http://repo.or.cz/w/libtar.git/commit/20aa09bd7775094a2beb0f136c2c7d9e9fd6c7e6
+
+From 20aa09bd7775094a2beb0f136c2c7d9e9fd6c7e6 Mon Sep 17 00:00:00 2001
+From: Chris Frey <cdfrey@foursquare.net>
+Date: Thu, 24 Oct 2013 17:58:47 -0400
+Subject: [PATCH] Added stdlib.h for malloc() in lib/decode.c
+
+---
+ lib/decode.c |    1 +
+ 1 files changed, 1 insertions(+), 0 deletions(-)
+
+diff --git a/lib/decode.c b/lib/decode.c
+index edb2185..35312be 100644
+--- a/lib/decode.c
++++ b/lib/decode.c
+@@ -13,6 +13,7 @@
+ #include <internal.h>
+ 
+ #include <stdio.h>
++#include <stdlib.h>
+ #include <sys/param.h>
+ #include <pwd.h>
+ #include <grp.h>
+-- 
+1.7.6.6.GIT
+

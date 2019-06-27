@@ -1,0 +1,45 @@
+# Copyright 2014-2016 Kylie McClain <somasis@exherbo.org>
+# Distributed under the terms of the GNU General Public License v2
+
+require debian-upstream [ debian_pv="${PV}.orig" suffix=tar.xz ]
+
+SUMMARY="A growing collection of unix tools no one thought to write of long ago"
+HOMEPAGE="https://joeyh.name/code/moreutils/"
+SLOT="0"
+LICENCES="BSD-2 GPL-2"
+
+PLATFORMS="~amd64"
+
+DEPENDENCIES="
+    build:
+        app-text/docbook-xml-dtd:4.4
+        app-text/docbook-xsl-stylesheets
+        dev-libs/libxml2:2.0
+        dev-libs/libxslt
+    build+run:
+        dev-lang/perl:=
+    run:
+        dev-perl/IPC-Run [[ description = [ required by \`chronic\` ] ]]
+"
+
+DEFAULT_SRC_COMPILE_PARAMS=(
+    CC="${CC}"
+    CFLAGS="${CFLAGS}"
+    DOCBOOKXSL=/usr/share/sgml/docbook/xsl-stylesheets
+)
+
+DEFAULT_SRC_INSTALL_PARAMS=( INSTALL_BIN="install" ) # prevent `install -s`
+
+src_prepare() {
+    edo sed \
+        -e "s#\$(PREFIX)/bin#/usr/$(exhost --target)/bin#g" \
+        -i Makefile
+}
+
+src_install() {
+    default
+
+    # installed by dev-libs/openssl
+    edo rm "${IMAGE}"/usr/share/man/man1/ts.1
+}
+

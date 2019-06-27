@@ -1,0 +1,257 @@
+Upstream: cherry-picked from maint-5.28
+Reason: CVE-2018-12015, https://rt.cpan.org/Public/Bug/Display.html?id=125523
+
+From a30a4757549ab40fb7574003055c28076329fed0 Mon Sep 17 00:00:00 2001
+From: Chris 'BinGOs' Williams <chris@bingosnet.co.uk>
+Date: Wed, 14 Jun 2017 20:22:27 +0100
+Subject: [PATCH 1/2] Update Archive-Tar to CPAN version 2.26
+
+  [DELTA]
+
+2.26  12/05/2017
+- '0' is a valid name for an archive, change 'iter' to check definedness
+---
+ Porting/Maintainers.pl                       | 2 +-
+ cpan/Archive-Tar/lib/Archive/Tar.pm          | 5 +++--
+ cpan/Archive-Tar/lib/Archive/Tar/Constant.pm | 2 +-
+ cpan/Archive-Tar/lib/Archive/Tar/File.pm     | 2 +-
+ 4 files changed, 6 insertions(+), 5 deletions(-)
+
+diff --git a/Porting/Maintainers.pl b/Porting/Maintainers.pl
+index 5f3b3141d1..af4bf1952f 100755
+--- a/Porting/Maintainers.pl
++++ b/Porting/Maintainers.pl
+@@ -120,7 +120,7 @@ use File::Glob qw(:case);
+ %Modules = (
+ 
+     'Archive::Tar' => {
+-        'DISTRIBUTION' => 'BINGOS/Archive-Tar-2.24.tar.gz',
++        'DISTRIBUTION' => 'BINGOS/Archive-Tar-2.26.tar.gz',
+         'FILES'        => q[cpan/Archive-Tar],
+         'BUGS'         => 'bug-archive-tar@rt.cpan.org',
+         'EXCLUDED'     => [
+diff --git a/cpan/Archive-Tar/lib/Archive/Tar.pm b/cpan/Archive-Tar/lib/Archive/Tar.pm
+index 00db612193..4778d6d362 100644
+--- a/cpan/Archive-Tar/lib/Archive/Tar.pm
++++ b/cpan/Archive-Tar/lib/Archive/Tar.pm
+@@ -31,7 +31,7 @@ use vars qw[$DEBUG $error $VERSION $WARN $FOLLOW_SYMLINK $CHOWN $CHMOD
+ $DEBUG                  = 0;
+ $WARN                   = 1;
+ $FOLLOW_SYMLINK         = 0;
+-$VERSION                = "2.24_01";
++$VERSION                = "2.26";
+ $CHOWN                  = 1;
+ $CHMOD                  = 1;
+ $SAME_PERMISSIONS       = $> == 0 ? 1 : 0;
+@@ -1771,7 +1771,8 @@ Example usage:
+ 
+ sub iter {
+     my $class       = shift;
+-    my $filename    = shift or return;
++    my $filename    = shift;
++    return unless defined $filename;
+     my $compressed  = shift || 0;
+     my $opts        = shift || {};
+ 
+diff --git a/cpan/Archive-Tar/lib/Archive/Tar/Constant.pm b/cpan/Archive-Tar/lib/Archive/Tar/Constant.pm
+index 6488d653f9..aca1807a79 100644
+--- a/cpan/Archive-Tar/lib/Archive/Tar/Constant.pm
++++ b/cpan/Archive-Tar/lib/Archive/Tar/Constant.pm
+@@ -3,7 +3,7 @@ package Archive::Tar::Constant;
+ BEGIN {
+     require Exporter;
+ 
+-    $VERSION    = '2.24';
++    $VERSION    = '2.26';
+     @ISA        = qw[Exporter];
+ 
+     require Time::Local if $^O eq "MacOS";
+diff --git a/cpan/Archive-Tar/lib/Archive/Tar/File.pm b/cpan/Archive-Tar/lib/Archive/Tar/File.pm
+index dc4c4c77a0..deb11d2f78 100644
+--- a/cpan/Archive-Tar/lib/Archive/Tar/File.pm
++++ b/cpan/Archive-Tar/lib/Archive/Tar/File.pm
+@@ -13,7 +13,7 @@ use Archive::Tar::Constant;
+ 
+ use vars qw[@ISA $VERSION];
+ #@ISA        = qw[Archive::Tar];
+-$VERSION    = '2.24';
++$VERSION    = '2.26';
+ 
+ ### set value to 1 to oct() it during the unpack ###
+ 
+-- 
+2.20.1
+
+
+From 9626591bc79621f5aeb8c31907e915788672f496 Mon Sep 17 00:00:00 2001
+From: David Mitchell <davem@iabyn.com>
+Date: Mon, 18 Jun 2018 14:00:04 +0100
+Subject: [PATCH 2/2] Update Archive-Tar to CPAN version 2.28
+
+  [DELTA]
+
++- fix creating file with trailing whitespace on filename - fixes 103279
++- allow archiving with absolute pathnames - fixes 97748
++- small POD fix
++- Speed up extract when archive contains lots of files
++- CVE-2018-12015 directory traversal vulnerability [RT#125523]
+---
+ cpan/Archive-Tar/lib/Archive/Tar.pm          | 22 +++++++--------
+ cpan/Archive-Tar/lib/Archive/Tar/Constant.pm |  2 +-
+ cpan/Archive-Tar/lib/Archive/Tar/File.pm     | 13 +++------
+ cpan/Archive-Tar/t/04_resolved_issues.t      | 28 ++++++++++++++++++++
+ 4 files changed, 43 insertions(+), 22 deletions(-)
+
+diff --git a/cpan/Archive-Tar/lib/Archive/Tar.pm b/cpan/Archive-Tar/lib/Archive/Tar.pm
+index 4778d6d362..4742d26931 100644
+--- a/cpan/Archive-Tar/lib/Archive/Tar.pm
++++ b/cpan/Archive-Tar/lib/Archive/Tar.pm
+@@ -31,7 +31,7 @@ use vars qw[$DEBUG $error $VERSION $WARN $FOLLOW_SYMLINK $CHOWN $CHMOD
+ $DEBUG                  = 0;
+ $WARN                   = 1;
+ $FOLLOW_SYMLINK         = 0;
+-$VERSION                = "2.26";
++$VERSION                = "2.28";
+ $CHOWN                  = 1;
+ $CHMOD                  = 1;
+ $SAME_PERMISSIONS       = $> == 0 ? 1 : 0;
+@@ -601,6 +601,7 @@ sub extract {
+     my $self    = shift;
+     my @args    = @_;
+     my @files;
++    my $hashmap;
+ 
+     # use the speed optimization for all extracted files
+     local($self->{cwd}) = cwd() unless $self->{cwd};
+@@ -617,16 +618,15 @@ sub extract {
+             ### go find it then
+             } else {
+ 
+-                my $found;
+-                for my $entry ( @{$self->_data} ) {
+-                    next unless $file eq $entry->full_path;
++                # create hash-map once to speed up lookup
++                $hashmap = $hashmap || {
++                    map { $_->full_path, $_ } @{$self->_data}
++                };
+ 
++                if (exists $hashmap->{$file}) {
+                     ### we found the file you're looking for
+-                    push @files, $entry;
+-                    $found++;
+-                }
+-
+-                unless( $found ) {
++                    push @files, $hashmap->{$file};
++                } else {
+                     return $self->_error(
+                         qq[Could not find '$file' in archive] );
+                 }
+@@ -862,7 +862,7 @@ sub _extract_file {
+ 
+     if( length $entry->type && $entry->is_file ) {
+         my $fh = IO::File->new;
+-        $fh->open( '>' . $full ) or (
++        $fh->open( $full, '>' ) or (
+             $self->_error( qq[Could not open file '$full': $!] ),
+             return
+         );
+@@ -2265,7 +2265,7 @@ For example, if you add a Unicode string like
+     $tar->add_data('file.txt', "Euro: \x{20AC}");
+ 
+ then there will be a problem later when the tarfile gets written out
+-to disk via C<$tar->write()>:
++to disk via C<< $tar->write() >>:
+ 
+     Wide character in print at .../Archive/Tar.pm line 1014.
+ 
+diff --git a/cpan/Archive-Tar/lib/Archive/Tar/Constant.pm b/cpan/Archive-Tar/lib/Archive/Tar/Constant.pm
+index aca1807a79..201f2674c8 100644
+--- a/cpan/Archive-Tar/lib/Archive/Tar/Constant.pm
++++ b/cpan/Archive-Tar/lib/Archive/Tar/Constant.pm
+@@ -3,7 +3,7 @@ package Archive::Tar::Constant;
+ BEGIN {
+     require Exporter;
+ 
+-    $VERSION    = '2.26';
++    $VERSION    = '2.28';
+     @ISA        = qw[Exporter];
+ 
+     require Time::Local if $^O eq "MacOS";
+diff --git a/cpan/Archive-Tar/lib/Archive/Tar/File.pm b/cpan/Archive-Tar/lib/Archive/Tar/File.pm
+index deb11d2f78..d3f3a4dc9c 100644
+--- a/cpan/Archive-Tar/lib/Archive/Tar/File.pm
++++ b/cpan/Archive-Tar/lib/Archive/Tar/File.pm
+@@ -13,7 +13,7 @@ use Archive::Tar::Constant;
+ 
+ use vars qw[@ISA $VERSION];
+ #@ISA        = qw[Archive::Tar];
+-$VERSION    = '2.26';
++$VERSION    = '2.28';
+ 
+ ### set value to 1 to oct() it during the unpack ###
+ 
+@@ -396,12 +396,7 @@ sub _prefix_and_file {
+     my $path = shift;
+ 
+     my ($vol, $dirs, $file) = File::Spec->splitpath( $path, $self->is_dir );
+-    my @dirs = File::Spec->splitdir( $dirs );
+-
+-    ### so sometimes the last element is '' -- probably when trailing
+-    ### dir slashes are encountered... this is of course pointless,
+-    ### so remove it
+-    pop @dirs while @dirs and not length $dirs[-1];
++    my @dirs = File::Spec->splitdir( File::Spec->canonpath($dirs) );
+ 
+     ### if it's a directory, then $file might be empty
+     $file = pop @dirs if $self->is_dir and not length $file;
+@@ -409,9 +404,7 @@ sub _prefix_and_file {
+     ### splitting ../ gives you the relative path in native syntax
+     map { $_ = '..' if $_  eq '-' } @dirs if ON_VMS;
+ 
+-    my $prefix = File::Spec::Unix->catdir(
+-                        grep { length } $vol, @dirs
+-                    );
++    my $prefix = File::Spec::Unix->catdir(@dirs);
+     return( $prefix, $file );
+ }
+ 
+diff --git a/cpan/Archive-Tar/t/04_resolved_issues.t b/cpan/Archive-Tar/t/04_resolved_issues.t
+index 4572b872be..74332bcef2 100644
+--- a/cpan/Archive-Tar/t/04_resolved_issues.t
++++ b/cpan/Archive-Tar/t/04_resolved_issues.t
+@@ -247,3 +247,31 @@ use_ok( $FileClass );
+ 		clean_78030();
+ 		unlink $archname;
+ }
++
++### bug 97748
++### retain leading '/' for absolute pathnames.
++{   ok( 1,                      "Testing bug 97748" );
++	my $path= '/absolute/path';
++	my $tar = $Class->new;
++	isa_ok( $tar, $Class,       "   Object" );
++	my $file;
++
++	ok( $file = $tar->add_data( $path, '' ),
++		"       Added $path" );
++
++	ok( $file->full_path eq $path,
++		"	Paths mismatch <" . $file->full_path . "> ne <$path>" );
++}
++
++### bug 103279
++### retain trailing whitespace on filename
++{   ok( 1,                      "Testing bug 103279" );
++	my $tar = $Class->new;
++	isa_ok( $tar, $Class,       "   Object" );
++	ok( $tar->add_data( 'white_space   ', '' ),
++				    "   Add file <white_space   > containing filename with trailing whitespace");
++	ok( $tar->extract(),        "	Extract filename with trailing whitespace" );
++	ok( ! -e 'white_space',     "	<white_space> should not exist" );
++	ok( -e 'white_space   ',    "	<white_space   > should exist" );
++	unlink foreach ('white_space   ', 'white_space');
++}
+-- 
+2.20.1
+

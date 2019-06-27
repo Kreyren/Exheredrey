@@ -1,0 +1,12 @@
+# Copyright 2017 Heiko Becker <heirecka@exherbo.org>
+# Distributed under the terms of the GNU General Public License v2
+
+require perl-module [ module_author=HAARG ]
+
+SUMMARY="Skip tests when modules are not available"
+SLOT="0"
+PLATFORMS="~amd64 ~armv8"
+MYOPTIONS=""
+
+DEPENDENCIES=""
+

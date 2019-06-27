@@ -1,0 +1,12 @@
+diff -Naur php-5.4.45.orig/ext/tidy/tidy.c php-5.4.45/ext/tidy/tidy.c
+--- php-5.4.45.orig/ext/tidy/tidy.c	2016-03-31 11:46:30.509582808 +0200
++++ php-5.4.45/ext/tidy/tidy.c	2016-03-31 11:50:58.404267654 +0200
+@@ -31,7 +31,7 @@
+ #include "ext/standard/info.h"
+ 
+ #include "tidy.h"
+-#include "buffio.h"
++#include "tidybuffio.h"
+ 
+ /* compatibility with older versions of libtidy */
+ #ifndef TIDY_CALL

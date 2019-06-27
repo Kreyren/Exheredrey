@@ -1,0 +1,69 @@
+# Copyright 2009-2015 Wulf C. Krueger <philantrop@exherbo.org>
+# Distributed under the terms of the GNU General Public License v2
+
+require systemd-service
+
+export_exlib_phases src_install
+
+SUMMARY="A Linux kernel packet filter control tool"
+DESCRIPTION="
+iptables is built on top of netfilter, the packet alteration framework for Linux.
+It is used to control packet filtering, Network Address Translation (masquerading,
+portforwarding, transparent proxying), and special effects such as packet mangling.
+"
+HOMEPAGE="https://netfilter.org/projects/${PN}"
+DOWNLOADS="${HOMEPAGE}/files/${PNV}.tar.bz2"
+
+BUGS_TO="philantrop@exherbo.org"
+REMOTE_IDS="freecode:${PN}"
+
+UPSTREAM_CHANGELOG="${HOMEPAGE}/files/changes-iptables-${PV}.txt [[ lang = en ]]"
+UPSTREAM_DOCUMENTATION="https://netfilter.org/documentation"
+
+LICENCES="GPL-2"
+SLOT="0"
+MYOPTIONS=""
+
+DEPENDENCIES="
+    build:
+        sys-devel/bison
+        sys-devel/flex
+        sys-kernel/linux-headers[>=4.4]
+        virtual/pkg-config
+    build+run:
+        dev-libs/libpcap
+        net-libs/libmnl[>=1.0]
+        net-libs/libnetfilter_conntrack[>=1.0.6]
+        net-libs/libnfnetlink[>=1.0]
+        net-libs/libnftnl[>=1.1.1]
+"
+
+DEFAULT_SRC_CONFIGURE_PARAMS=(
+    --without-kernel
+    --enable-bpf-compiler
+    --enable-connlabel
+    --enable-devel
+    --enable-libipq
+    --enable-nfsynproxy
+    --enable-nftables
+    --disable-static
+
+    # NOTE(somasis) declared by default by glibc, but needed
+    #               on musl to expose constants iptables needs
+    CFLAGS="${CFLAGS} -D_GNU_SOURCE"
+)
+
+DEFAULT_SRC_COMPILE_PARAMS=( V=1 )
+
+DEFAULT_SRC_INSTALL_EXCLUDE=( "release.sh" )
+
+iptables_src_install() {
+    default
+
+    keepdir /etc/xtables
+    keepdir /var/lib/iptables
+    keepdir /var/lib/ip6tables
+
+    install_systemd_files
+}
+

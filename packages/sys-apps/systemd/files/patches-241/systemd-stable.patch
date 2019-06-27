@@ -1,0 +1,532 @@
+Upstream: yes
+From dffc22c833ae4f0f2877b89ab25851b5c7feec12 Mon Sep 17 00:00:00 2001
+From: Yu Watanabe <watanabe.yu+github@gmail.com>
+Date: Sat, 16 Feb 2019 03:53:36 +0900
+Subject: [PATCH 1/7] udev-rules: update log messages about OWNER= or GROUP=
+ settings on --resolve=names=never
+
+This also set lower log level for the messages.
+
+6e2efb6c739784deb026726331fe7e7365080f8b introduces the log messages.
+But udevd may be started with --resolve-names=never, and the behavior
+is expected.
+
+Fixes #11720.
+
+(cherry picked from commit 57f08d5cddacedb417f0091dbf761fb5fa85f23b)
+---
+ src/udev/udev-rules.c | 4 ++--
+ 1 file changed, 2 insertions(+), 2 deletions(-)
+
+diff --git a/src/udev/udev-rules.c b/src/udev/udev-rules.c
+index bc9c6c26c5..cbec0f65d6 100644
+--- a/src/udev/udev-rules.c
++++ b/src/udev/udev-rules.c
+@@ -1386,7 +1386,7 @@ static void add_rule(UdevRules *rules, char *line,
+                         } else if (rules->resolve_name_timing != RESOLVE_NAME_NEVER)
+                                 r = rule_add_key(&rule_tmp, TK_A_OWNER, op, value, NULL);
+                         else {
+-                                LOG_RULE_ERROR("Invalid %s operation", key);
++                                LOG_RULE_DEBUG("Resolving user name is disabled, ignoring %s=%s", key, value);
+                                 continue;
+                         }
+                         if (r < 0)
+@@ -1410,7 +1410,7 @@ static void add_rule(UdevRules *rules, char *line,
+                         } else if (rules->resolve_name_timing != RESOLVE_NAME_NEVER)
+                                 r = rule_add_key(&rule_tmp, TK_A_GROUP, op, value, NULL);
+                         else {
+-                                LOG_RULE_ERROR("Invalid %s operation", key);
++                                LOG_RULE_DEBUG("Resolving group name is disabled, ignoring %s=%s", key, value);
+                                 continue;
+                         }
+                         if (r < 0)
+-- 
+2.20.1
+
+
+From 66320aec80f0918f45a7971d00ec082c0aab0fe4 Mon Sep 17 00:00:00 2001
+From: Yu Watanabe <watanabe.yu+github@gmail.com>
+Date: Sat, 16 Feb 2019 05:21:59 +0900
+Subject: [PATCH 2/7] sd-device: also store properties read from udev database
+ to sd_device::properties_db
+
+Follow-up for a3ce813697bcc1c4644e097a2f1cd0459326d6ee and
+5ce41697bd3ddc19cd6e1e6834751082ca0c8b02.
+
+Before a3ce813697bcc1c4644e097a2f1cd0459326d6ee, all properties in
+src->properties and src->properties_db are mixed and copied to
+dst->properties_db by device_copy_properties().
+So, it is not necessary to store data from udev database file to
+sd_device::properties_db before copying properties.
+
+But now, properties are not mixed. So, the read data need to be
+stored to also ::properties_db.
+
+Fixes #11721.
+
+(cherry picked from commit 03dd7b7ddec1b0e06f254972a2e05f516a05edaf)
+---
+ src/libsystemd/sd-device/sd-device.c | 9 ++++++++-
+ 1 file changed, 8 insertions(+), 1 deletion(-)
+
+diff --git a/src/libsystemd/sd-device/sd-device.c b/src/libsystemd/sd-device/sd-device.c
+index 2a69f2e94b..9137a93794 100644
+--- a/src/libsystemd/sd-device/sd-device.c
++++ b/src/libsystemd/sd-device/sd-device.c
+@@ -1110,6 +1110,7 @@ int device_add_devlink(sd_device *device, const char *devlink) {
+ static int device_add_property_internal_from_string(sd_device *device, const char *str) {
+         _cleanup_free_ char *key = NULL;
+         char *value;
++        int r;
+ 
+         assert(device);
+         assert(str);
+@@ -1127,7 +1128,13 @@ static int device_add_property_internal_from_string(sd_device *device, const cha
+         if (isempty(++value))
+                 value = NULL;
+ 
+-        return device_add_property_internal(device, key, value);
++        /* Add the property to both sd_device::properties and sd_device::properties_db,
++         * as this is called by only handle_db_line(). */
++        r = device_add_property_aux(device, key, value, false);
++        if (r < 0)
++                return r;
++
++        return device_add_property_aux(device, key, value, true);
+ }
+ 
+ int device_set_usec_initialized(sd_device *device, usec_t when) {
+-- 
+2.20.1
+
+
+From e9f930b2f577b7e7c7d51b6dbe9987214744b814 Mon Sep 17 00:00:00 2001
+From: Yu Watanabe <watanabe.yu+github@gmail.com>
+Date: Sun, 17 Feb 2019 07:56:28 +0900
+Subject: [PATCH 3/7] udev-event: make subst_format_var() always provide
+ null-terminated string on success
+
+Fixes #11731.
+
+(cherry picked from commit 380d19016e71f2b94ea8431cb8415f99143f62ee)
+---
+ src/udev/udev-event.c | 40 +++++++++++++++++++++++++++++-----------
+ 1 file changed, 29 insertions(+), 11 deletions(-)
+
+diff --git a/src/udev/udev-event.c b/src/udev/udev-event.c
+index 07b7365e3a..6f90516ff6 100644
+--- a/src/udev/udev-event.c
++++ b/src/udev/udev-event.c
+@@ -151,13 +151,15 @@ static ssize_t subst_format_var(UdevEvent *event,
+                 break;
+         case SUBST_KERNEL_NUMBER:
+                 r = sd_device_get_sysnum(dev, &val);
++                if (r == -ENOENT)
++                        goto null_terminate;
+                 if (r < 0)
+-                        return r == -ENOENT ? 0 : r;
++                        return r;
+                 l = strpcpy(&s, l, val);
+                 break;
+         case SUBST_ID:
+                 if (!event->dev_parent)
+-                        return 0;
++                        goto null_terminate;
+                 r = sd_device_get_sysname(event->dev_parent, &val);
+                 if (r < 0)
+                         return r;
+@@ -165,10 +167,12 @@ static ssize_t subst_format_var(UdevEvent *event,
+                 break;
+         case SUBST_DRIVER:
+                 if (!event->dev_parent)
+-                        return 0;
++                        goto null_terminate;
+                 r = sd_device_get_driver(event->dev_parent, &val);
++                if (r == -ENOENT)
++                        goto null_terminate;
+                 if (r < 0)
+-                        return r == -ENOENT ? 0 : r;
++                        return r;
+                 l = strpcpy(&s, l, val);
+                 break;
+         case SUBST_MAJOR:
+@@ -187,7 +191,7 @@ static ssize_t subst_format_var(UdevEvent *event,
+                 int i;
+ 
+                 if (!event->program_result)
+-                        return 0;
++                        goto null_terminate;
+ 
+                 /* get part of the result string */
+                 i = 0;
+@@ -243,7 +247,7 @@ static ssize_t subst_format_var(UdevEvent *event,
+                         (void) sd_device_get_sysattr_value(event->dev_parent, attr, &val);
+ 
+                 if (!val)
+-                        return 0;
++                        goto null_terminate;
+ 
+                 /* strip trailing whitespace, and replace unwanted characters */
+                 if (val != vbuf)
+@@ -259,17 +263,23 @@ static ssize_t subst_format_var(UdevEvent *event,
+         }
+         case SUBST_PARENT:
+                 r = sd_device_get_parent(dev, &parent);
++                if (r == -ENODEV)
++                        goto null_terminate;
+                 if (r < 0)
+-                        return r == -ENODEV ? 0 : r;
++                        return r;
+                 r = sd_device_get_devname(parent, &val);
++                if (r == -ENOENT)
++                        goto null_terminate;
+                 if (r < 0)
+-                        return r == -ENOENT ? 0 : r;
++                        return r;
+                 l = strpcpy(&s, l, val + STRLEN("/dev/"));
+                 break;
+         case SUBST_DEVNODE:
+                 r = sd_device_get_devname(dev, &val);
++                if (r == -ENOENT)
++                        goto null_terminate;
+                 if (r < 0)
+-                        return r == -ENOENT ? 0 : r;
++                        return r;
+                 l = strpcpy(&s, l, val);
+                 break;
+         case SUBST_NAME:
+@@ -290,6 +300,8 @@ static ssize_t subst_format_var(UdevEvent *event,
+                                 l = strpcpy(&s, l, val + STRLEN("/dev/"));
+                         else
+                                 l = strpcpyl(&s, l, " ", val + STRLEN("/dev/"), NULL);
++                if (s == dest)
++                        goto null_terminate;
+                 break;
+         case SUBST_ROOT:
+                 l = strpcpy(&s, l, "/dev");
+@@ -299,10 +311,12 @@ static ssize_t subst_format_var(UdevEvent *event,
+                 break;
+         case SUBST_ENV:
+                 if (!attr)
+-                        return 0;
++                        goto null_terminate;
+                 r = sd_device_get_property_value(dev, attr, &val);
++                if (r == -ENOENT)
++                        goto null_terminate;
+                 if (r < 0)
+-                        return r == -ENOENT ? 0 : r;
++                        return r;
+                 l = strpcpy(&s, l, val);
+                 break;
+         default:
+@@ -310,6 +324,10 @@ static ssize_t subst_format_var(UdevEvent *event,
+         }
+ 
+         return s - dest;
++
++null_terminate:
++        *s = '\0';
++        return 0;
+ }
+ 
+ ssize_t udev_event_apply_format(UdevEvent *event,
+-- 
+2.20.1
+
+
+From bada94eb3e80f0e26521fa25395cab56037a10fb Mon Sep 17 00:00:00 2001
+From: Yu Watanabe <watanabe.yu+github@gmail.com>
+Date: Fri, 15 Feb 2019 10:15:55 +0900
+Subject: [PATCH 4/7] NEWS: fix release date
+
+(cherry picked from commit 36d28ebc044805ccf7019710da5a23bafe3aacc3)
+---
+ NEWS | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/NEWS b/NEWS
+index cd81d9ca35..657722be07 100644
+--- a/NEWS
++++ b/NEWS
+@@ -101,7 +101,7 @@ CHANGES WITH 241:
+         Miettinen, YiFei Zhu, YmrDtnJu, YunQiang Su, Yu Watanabe, Zbigniew
+         Jędrzejewski-Szmek, zsergeant77, Дамјан Георгиевски
+ 
+-        — Berlin, 2018-02-14
++        — Berlin, 2019-02-14
+ 
+ CHANGES WITH 240:
+ 
+-- 
+2.20.1
+
+
+From b22a96ef2faf8c2c19bbe32b4d9c436e32fb4b33 Mon Sep 17 00:00:00 2001
+From: Yu Watanabe <watanabe.yu+github@gmail.com>
+Date: Fri, 15 Feb 2019 10:18:14 +0900
+Subject: [PATCH 5/7] NEWS: add entry about 'udevadm trigger --wait-daemon'
+
+(cherry picked from commit ecebd1ecf815648cf91749301a648169d07c0046)
+---
+ NEWS | 3 +++
+ 1 file changed, 3 insertions(+)
+
+diff --git a/NEWS b/NEWS
+index 657722be07..f61262fd57 100644
+--- a/NEWS
++++ b/NEWS
+@@ -83,6 +83,9 @@ CHANGES WITH 241:
+         * udevadm control learnt a new option for --ping for testing whether a
+           systemd-udevd instance is running and reacting.
+ 
++        * udevadm trigger learnt a new option for --wait-daemon for waiting
++          systemd-udevd daemon to be initialized.
++
+         Contributions from: Aaron Plattner, Alberts Muktupāvels, Alex Mayer,
+         Ayman Bagabas, Beniamino Galvani, Burt P, Chris Down, Chris Lamb, Chris
+         Morin, Christian Hesse, Claudius Ellsel, dana, Daniel Axtens, Daniele
+-- 
+2.20.1
+
+
+From 4f54afd5a1c7458c7af9fa375f36eecccf3ca1ad Mon Sep 17 00:00:00 2001
+From: Riccardo Schirone <rschiron@redhat.com>
+Date: Mon, 4 Feb 2019 14:29:09 +0100
+Subject: [PATCH 6/7] Refuse dbus message paths longer than BUS_PATH_SIZE_MAX
+ limit.
+
+Even though the dbus specification does not enforce any length limit on the
+path of a dbus message, having to analyze too long strings in PID1 may be
+time-consuming and it may have security impacts.
+
+In any case, the limit is set so high that real-life applications should not
+have a problem with it.
+
+(cherry picked from commit 61397a60d98e368a5720b37e83f3169e3eb511c4)
+---
+ src/libsystemd/sd-bus/bus-internal.c | 2 +-
+ src/libsystemd/sd-bus/bus-internal.h | 4 ++++
+ 2 files changed, 5 insertions(+), 1 deletion(-)
+
+diff --git a/src/libsystemd/sd-bus/bus-internal.c b/src/libsystemd/sd-bus/bus-internal.c
+index 40acae2133..598b7f110c 100644
+--- a/src/libsystemd/sd-bus/bus-internal.c
++++ b/src/libsystemd/sd-bus/bus-internal.c
+@@ -43,7 +43,7 @@ bool object_path_is_valid(const char *p) {
+         if (slash)
+                 return false;
+ 
+-        return true;
++        return (q - p) <= BUS_PATH_SIZE_MAX;
+ }
+ 
+ char* object_path_startswith(const char *a, const char *b) {
+diff --git a/src/libsystemd/sd-bus/bus-internal.h b/src/libsystemd/sd-bus/bus-internal.h
+index f208b294d8..a8d61bf72a 100644
+--- a/src/libsystemd/sd-bus/bus-internal.h
++++ b/src/libsystemd/sd-bus/bus-internal.h
+@@ -332,6 +332,10 @@ struct sd_bus {
+ 
+ #define BUS_MESSAGE_SIZE_MAX (128*1024*1024)
+ #define BUS_AUTH_SIZE_MAX (64*1024)
++/* Note that the D-Bus specification states that bus paths shall have no size limit. We enforce here one
++ * anyway, since truly unbounded strings are a security problem. The limit we pick is relatively large however,
++ * to not clash unnecessarily with real-life applications. */
++#define BUS_PATH_SIZE_MAX (64*1024)
+ 
+ #define BUS_CONTAINER_DEPTH 128
+ 
+-- 
+2.20.1
+
+
+From a09c170122cf3b37c3e4431bf082f9dbdc07fc70 Mon Sep 17 00:00:00 2001
+From: Riccardo Schirone <rschiron@redhat.com>
+Date: Mon, 4 Feb 2019 14:29:28 +0100
+Subject: [PATCH 7/7] Allocate temporary strings to hold dbus paths on the heap
+
+Paths are limited to BUS_PATH_SIZE_MAX but the maximum size is anyway too big
+to be allocated on the stack, so let's switch to the heap where there is a
+clear way to understand if the allocation fails.
+
+(cherry picked from commit f519a19bcd5afe674a9b8fc462cd77d8bad403c1)
+---
+ src/libsystemd/sd-bus/bus-objects.c | 68 +++++++++++++++++++++++------
+ 1 file changed, 54 insertions(+), 14 deletions(-)
+
+diff --git a/src/libsystemd/sd-bus/bus-objects.c b/src/libsystemd/sd-bus/bus-objects.c
+index 58329f3fe7..54b977418e 100644
+--- a/src/libsystemd/sd-bus/bus-objects.c
++++ b/src/libsystemd/sd-bus/bus-objects.c
+@@ -1133,7 +1133,8 @@ static int object_manager_serialize_path_and_fallbacks(
+                 const char *path,
+                 sd_bus_error *error) {
+ 
+-        char *prefix;
++        _cleanup_free_ char *prefix = NULL;
++        size_t pl;
+         int r;
+ 
+         assert(bus);
+@@ -1149,7 +1150,12 @@ static int object_manager_serialize_path_and_fallbacks(
+                 return 0;
+ 
+         /* Second, add fallback vtables registered for any of the prefixes */
+-        prefix = newa(char, strlen(path) + 1);
++        pl = strlen(path);
++        assert(pl <= BUS_PATH_SIZE_MAX);
++        prefix = new(char, pl + 1);
++        if (!prefix)
++                return -ENOMEM;
++
+         OBJECT_PATH_FOREACH_PREFIX(prefix, path) {
+                 r = object_manager_serialize_path(bus, reply, prefix, path, true, error);
+                 if (r < 0)
+@@ -1345,6 +1351,7 @@ static int object_find_and_run(
+ }
+ 
+ int bus_process_object(sd_bus *bus, sd_bus_message *m) {
++        _cleanup_free_ char *prefix = NULL;
+         int r;
+         size_t pl;
+         bool found_object = false;
+@@ -1369,9 +1376,12 @@ int bus_process_object(sd_bus *bus, sd_bus_message *m) {
+         assert(m->member);
+ 
+         pl = strlen(m->path);
+-        do {
+-                char prefix[pl+1];
++        assert(pl <= BUS_PATH_SIZE_MAX);
++        prefix = new(char, pl + 1);
++        if (!prefix)
++                return -ENOMEM;
+ 
++        do {
+                 bus->nodes_modified = false;
+ 
+                 r = object_find_and_run(bus, m, m->path, false, &found_object);
+@@ -1498,9 +1508,15 @@ static int bus_find_parent_object_manager(sd_bus *bus, struct node **out, const
+ 
+         n = hashmap_get(bus->nodes, path);
+         if (!n) {
+-                char *prefix;
++                _cleanup_free_ char *prefix = NULL;
++                size_t pl;
++
++                pl = strlen(path);
++                assert(pl <= BUS_PATH_SIZE_MAX);
++                prefix = new(char, pl + 1);
++                if (!prefix)
++                        return -ENOMEM;
+ 
+-                prefix = newa(char, strlen(path) + 1);
+                 OBJECT_PATH_FOREACH_PREFIX(prefix, path) {
+                         n = hashmap_get(bus->nodes, prefix);
+                         if (n)
+@@ -2083,8 +2099,9 @@ _public_ int sd_bus_emit_properties_changed_strv(
+                 const char *interface,
+                 char **names) {
+ 
++        _cleanup_free_ char *prefix = NULL;
+         bool found_interface = false;
+-        char *prefix;
++        size_t pl;
+         int r;
+ 
+         assert_return(bus, -EINVAL);
+@@ -2105,6 +2122,12 @@ _public_ int sd_bus_emit_properties_changed_strv(
+ 
+         BUS_DONT_DESTROY(bus);
+ 
++        pl = strlen(path);
++        assert(pl <= BUS_PATH_SIZE_MAX);
++        prefix = new(char, pl + 1);
++        if (!prefix)
++                return -ENOMEM;
++
+         do {
+                 bus->nodes_modified = false;
+ 
+@@ -2114,7 +2137,6 @@ _public_ int sd_bus_emit_properties_changed_strv(
+                 if (bus->nodes_modified)
+                         continue;
+ 
+-                prefix = newa(char, strlen(path) + 1);
+                 OBJECT_PATH_FOREACH_PREFIX(prefix, path) {
+                         r = emit_properties_changed_on_interface(bus, prefix, path, interface, true, &found_interface, names);
+                         if (r != 0)
+@@ -2246,7 +2268,8 @@ static int object_added_append_all_prefix(
+ 
+ static int object_added_append_all(sd_bus *bus, sd_bus_message *m, const char *path) {
+         _cleanup_set_free_ Set *s = NULL;
+-        char *prefix;
++        _cleanup_free_ char *prefix = NULL;
++        size_t pl;
+         int r;
+ 
+         assert(bus);
+@@ -2291,7 +2314,12 @@ static int object_added_append_all(sd_bus *bus, sd_bus_message *m, const char *p
+         if (bus->nodes_modified)
+                 return 0;
+ 
+-        prefix = newa(char, strlen(path) + 1);
++        pl = strlen(path);
++        assert(pl <= BUS_PATH_SIZE_MAX);
++        prefix = new(char, pl + 1);
++        if (!prefix)
++                return -ENOMEM;
++
+         OBJECT_PATH_FOREACH_PREFIX(prefix, path) {
+                 r = object_added_append_all_prefix(bus, m, s, prefix, path, true);
+                 if (r < 0)
+@@ -2430,7 +2458,8 @@ static int object_removed_append_all_prefix(
+ 
+ static int object_removed_append_all(sd_bus *bus, sd_bus_message *m, const char *path) {
+         _cleanup_set_free_ Set *s = NULL;
+-        char *prefix;
++        _cleanup_free_ char *prefix = NULL;
++        size_t pl;
+         int r;
+ 
+         assert(bus);
+@@ -2462,7 +2491,12 @@ static int object_removed_append_all(sd_bus *bus, sd_bus_message *m, const char
+         if (bus->nodes_modified)
+                 return 0;
+ 
+-        prefix = newa(char, strlen(path) + 1);
++        pl = strlen(path);
++        assert(pl <= BUS_PATH_SIZE_MAX);
++        prefix = new(char, pl + 1);
++        if (!prefix)
++                return -ENOMEM;
++
+         OBJECT_PATH_FOREACH_PREFIX(prefix, path) {
+                 r = object_removed_append_all_prefix(bus, m, s, prefix, path, true);
+                 if (r < 0)
+@@ -2612,7 +2646,8 @@ static int interfaces_added_append_one(
+                 const char *path,
+                 const char *interface) {
+ 
+-        char *prefix;
++        _cleanup_free_ char *prefix = NULL;
++        size_t pl;
+         int r;
+ 
+         assert(bus);
+@@ -2626,7 +2661,12 @@ static int interfaces_added_append_one(
+         if (bus->nodes_modified)
+                 return 0;
+ 
+-        prefix = newa(char, strlen(path) + 1);
++        pl = strlen(path);
++        assert(pl <= BUS_PATH_SIZE_MAX);
++        prefix = new(char, pl + 1);
++        if (!prefix)
++                return -ENOMEM;
++
+         OBJECT_PATH_FOREACH_PREFIX(prefix, path) {
+                 r = interfaces_added_append_one_prefix(bus, m, prefix, path, interface, true);
+                 if (r != 0)
+-- 
+2.20.1
+

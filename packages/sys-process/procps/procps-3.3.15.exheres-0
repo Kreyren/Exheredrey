@@ -1,0 +1,98 @@
+# Copyright 2007 Bryan Østergaard
+# Distributed under the terms of the GNU General Public License v2
+
+MY_PN=${PN}-ng
+require sourceforge [ suffix=tar.xz ]
+require alternatives
+
+HOMEPAGE+=" https://gitlab.com/procps-ng/procps"
+SUMMARY="Utilities for process information including ps, top and kill"
+
+LICENCES="GPL-2 LGPL-2"
+SLOT="0"
+PLATFORMS="~amd64 ~arm ~armv7 ~armv8 ~x86"
+MYOPTIONS="
+    systemd [[ description = [ obtain various information about processes through logind ] ]]
+    ( parts: binaries data development documentation libraries )
+    ( linguas: de fr pl pt_BR sv uk vi zh_CN )
+"
+
+DEPENDENCIES="
+    build:
+        sys-devel/gettext
+    build+run:
+        sys-libs/ncurses
+        systemd? ( sys-apps/systemd[>=206] )
+        !sys-apps/sysvinit-tools[<2.88-r6] [[
+            description = [ procps now provides pidof ]
+            resolution = upgrade-blocked-before
+        ]]
+        !sys-apps/coreutils[<8.23-r3]  [[
+            description = [ procps now provides uptime ]
+            resolution = upgrade-blocked-before
+        ]]
+        !sys-apps/coreutils[<8.23-r4]  [[
+            description = [ conflicts with uptime alternatives ]
+            resolution = uninstall-blocked-after
+        ]]
+    test:
+        dev-util/dejagnu
+"
+
+DEFAULT_SRC_PREPARE_PATCHES=(
+    "${FILES}"/${PNV}-top-add-another-field-sanity-check-in-config_file.patch
+    "${FILES}"/${PNV}-top-prevent-buffer-overruns-in-inspection_utility.patch
+    "${FILES}"/${PNV}-top-sanitized-some-potentially-corrupt-Inspect-data.patch
+    "${FILES}"/${PNV}-library-avoid-problems-involving-supgid-mishandling.patch
+    "${FILES}"/${PNV}-library-tweak-that-change-to-supgrps_from_supgids.patch
+)
+
+DEFAULT_SRC_CONFIGURE_PARAMS=(
+    ac_cv_func_malloc_0_nonnull=yes
+    ac_cv_func_realloc_0_nonnull=yes
+
+    --enable-modern-top
+    --enable-nls
+    --enable-pidof
+    --enable-sigwinch
+    --enable-watch8bit
+    --disable-libselinux
+    --disable-{s,}kill
+    --disable-static
+    --with-ncurses
+)
+DEFAULT_SRC_CONFIGURE_OPTION_WITHS=( systemd )
+
+WORK=${WORKBASE}/${MY_PN}-${PV}
+
+src_configure() {
+    # needed to fix musl compilation
+    ac_cv_func_malloc_0_nonnull=yes ac_cv_func_realloc_0_nonnull=yes default
+}
+
+src_test() {
+    # NOTE(moben): Disable tests that need a tty, fails under sydbox.
+    # (e.g. testsuite/pgrep.test/pgrep.exp: 'test "pgrep matches on tty"')
+    edo sed -i -e 's#exec tty#exec false#' testsuite/config/unix.exp
+
+    default
+}
+
+src_install() {
+    default
+
+    expart binaries /usr/$(exhost --target)/{,s}bin
+    expart data /usr/share
+    expart documentation /usr/share/{doc,man}
+    expart libraries /usr/$(exhost --target)/lib
+    expart development /usr/$(exhost --target)/{include,lib/pkgconfig}
+
+    if option parts:binaries;then
+        alternatives_for uptime ${PN} 2000  \
+            /usr/$(exhost --target)/bin/uptime  uptime.${PN}
+    fi
+    if option parts:documentation;then
+        alternatives_for uptime ${PN} 2000  \
+            /usr/share/man/man1/uptime.1        uptime.${PN}.1
+    fi
+}

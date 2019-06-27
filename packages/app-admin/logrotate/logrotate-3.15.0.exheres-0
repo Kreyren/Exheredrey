@@ -1,0 +1,7 @@
+# Copyright 2008-2017 Wulf C. Krueger <philantrop@exherbo.org>
+# Distributed under the terms of the GNU General Public License v2
+
+require logrotate
+
+PLATFORMS="~amd64 ~armv7 ~x86"
+

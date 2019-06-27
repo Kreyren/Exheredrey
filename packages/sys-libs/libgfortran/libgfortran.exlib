@@ -1,0 +1,88 @@
+# Copyright 2015 Saleem Abdulrasool <compnerd@compnerd.org>
+# Distributed under the terms of the GNU General Public License v2
+
+require gcc.gnu.org
+require toolchain-runtime-libraries
+
+export_exlib_phases src_unpack src_prepare src_configure src_compile src_test src_install
+
+SUMMARY="GCC Fortran Runtime Library"
+
+LICENCES="GPL-2"
+SLOT="$(ever major)"
+
+MYOPTIONS="
+    linguas:
+        be ca da de el eo es fi fr hr id ja nl ru sr sv tr uk vi zh_CN zh_TW
+"
+
+DEPENDENCIES="
+    build+run:
+        sys-libs/libquadmath:${SLOT}[~>${PV}]
+"
+
+if [[ ${PV} == *_pre* ]] ; then
+    ECONF_SOURCE="${WORKBASE}/gcc-$(ever major)-${PV##*_pre}/libgfortran"
+elif [[ ${PV} == *-rc* ]] ; then
+    ECONF_SOURCE="${WORKBASE}/gcc-${PV/rc/RC-}/libgfortran"
+else
+    ECONF_SOURCE="${WORKBASE}/gcc-${PV/_p?(re)/-}/libgfortran"
+fi
+WORK="${WORKBASE}/build/$(exhost --target)/libgfortran"
+
+DEFAULT_SRC_CONFIGURE_PARAMS=( --disable-multilib )
+
+# NOTE(compnerd) libgfortran does not have a testsuite
+# but libbacktrace does
+#RESTRICT="test"
+
+libgfortran_src_unpack() {
+    default
+    edo mkdir -p "${WORK}"{,/../libbacktrace}
+
+    # TODO(compnerd) find a more elegant solution to this (potentially addressing one of the
+    # upstream FIXMEs in the process)
+    edo sed -e "s,toolexecdir=no,toolexecdir='\${libdir}',"         \
+            -e "s,toolexeclibdir=no,toolexeclibdir='\${libdir}',"   \
+            -i "${ECONF_SOURCE}/configure"
+
+    # NOTE(compnerd) make sure that we setup gthr.h properly for io.h
+    edo ln -s gthr-$(${CXX} -v 2>&1 | sed -n 's/^Thread model: //p').h "$(dirname "${ECONF_SOURCE}")/libgcc/gthr-default.h"
+}
+
+libgfortran_src_prepare() {
+    edo cd "${ECONF_SOURCE}/.."
+    default
+}
+
+libgfortran_src_configure() {
+    edo pushd ../libbacktrace
+    ECONF_SOURCE+=/../libbacktrace econf --disable-multilib
+    edo popd
+
+    default
+}
+
+libgfortran_src_compile() {
+    edo pushd ../libbacktrace
+    emake
+    edo popd
+
+    default
+}
+
+libgfortran_src_test() {
+    edo pushd ../libbacktrace
+    # btest is broken with -gdwarf-4 in CFLAGS
+    emake TESTS=stest check
+    edo popd
+}
+
+libgfortran_src_install() {
+    default
+
+    symlink_dynamic_libs ${PN}
+    slot_dynamic_libs ${PN}
+    slot_other_libs ${PN}.a ${PN}.la ${PN}.spec
+}
+

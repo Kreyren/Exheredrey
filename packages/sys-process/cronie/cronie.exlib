@@ -1,0 +1,103 @@
+# Copyright 2011 Nathan McSween <nwmcsween@gmail.com>
+# Copyright 2011-2017 Wulf C. Krueger <philantrop@exherbo.org>
+# Distributed under the terms of the GNU General Public License v2
+
+require github [ user=${PN}-crond release=${PNV}-final suffix=tar.gz ]
+require pam alternatives
+require cron-install [ crond=src/crond crontab=src/crontab ]
+require systemd-service
+require openrc-service [ openrc_confd_files=[ cronie ] ]
+
+export_exlib_phases src_prepare src_install pkg_postinst
+
+SUMMARY="UNIX cron daemon based on vixie-cron but actually maintained"
+DESCRIPTION="
+Cronie contains the standard UNIX daemon crond (vixie-cron) that runs specified
+programs at scheduled times and related tools. It is based on the original cron
+and has security and configuration enhancements like the ability to use PAM,
+inotify and SELinux.
+"
+
+BUGS_TO="nwmcsween@gmail.com philantrop@exherbo.org"
+
+LICENCES="ISC BSD-2 BSD-3"
+SLOT="0"
+MYOPTIONS="
+    anacron [[ description = [ Use anacron in addition to the standard cron ] ]]
+"
+
+# debianutils required for run-parts a.k.a cron.{daily,hourly}
+DEPENDENCIES="
+    build+run:
+        sys-libs/pam
+        sys-process/cronbase
+"
+
+DEFAULT_SRC_CONFIGURE_PARAMS=(
+    SPOOL_DIR="/var/spool/cron/crontabs"
+    ANACRON_SPOOL_DIR="/var/spool/anacron"
+    --enable-syscrontab
+    --with-daemon_username=cron
+    --with-daemon_groupname=cron
+    --with-inotify
+    --with-pam
+    --without-audit
+    --without-selinux
+)
+DEFAULT_SRC_CONFIGURE_OPTION_ENABLES=( anacron )
+
+cronie_src_prepare() {
+    edo sed \
+        -e 's:sysconfig/crond:conf.d/cronie.conf:g' \
+        -i contrib/${PN}.systemd
+
+    default
+}
+
+cronie_src_install() {
+    default
+
+    do_cron_exes
+
+    if option anacron ; then
+        insinto /etc/cron.hourly
+        insopts -m0755
+        doins contrib/0anacron
+
+        insinto /etc
+        insopts -m0644
+        doins contrib/anacrontab
+
+        diropts -m 0750 -o root -g cron
+        keepdir /var/spool/anacron
+
+        dodoc -r contrib
+    fi
+
+    # overwrite the default pam file with our own
+    newpamd "${FILES}"/pamd.compatible crond
+
+    install_openrc_files
+
+    insinto "${SYSTEMDSYSTEMUNITDIR}"
+    newins contrib/${PN}.systemd ${PN}.service
+    doconfd "${FILES}"/systemd/cronie.conf
+
+    # alternatives
+    local alternatives=(
+        cron ${PN} 1000
+        /usr/$(exhost --target)/bin/crond ${PN}.crond
+        /usr/$(exhost --target)/bin/cronnext ${PN}.cronnext
+        /usr/$(exhost --target)/bin/crontab ${PN}.crontab
+        /usr/share/man/man5/crontab.5 ${PN}.crontab.5
+        /usr/share/man/man1/cronnext.1 ${PN}.cronnext.1
+        /usr/share/man/man1/crontab.1 ${PN}.crontab.1
+        /usr/share/man/man8/cron.8 ${PN}.cron.8
+    )
+    alternatives_for "${alternatives[@]}"
+}
+
+cronie_pkg_postinst() {
+    alternatives_pkg_postinst
+}
+

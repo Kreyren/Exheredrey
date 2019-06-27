@@ -1,0 +1,114 @@
+# Copyright 2008-2011 Ingmar Vanhassel <ingmar@exherbo.org>
+# Distributed under the terms of the GNU General Public License v2
+
+require alternatives github [ release=v${PV} suffix=tar.gz ]
+require autotools [ supported_autoconf=[ 2.5 ] supported_automake=[ 1.16 ] ]
+
+export_exlib_phases src_prepare src_install
+
+SUMMARY="C library for reading and writing tar, cpio, zip, ISO, and other archive formats"
+DESCRIPTION="
+The formats supported include:
+gzip (read and write, uses zlib)
+bzip2 (read and write, uses bzlib)
+compress (read and write, uses an internal implementation)
+uudecode (read and write)
+cpio (read and write, including odc and newc variants)
+separate command-line compressors with fixed-signature auto-detection
+xz, lzip, and lzma (read and write using liblzma)
+tar (read and write, including GNU extensions)
+pax (read and write, including GNU and star extensions)
+ISO9660 (read and write, including Joliet and Rockridge extensions, with some limitations)
+zip (read and write, with some limitations, uses zlib)
+mtree (read and write, uses separate libraries for creating and verifying cryptographic hashes)
+shar (write only)
+ar (read and write, including BSD and GNU/SysV variants)
+empty (read only; in particular, note that no other format will accept an empty file)
+raw (read only)
+xar (read only)
+lha/lzh (read only)
+rar (read only)
+Microsoft CAB format (read only)
+7-Zip (read only)
+"
+
+HOMEPAGE="https://${PN}.org"
+
+LICENCES="BSD-2 BSD-3 public-domain"
+SLOT="0"
+MYOPTIONS="acl
+    blake2 [[ description = [ Support for the BLAKE2 hash function through libb2 ] ]]
+    lz4 xattr
+    zstd [[ description = [ Support for the ZStandard compression algorithm ] ]]
+
+    ( providers: libressl nettle openssl ) [[ number-selected = exactly-one ]]
+    ( providers: libxml2 expat ) [[ number-selected = exactly-one ]]
+"
+
+DEPENDENCIES="
+    build+run:
+        app-arch/bzip2
+        app-arch/xz[>=5.2.0] [[ note = [ 5.2.0 for multithread support ] ]]
+        virtual/gzip
+        acl? ( sys-apps/acl )
+        blake2? ( app-crypt/libb2 )
+        lz4? ( app-arch/lz4 )
+        xattr? ( sys-apps/attr )
+        zstd? ( app-arch/zstd )
+        providers:expat? ( dev-libs/expat )
+        providers:libressl? ( dev-libs/libressl:= )
+        providers:libxml2? ( dev-libs/libxml2:= )
+        providers:nettle? ( dev-libs/nettle )
+        providers:openssl? ( dev-libs/openssl )
+    run:
+        !app-arch/tar[<1.28-r2] [[
+            description = [ Alternatives conflict before tar-1.28-r2 ]
+            resolution = upgrade-blocked-before
+        ]]
+"
+
+AT_M4DIR=( build/autoconf . )
+
+DEFAULT_SRC_CONFIGURE_PARAMS=(
+    --enable-bsdcpio=shared
+    --enable-bsdtar=shared
+    --disable-static
+    # Enable gzip, bzip2, xz support
+    --with-{zlib,bz2lib,lzma}
+    --without-cng
+    --without-lzo2
+    CFLAGS="${CFLAGS} -Wno-error"
+)
+DEFAULT_SRC_CONFIGURE_OPTION_ENABLES=( acl xattr )
+DEFAULT_SRC_CONFIGURE_OPTION_WITHS=(
+    'blake2 libb2'
+    'lz4'
+    'zstd'
+    'providers:nettle nettle'
+    'providers:expat expat'
+    'providers:libressl openssl'
+    'providers:libxml2 xml2'
+    'providers:nettle nettle'
+    'providers:openssl openssl'
+)
+
+libarchive_src_prepare() {
+    # Disable test which fails to create dirs under sydbox
+    edo sed \
+        -e "/libarchive\/test\/test_write_disk_secure744.c/d" \
+        -i Makefile.am
+    edo rm libarchive/test/test_write_disk_secure744.c
+
+    autotools_src_prepare
+}
+
+libarchive_src_install() {
+    default
+    alternatives_for cpio ${PN} 100 \
+        /usr/$(exhost --target)/bin/cpio bsdcpio    \
+        /usr/share/man/man1/cpio.1      /usr/share/man/man1/bsdcpio.1
+    alternatives_for tar ${PN} 100  \
+        /usr/$(exhost --target)/bin/tar bsdtar  \
+        /usr/share/man/man1/tar.1       /usr/share/man/man1/bsdtar.1
+}
+

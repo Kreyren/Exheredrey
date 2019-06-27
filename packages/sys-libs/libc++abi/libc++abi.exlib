@@ -1,0 +1,94 @@
+# Copyright 2012 Saleem Abdulrasool <compnerd@compnerd.org>
+# Copyright 2017 Rasmus Thomsen <Rasmus.thomsen@protonmail.com>
+# Distributed under the terms of the GNU General Public License v2
+
+if ever is_scm ; then
+    SCM_REPOSITORY="https://git.llvm.org/git/libcxxabi.git"
+    SCM_libcxx_REPOSITORY="https://git.llvm.org/git/libcxx.git"
+    SCM_llvm_REPOSITORY="https://git.llvm.org/git/llvm.git"
+    # We need that to keep compatibility with the below -DLLVM_MAIN_SRC_DIR
+    SCM_llvm_UNPACK_TO="llvm-scm.src"
+
+    SCM_SECONDARY_REPOSITORIES="libcxx llvm"
+
+    require scm-git
+else
+    # We also have to download libcxx since we need its headers
+    # Otherwise we have an unresolveable dependency loop between
+    # libc++ and libc++abi
+    if [[ ${PV} == *rc* ]]; then
+        DOWNLOADS="
+            https://prereleases.llvm.org/${PV%*rc*}/rc${PV#*rc}/libcxxabi-${PV}.src.tar.xz
+            https://prereleases.llvm.org/${PV%*rc*}/rc${PV#*rc}/libcxx-${PV}.src.tar.xz
+            https://prereleases.llvm.org/${PV%*rc*}/rc${PV#*rc}/llvm-${PV}.src.tar.xz
+        "
+    else
+        DOWNLOADS="
+            https://llvm.org/releases/${PV}/libcxxabi-${PV}.src.tar.xz
+            https://llvm.org/releases/${PV}/libcxx-${PV}.src.tar.xz
+            https://llvm.org/releases/${PV}/llvm-${PV}.src.tar.xz
+        "
+    fi
+fi
+
+require cmake [ api=2 ]
+
+export_exlib_phases src_prepare src_install src_test
+
+SUMMARY="A new implementation of low level support for a standard C++ library"
+HOMEPAGE="https://libcxxabi.llvm.org/"
+
+if ever at_least 9.0; then
+    LICENCES="Apache-2.0-with-LLVM-exception"
+else
+    LICENCES="|| ( MIT UoI-NCSA )"
+fi
+SLOT="0"
+MYOPTIONS=""
+
+DEPENDENCIES="
+    build+test:
+        dev-lang/llvm[>=4.0.0] [[ note = [ For llvm-config and CMake modules ] ]]
+    post:
+        sys-libs/libc++[~${PV}]
+"
+
+CMAKE_SRC_CONFIGURE_PARAMS=(
+    -DLIBCXXABI_ENABLE_SHARED:BOOL=TRUE
+    -DLIBCXXABI_ENABLE_STATIC:BOOL=TRUE
+
+    -DLLVM_MAIN_SRC_DIR="${WORKBASE}/llvm-${PV}.src"
+    -DLLVM_LIT_ARGS:STRING="-sv"
+)
+
+if ! ever is_scm; then
+    CMAKE_SRC_CONFIGURE_PARAMS+=(
+        -DLIBCXXABI_LIBCXX_INCLUDES:PATH="${WORKBASE}/libcxx-${PV}.src/include"
+    )
+fi
+
+libc++abi_src_prepare() {
+    default
+
+    pushd "${WORKBASE}"/llvm-${PV}.src/projects
+    edo ln -s "${WORKBASE}"/libcxx-${PV}.src libcxx
+    popd
+}
+
+libc++abi_src_install() {
+    cmake_src_install
+
+    # install headers
+    insinto /usr/$(exhost --target)/include/libc++abi
+    doins "${CMAKE_SOURCE}"/include/*
+}
+
+libc++abi_src_test() {
+    # Avoid dependency loop between libc++ and libc++abi
+    if has_version sys-libs/libc++[~${PV}]; then
+        emake check-cxxabi
+    else
+        ewarn "Test dependencies are not yet installed, skipping tests"
+    fi
+}
+

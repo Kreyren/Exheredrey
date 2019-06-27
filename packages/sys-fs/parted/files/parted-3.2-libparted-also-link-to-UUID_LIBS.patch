@@ -1,0 +1,27 @@
+Upstream: yes
+
+From 1f8d32e79f6356ccde7da898a21ba1674478f7a4 Mon Sep 17 00:00:00 2001
+From: Heiko Becker <heirecka@exherbo.org>
+Date: Fri, 19 Sep 2014 16:51:34 +0200
+Subject: [PATCH] libparted: also link to UUID_LIBS
+
+This fixes building parted with the gold linker.
+---
+ libparted/Makefile.am | 1 +
+ 1 file changed, 1 insertion(+)
+
+diff --git a/libparted/Makefile.am b/libparted/Makefile.am
+index edc5f2e..cb58648 100644
+--- a/libparted/Makefile.am
++++ b/libparted/Makefile.am
+@@ -58,6 +58,7 @@ libparted_la_LIBADD =	\
+   $(DM_LIBS)		\
+   $(SELINUX_LIBS)	\
+   $(LIB_BLKID)		\
++  $(UUID_LIBS)		\
+   $(INTLLIBS)
+ 
+ EXTRA_DIST	      = mbr.s
+-- 
+2.1.0
+

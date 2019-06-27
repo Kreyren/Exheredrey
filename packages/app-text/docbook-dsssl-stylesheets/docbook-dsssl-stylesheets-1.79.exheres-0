@@ -1,0 +1,57 @@
+# Copyright 2008 Santiago M. Mola
+# Distributed under the terms of the GNU General Public License v2
+# Based in part upon 'docbook-dsssl-stylesheets-1.79.ebuild', which is:
+#   Copyright 1999-2008 Gentoo Foundation
+
+require sgml-catalog
+
+MY_PNV=${PNV/-stylesheets/}
+WORK=${WORKBASE}/${MY_PNV}
+
+require sourceforge [ project=docbook ]
+
+SUMMARY="DSSSL Stylesheets for DocBook."
+HOMEPAGE="http://wiki.docbook.org/topic/DocBookDssslStylesheets"
+
+LICENCES="as-is"
+SLOT="0"
+PLATFORMS="~amd64 ~armv7 ~armv8 ~x86"
+MYOPTIONS=""
+
+DEPENDENCIES="run: app-text/sgml-common"
+
+SGML_CATALOGS=(
+"/etc/sgml/dsssl-docbook-stylesheets.cat \
+/usr/share/sgml/docbook/dsssl-stylesheets-${PV}/catalog"
+"/etc/sgml/sgml-docbook.cat \
+/etc/sgml/dsssl-docbook-stylesheets.cat" )
+
+src_prepare() {
+    edo cp "${FILES}"/${PNV}-Makefile Makefile
+}
+
+DEFAULT_SRC_INSTALL_PARAMS=(
+    BINDIR="${IMAGE}/usr/$(exhost --target)/bin"
+    DESTDIR="${IMAGE}/usr/share/sgml/docbook/dsssl-stylesheets-${PV}"
+)
+DEFAULT_SRC_INSTALL_EXTRA_DOCS=( WhatsNew )
+
+src_install() {
+    #FIXME: CRAP!
+    default
+
+    dodir /usr/share/sgml/stylesheets/dsssl/
+
+    #FIXME: Weird.
+    if [[ -d /usr/share/sgml/stylesheets/dsssl/docbook ]] &&
+        [[ ! -L /usr/share/sgml/stylesheets/dsssl/docbook ]] ; then
+        ewarn "Not linking /usr/share/sgml/stylesheets/dsssl/docbook to"
+        ewarn "/usr/share/sgml/docbook/dsssl-stylesheets-${PV}"
+        ewarn "as directory already exists there.  Will assume you know"
+        ewarn "what you're doing."
+    else
+        dosym /usr/share/sgml/docbook/dsssl-stylesheets-${PV} \
+            /usr/share/sgml/stylesheets/dsssl/docbook
+    fi
+}
+

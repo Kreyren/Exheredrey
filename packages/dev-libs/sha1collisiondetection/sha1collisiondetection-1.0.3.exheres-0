@@ -1,0 +1,33 @@
+# Copyright 2017 Heiko Becker <heirecka@exherbo.org>
+# Distributed under the terms of the GNU General Public License v2
+
+require github [ user="cr-marcstevens" tag="stable-v${PV}" ]
+
+SUMMARY="Library and command line tool to detect SHA-1 collisions in files"
+
+DESCRIPTION="
+This library and command line tool were designed as near drop-in replacements
+for common SHA-1 libraries and sha1sum. They will compute the SHA-1 hash of
+any given file and additionally will detect cryptanalytic collision attacks
+against SHA-1 present in each file. It is very fast and takes less than twice
+the amount of time as regular SHA-1.
+"
+
+LICENCES="MIT"
+SLOT="0"
+PLATFORMS="~amd64"
+MYOPTIONS=""
+
+DEPENDENCIES=""
+
+BUGS_TO="heirecka@exherbo.org"
+
+DEFAULT_SRC_INSTALL_PARAMS=( PREFIX="${IMAGE}"/usr/$(exhost --target) )
+
+src_install() {
+    default
+
+    # Remove empty directories
+    edo rmdir "${IMAGE}"/usr/$(exhost --target)/include/sha1dc/{bin,lib}
+}
+

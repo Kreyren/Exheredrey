@@ -1,0 +1,45 @@
+# Copyright 2007 Bryan Østergaard
+# Distributed under the terms of the GNU General Public License v2
+
+require cmake [ api=2 ]
+
+SUMMARY="Portable command-line CD/DVD recorder software"
+DESCRIPTION="cdrkit is a suite of programs for recording CDs and DVDs, blanking CD-RW media, creating ISO-9660 filesystem images, extracting audio CD data, and more. The programs included in the cdrkit package were originally derived from several sources, most notably mkisofs by Eric Youngdale and others, cdda2wav by Heiko Eissfeldt, and cdrecord by Jörg Schilling. However, cdrkit is not affiliated with any of these authors; it is now an independent project."
+HOMEPAGE="https://packages.debian.org/source/sid/${PN}"
+DOWNLOADS="mirror://debian/pool/main/c/${PN}/${PN}_${PV}.orig.tar.gz"
+
+LICENCES="GPL-2"
+SLOT="0"
+PLATFORMS="~amd64 ~x86"
+MYOPTIONS=""
+
+DEPENDENCIES="
+    build:
+        sys-libs/libcap
+    build+run:
+        dev-libs/libcdio-paranoia
+        !app-cdr/cdrtools  [[ description = [ Various file collisions: /usr/bin/{devdump,isodebug,isodump,isoinfo,isovfy} ] ]]
+    post:
+        app-cdr/genisoimage
+"
+
+DEFAULT_SRC_PREPARE_PATCHES=(
+    "${FILES}"/${PN}-1.1.11-paranoiacdda.patch
+    "${FILES}"/${PN}-1.1.11-paranoiacdio.patch
+    "${FILES}"/0001-Fix-dirsplit.1-manual-path-for-multiarch.patch
+)
+CMAKE_SRC_CONFIGURE_PARAMS=( -DMANSUBDIR=/usr/share/man/ )
+
+src_install() {
+    default
+
+    # Remove genisoimage. It's in its own package now.
+    edo rm \
+        "${IMAGE}"/usr/$(exhost --target)/bin/genisoimage \
+        "${IMAGE}"/usr/share/man/man1/genisoimage.1 \
+        "${IMAGE}"/usr/share/man/man5/genisoimagerc.5
+    edo mv "${IMAGE}"/usr/$(exhost --target)/{s,}bin/netscsid
+    edo rmdir "${IMAGE}"/usr/share/man/man5 \
+        "${IMAGE}"/usr/$(exhost --target)/sbin
+}
+

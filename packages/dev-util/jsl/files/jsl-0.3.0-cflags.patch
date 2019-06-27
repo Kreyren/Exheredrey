@@ -1,0 +1,223 @@
+Source: http://pkgs.fedoraproject.org/cgit/jsl.git/tree/
+Upstream: Unknown
+Reason: Drop -Wall and -Wno-format
+
+From d7b59fe5f9b954b7f852a5dcd31aa4de033dc804 Mon Sep 17 00:00:00 2001
+From: Lubomir Rintel <lkundrak@v3.sk>
+Date: Thu, 15 May 2014 14:25:17 +0200
+Subject: [PATCH] Drop -Wall and -Wno-format
+
+It's never correct to use -Wall in production builds.
+Warnings don't need to indicate an actual bug in the code.
+Plus compilers change. And the libraries do.
+
+Also, we use -Wformat-security and would prefer if it was not
+overriden. It won't break build now we have no -Wall.
+
+
+diff -urp jsl-0.3.0.orig/src/config/Darwin1.3.mk jsl-0.3.0/src/config/Darwin1.3.mk
+--- jsl-0.3.0.orig/src/config/Darwin1.3.mk	2006-10-25 21:41:48.000000000 +0200
++++ jsl-0.3.0/src/config/Darwin1.3.mk	2014-05-15 14:48:56.308691115 +0200
+@@ -45,7 +45,7 @@
+ 
+ CC = cc
+ CCC = g++
+-CFLAGS +=  -Wall -Wno-format
++CFLAGS += 
+ OS_CFLAGS = -DXP_UNIX -DSVR4 -DSYSV -D_BSD_SOURCE -DPOSIX_SOURCE -DRHAPSODY
+ 
+ RANLIB = ranlib
+diff -urp jsl-0.3.0.orig/src/config/Darwin5.2.mk jsl-0.3.0/src/config/Darwin5.2.mk
+--- jsl-0.3.0.orig/src/config/Darwin5.2.mk	2006-10-25 21:41:48.000000000 +0200
++++ jsl-0.3.0/src/config/Darwin5.2.mk	2014-05-15 14:48:56.309691120 +0200
+@@ -45,7 +45,7 @@
+ 
+ CC = cc
+ CCC = g++
+-CFLAGS +=  -Wall -Wno-format
++CFLAGS += 
+ OS_CFLAGS = -DXP_UNIX -DSVR4 -DSYSV -D_BSD_SOURCE -DPOSIX_SOURCE -DDARWIN
+ 
+ RANLIB = ranlib
+diff -urp jsl-0.3.0.orig/src/config/Darwin5.3.mk jsl-0.3.0/src/config/Darwin5.3.mk
+--- jsl-0.3.0.orig/src/config/Darwin5.3.mk	2006-10-25 21:41:48.000000000 +0200
++++ jsl-0.3.0/src/config/Darwin5.3.mk	2014-05-15 14:48:56.309691120 +0200
+@@ -45,7 +45,7 @@
+ 
+ CC = cc
+ CCC = g++
+-CFLAGS +=  -Wall -Wno-format
++CFLAGS += 
+ OS_CFLAGS = -DXP_UNIX -DSVR4 -DSYSV -D_BSD_SOURCE -DPOSIX_SOURCE -DDARWIN
+ 
+ RANLIB = ranlib
+diff -urp jsl-0.3.0.orig/src/config/Darwin.mk jsl-0.3.0/src/config/Darwin.mk
+--- jsl-0.3.0.orig/src/config/Darwin.mk	2006-10-25 21:41:48.000000000 +0200
++++ jsl-0.3.0/src/config/Darwin.mk	2014-05-15 14:48:56.308691115 +0200
+@@ -45,7 +45,7 @@
+ 
+ CC = cc
+ CCC = g++
+-CFLAGS +=  -Wall -Wno-format
++CFLAGS += 
+ OS_CFLAGS = -DXP_UNIX -DSVR4 -DSYSV -D_BSD_SOURCE -DPOSIX_SOURCE -DDARWIN
+ 
+ RANLIB = ranlib
+diff -urp jsl-0.3.0.orig/src/config/HP-UXB.10.10.mk jsl-0.3.0/src/config/HP-UXB.10.10.mk
+--- jsl-0.3.0.orig/src/config/HP-UXB.10.10.mk	2006-10-25 21:41:48.000000000 +0200
++++ jsl-0.3.0/src/config/HP-UXB.10.10.mk	2014-05-15 14:48:56.309691120 +0200
+@@ -43,7 +43,7 @@
+ 
+ # CC = gcc
+ # CCC = g++
+-# CFLAGS +=  -Wall -Wno-format -fPIC
++# CFLAGS +=  -fPIC
+ 
+ CC  = cc -Ae +Z
+ CCC = CC -Ae +a1 +eh +Z
+diff -urp jsl-0.3.0.orig/src/config/HP-UXB.10.20.mk jsl-0.3.0/src/config/HP-UXB.10.20.mk
+--- jsl-0.3.0.orig/src/config/HP-UXB.10.20.mk	2006-10-25 21:41:48.000000000 +0200
++++ jsl-0.3.0/src/config/HP-UXB.10.20.mk	2014-05-15 14:48:56.310691125 +0200
+@@ -43,7 +43,7 @@
+ 
+ # CC = gcc
+ # CCC = g++
+-# CFLAGS +=  -Wall -Wno-format -fPIC
++# CFLAGS +=  -fPIC
+ 
+ CC  = cc -Ae +Z
+ CCC = CC -Ae +a1 +eh +Z
+diff -urp jsl-0.3.0.orig/src/config/HP-UXB.11.00.mk jsl-0.3.0/src/config/HP-UXB.11.00.mk
+--- jsl-0.3.0.orig/src/config/HP-UXB.11.00.mk	2006-10-25 21:41:48.000000000 +0200
++++ jsl-0.3.0/src/config/HP-UXB.11.00.mk	2014-05-15 14:48:56.310691125 +0200
+@@ -45,8 +45,8 @@ ifdef NS_USE_NATIVE
+   CC  = cc +Z +DAportable +DS2.0 +u4
+ #  LD  = aCC +Z -b -Wl,+s -Wl,-B,symbolic
+ else
+-  CC = gcc -Wall -Wno-format -fPIC
+-  CCC = g++ -Wall -Wno-format -fPIC
++  CC = gcc -fPIC
++  CCC = g++ -fPIC
+ endif
+ 
+ RANLIB = echo
+diff -urp jsl-0.3.0.orig/src/config/IRIX.mk jsl-0.3.0/src/config/IRIX.mk
+--- jsl-0.3.0.orig/src/config/IRIX.mk	2006-10-25 21:41:48.000000000 +0200
++++ jsl-0.3.0/src/config/IRIX.mk	2014-05-15 14:48:56.310691125 +0200
+@@ -52,7 +52,7 @@ ifndef NS_USE_NATIVE
+ CC = gcc
+ CCC = g++
+ AS = $(CC) -x assembler-with-cpp
+-ODD_CFLAGS = -Wall -Wno-format
++ODD_CFLAGS =
+ ifdef BUILD_OPT
+ OPTIMIZER = -O6
+ endif
+diff -urp jsl-0.3.0.orig/src/config/Linux_All.mk jsl-0.3.0/src/config/Linux_All.mk
+--- jsl-0.3.0.orig/src/config/Linux_All.mk	2006-10-25 21:41:48.000000000 +0200
++++ jsl-0.3.0/src/config/Linux_All.mk	2014-05-15 14:48:56.311691129 +0200
+@@ -43,7 +43,7 @@
+ 
+ CC = gcc
+ CCC = g++
+-CFLAGS +=  -Wall -Wno-format
++CFLAGS += 
+ OS_CFLAGS = -DXP_UNIX -DSVR4 -DSYSV -D_BSD_SOURCE -DPOSIX_SOURCE -DHAVE_LOCALTIME_R
+ 
+ RANLIB = echo
+diff -urp jsl-0.3.0.orig/src/config/Mac_OS10.0.mk jsl-0.3.0/src/config/Mac_OS10.0.mk
+--- jsl-0.3.0.orig/src/config/Mac_OS10.0.mk	2006-10-25 21:41:48.000000000 +0200
++++ jsl-0.3.0/src/config/Mac_OS10.0.mk	2014-05-15 14:48:56.311691129 +0200
+@@ -45,7 +45,7 @@
+ 
+ CC = cc
+ CCC = g++
+-CFLAGS +=  -Wall -Wno-format
++CFLAGS += 
+ OS_CFLAGS = -DXP_UNIX -DSVR4 -DSYSV -D_BSD_SOURCE -DPOSIX_SOURCE 
+ -DRHAPSODY
+ 
+diff -urp jsl-0.3.0.orig/src/config/OSF1V4.0.mk jsl-0.3.0/src/config/OSF1V4.0.mk
+--- jsl-0.3.0.orig/src/config/OSF1V4.0.mk	2006-10-25 21:41:48.000000000 +0200
++++ jsl-0.3.0/src/config/OSF1V4.0.mk	2014-05-15 14:48:56.311691129 +0200
+@@ -48,7 +48,7 @@
+ ifndef NS_USE_NATIVE
+ CC = gcc
+ CCC = g++
+-CFLAGS +=  -mieee -Wall -Wno-format
++CFLAGS +=  -mieee
+ else
+ CC  = cc
+ CCC = cxx
+diff -urp jsl-0.3.0.orig/src/config/OSF1V5.0.mk jsl-0.3.0/src/config/OSF1V5.0.mk
+--- jsl-0.3.0.orig/src/config/OSF1V5.0.mk	2006-10-25 21:41:48.000000000 +0200
++++ jsl-0.3.0/src/config/OSF1V5.0.mk	2014-05-15 14:48:56.312691134 +0200
+@@ -48,7 +48,7 @@
+ ifndef NS_USE_NATIVE
+ CC = gcc
+ CCC = g++
+-CFLAGS +=  -mieee -Wall -Wno-format
++CFLAGS +=  -mieee
+ else
+ CC  = cc
+ CCC = cxx
+diff -urp jsl-0.3.0.orig/src/config/SunOS4.1.4.mk jsl-0.3.0/src/config/SunOS4.1.4.mk
+--- jsl-0.3.0.orig/src/config/SunOS4.1.4.mk	2006-10-25 21:41:48.000000000 +0200
++++ jsl-0.3.0/src/config/SunOS4.1.4.mk	2014-05-15 14:48:56.312691134 +0200
+@@ -57,7 +57,7 @@ MOZ_CFLAGS = -DSTRINGS_ALIGNED -DNO_REGE
+ 	     -DBOGUS_MB_MAX -DNO_CONST
+ 
+ # Purify doesn't like -MDupdate
+-NOMD_OS_CFLAGS = -DXP_UNIX -Wall -Wno-format -DSW_THREADS -DSUNOS4 -DNEED_SYSCALL \
++NOMD_OS_CFLAGS = -DXP_UNIX -DSW_THREADS -DSUNOS4 -DNEED_SYSCALL \
+ 		 $(MOZ_CFLAGS)
+ 
+ OS_CFLAGS = $(NOMD_OS_CFLAGS) -MDupdate $(DEPENDENCIES)
+diff -urp jsl-0.3.0.orig/src/config/SunOS5.3.mk jsl-0.3.0/src/config/SunOS5.3.mk
+--- jsl-0.3.0.orig/src/config/SunOS5.3.mk	2006-10-25 21:41:48.000000000 +0200
++++ jsl-0.3.0/src/config/SunOS5.3.mk	2014-05-15 14:48:56.312691134 +0200
+@@ -43,7 +43,7 @@
+ 
+ CC = gcc
+ CCC = g++
+-CFLAGS +=  -Wall -Wno-format
++CFLAGS += 
+ 
+ #CC = /opt/SUNWspro/SC3.0.1/bin/cc
+ RANLIB = echo
+diff -urp jsl-0.3.0.orig/src/config/SunOS5.4.mk jsl-0.3.0/src/config/SunOS5.4.mk
+--- jsl-0.3.0.orig/src/config/SunOS5.4.mk	2006-10-25 21:41:48.000000000 +0200
++++ jsl-0.3.0/src/config/SunOS5.4.mk	2014-05-15 14:48:56.313691139 +0200
+@@ -47,7 +47,7 @@ CCC = CC
+ else
+ CC = gcc
+ CCC = g++
+-CFLAGS += -Wall -Wno-format
++CFLAGS +=
+ endif
+ 
+ RANLIB = echo
+diff -urp jsl-0.3.0.orig/src/config/SunOS5.5.mk jsl-0.3.0/src/config/SunOS5.5.mk
+--- jsl-0.3.0.orig/src/config/SunOS5.5.mk	2006-10-25 21:41:48.000000000 +0200
++++ jsl-0.3.0/src/config/SunOS5.5.mk	2014-05-15 14:48:56.313691139 +0200
+@@ -45,7 +45,7 @@ AS = /usr/ccs/bin/as
+ ifndef NS_USE_NATIVE
+ CC = gcc
+ CCC = g++
+-CFLAGS +=  -Wall -Wno-format
++CFLAGS += 
+ else
+ CC = cc
+ CCC = CC
+diff -urp jsl-0.3.0.orig/src/config/SunOS5.6.mk jsl-0.3.0/src/config/SunOS5.6.mk
+--- jsl-0.3.0.orig/src/config/SunOS5.6.mk	2006-10-25 21:41:48.000000000 +0200
++++ jsl-0.3.0/src/config/SunOS5.6.mk	2014-05-15 14:48:56.314691143 +0200
+@@ -45,7 +45,7 @@ AS = /usr/ccs/bin/as
+ ifndef NS_USE_NATIVE
+   CC = gcc
+   CCC = g++
+-  CFLAGS +=  -Wall -Wno-format
++  CFLAGS += 
+ else
+   CC = cc
+   CCC = CC

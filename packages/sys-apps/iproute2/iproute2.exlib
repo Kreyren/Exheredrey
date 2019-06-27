@@ -1,0 +1,184 @@
+# Copyright 2008 Daniel Mierswa <impulze@impulze.org>
+# Copyright 2012, 2013 Wouter van Kesteren <woutershep@gmail.com>
+# Distributed under the terms of the GNU General Public License v2
+# Based in part upon 'iproute2-2.6.26-r1.ebuild' from Gentoo, which is:
+#     Copyright 1999-2008 Gentoo Foundation.
+
+require toolchain-funcs
+
+export_exlib_phases src_prepare src_configure src_install
+
+if [[ $(ever major) -lt 3 ]]; then
+    myexparam headers_version="[>=$(ever range -3)]"
+    SUFFIX=bz2
+else
+    myexparam headers_version="[>=$(ever range -2)]"
+    SUFFIX=xz
+fi
+
+SUMMARY="Collection of utilities for controlling networking and traffic control in Linux"
+DESCRIPTION="A replacement for the inadequately behaving ifconfig/route programs in modern networks."
+HOMEPAGE="https://wiki.linuxfoundation.org/networking/${PN}"
+DOWNLOADS="
+    mirror://kernel/linux/utils/net/${PN}/${PNV}.tar.${SUFFIX}
+    https://dev.exherbo.org/~philantrop/distfiles/${PNV}.tar.${SUFFIX}
+"
+
+LICENCES="GPL-2"
+SLOT="0"
+MYOPTIONS="
+    atm [[ description = [ Add ATM support in tc program ] ]]
+    berkdb [[ description = [ Build ARP daemon ] ]]
+"
+
+DEPENDENCIES="
+    build:
+        sys-kernel/linux-headers$(exparam headers_version)
+        virtual/pkg-config
+    build+run:
+        net-firewall/iptables[>=1.4.5]
+        atm? ( net-dialup/linux-atm )
+        berkdb? ( sys-libs/db:= )
+"
+
+if ever at_least 4.1.0 ; then
+    DEPENDENCIES+="
+        build+run:
+            net-libs/libmnl
+    "
+fi
+
+if ever at_least 4.7.0 ; then
+    DEPENDENCIES+="
+        build+run:
+            providers:elfutils? ( dev-util/elfutils )
+            providers:libelf? ( dev-libs/libelf )
+    "
+    MYOPTIONS+="
+        ( providers: elfutils libelf ) [[ number-selected = exactly-one ]]
+    "
+fi
+
+if ever at_least 4.16.0 ; then
+    DEPENDENCIES+="
+        build+run:
+            sys-libs/libcap
+    "
+fi
+
+if ever at_least 4.20.0 ; then
+    DEPENDENCIES+="
+        build+run:
+            dev-libs/libbsd [[ note = [ automagic ] ]]
+    "
+fi
+
+DEFAULT_SRC_COMPILE_PARAMS+=(
+    CC="${CC}"
+    HOSTCC="$(exhost --build)-cc"
+    AR="${AR}"
+    HDRDIR=/usr/$(exhost --target)/include/${PN}
+    KERNEL_INCLUDE=/usr/$(exhost --target)/include
+    LIBDIR=/usr/$(exhost --target)/lib
+    IPT_LIB_DIR=/usr/$(exhost --target)/lib
+)
+
+if ever at_least 4.7.0 ; then
+    DEFAULT_SRC_COMPILE_PARAMS+=( V=1 )
+fi
+
+if ever at_least 4.18.0 ; then
+    DEFAULT_SRC_COMPILE_PARAMS+=(
+        NETNS_RUN_DIR=/run/netns
+    )
+fi
+
+DEFAULT_SRC_INSTALL_PARAMS+=(
+    SBINDIR=/usr/$(exhost --target)/bin
+    LIBDIR=/usr/$(exhost --target)/lib
+    HDRDIR=/usr/$(exhost --target)/include/${PN}
+    DOCDIR=/usr/share/doc/${PNVR}
+    MANDIR=/usr/share/man
+)
+
+iproute2_src_prepare() {
+    # apply version-specific patches
+    default
+
+    # use system headers
+    if ever at_least 4.14.0 && [[ "$(exhost --target)" != *-musl* ]]; then
+        edo rm -rf include/netinet
+    else
+        edo rm -rf include/{linux,netinet}
+    fi
+
+    # honor user CFLAGS, nuke -Werror
+    edo sed -e "/^CCOPTS =/s|-O2|${CFLAGS}|" \
+            -e "s/-Werror//" -i Makefile
+
+    if ! ever at_least 2.6.35 ; then
+        edo sed -e 's:$(DESTDIR)/lib:$(DESTDIR)$(LIBDIR):g' -i netem/Makefile
+    fi
+
+    if ! ever at_least 4.3.0 && ! option berkdb ; then
+        edo sed -e '/TARGETS/s:arpd::' -i misc/Makefile
+    fi
+
+    # use /run instead of /var/run
+    if ever at_least 3.19.0 ; then
+        edo sed \
+            -e 's:/var/run:/run:g' \
+            -i include/namespace.h man/man8/ip-netns.8
+    else
+        edo sed \
+            -e 's:/var/run:/run:g' \
+            -i ip/ipnetns.c man/man8/ip-netns.8
+    fi
+}
+
+iproute2_src_configure() {
+    edo ./configure
+
+    if ever at_least 4.14.0 ; then
+        local CONFIG=config.mk
+    else
+        local CONFIG=Config
+    fi
+
+    if option atm ; then
+        edo echo 'TC_CONFIG_ATM:=y' >> ${CONFIG}
+    else
+        edo echo 'TC_CONFIG_ATM:=n' >> ${CONFIG}
+    fi
+
+    if ever at_least 3.18.0 ; then
+        edo echo 'HAVE_SELINUX:=n' >> ${CONFIG}
+    fi
+
+    if ever at_least 4.2.0 ; then
+        edo echo 'HAVE_MNL:=y' >> ${CONFIG}
+    fi
+
+    if ever at_least 4.3.0 ; then
+        if option berkdb ; then
+            edo echo 'HAVE_BERKELEY_DB:=y' >> ${CONFIG}
+        else
+            edo echo 'HAVE_BERKELEY_DB:=n' >> ${CONFIG}
+        fi
+    fi
+}
+
+iproute2_src_install() {
+    default
+
+    if optionq berkdb ; then
+        keepdir /var/lib/arpd
+    else
+        edo rmdir "${IMAGE}"/var/{lib/{arpd,},}
+    fi
+
+    if ! ever at_least 3.4.0 && ! option atm ; then
+        edo rmdir "${IMAGE}"/$(exhost --target)/lib/{tc,}
+    fi
+}
+

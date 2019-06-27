@@ -1,0 +1,17 @@
+# Copyright 2007-2009 Bryan Østergaard <kloeri@exherbo.org>
+# Copyright 2014 Wulf C. Krueger <philantrop@exherbo.org>
+# Distributed under the terms of the GNU General Public License v2
+
+require coreutils
+
+PLATFORMS="~amd64 ~arm ~armv7 ~armv8 ~x86"
+
+# failures for some tests with sydbox (old patches available in git history):
+#  basic-1 p-3 test-bind test-connect
+# random failures for some tests (with sydbox), at least:
+#  test-fchownat test-fdutimensat test-getaddrinfo test-getlogin test-linkat test-symlinkat test-unlinkat test-utimensat
+# broken (recipe for target 'tests/ls/time-style-diag.log' failed):
+#  time-style-diag
+# last checked: 8.25
+RESTRICT="test"
+

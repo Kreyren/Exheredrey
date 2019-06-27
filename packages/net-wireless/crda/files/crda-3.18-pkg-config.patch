@@ -1,0 +1,68 @@
+Source: Timo Gurr <tgurr@exherbo.org>
+Upstream: Unknown
+Reason: use the appropriate pkg-config via the exported variable
+
+From b4fe3cda12d888e72d9f1497c384501378fc50c3 Mon Sep 17 00:00:00 2001
+From: Timo Gurr <timo.gurr@gmail.com>
+Date: Tue, 5 May 2015 13:16:48 +0200
+Subject: [PATCH] use the appropriate pkg-config via the exported variable
+
+---
+ Makefile | 20 ++++++++++----------
+ 1 file changed, 10 insertions(+), 10 deletions(-)
+
+diff --git a/Makefile b/Makefile
+index a3ead30..f9a4f31 100644
+--- a/Makefile
++++ b/Makefile
+@@ -39,8 +39,8 @@ all: all_noverify verify
+ all_noverify: $(LIBREG) crda intersect regdbdump db2rd optimize
+ 
+ ifeq ($(USE_OPENSSL),1)
+-CFLAGS += -DUSE_OPENSSL -DPUBKEY_DIR=\"$(RUNTIME_PUBKEY_DIR)\" `pkg-config --cflags openssl`
+-LDLIBS += `pkg-config --libs openssl`
++CFLAGS += -DUSE_OPENSSL -DPUBKEY_DIR=\"$(RUNTIME_PUBKEY_DIR)\" `$(PKG_CONFIG) --cflags openssl`
++LDLIBS += `$(PKG_CONFIG) --libs openssl`
+ 
+ $(LIBREG): keys-ssl.c
+ 
+@@ -54,19 +54,19 @@ endif
+ MKDIR ?= mkdir -p
+ INSTALL ?= install
+ 
+-NL1FOUND := $(shell pkg-config --atleast-version=1 libnl-1 && echo Y)
+-NL2FOUND := $(shell pkg-config --atleast-version=2 libnl-2.0 && echo Y)
+-NL3FOUND := $(shell pkg-config --atleast-version=3 libnl-3.0 && echo Y)
+-NL32FOUND := $(shell pkg-config --atleast-version=3 libnl-3.2 && echo Y)
++NL1FOUND := $(shell $(PKG_CONFIG) --atleast-version=1 libnl-1 && echo Y)
++NL2FOUND := $(shell $(PKG_CONFIG) --atleast-version=2 libnl-2.0 && echo Y)
++NL3FOUND := $(shell $(PKG_CONFIG) --atleast-version=3 libnl-3.0 && echo Y)
++NL32FOUND := $(shell $(PKG_CONFIG) --atleast-version=3 libnl-3.2 && echo Y)
+ 
+ ifeq ($(NL32FOUND),Y)
+ CFLAGS += -DCONFIG_LIBNL30
+-NLLIBS += $(shell pkg-config --libs libnl-genl-3.2)
++NLLIBS += $(shell $(PKG_CONFIG) --libs libnl-genl-3.2)
+ NLLIBNAME = libnl-3.2
+ else
+ 	ifeq ($(NL3FOUND),Y)
+ 	CFLAGS += -DCONFIG_LIBNL30
+-	NLLIBS += $(shell pkg-config --libs libnl-genl-3.0)
++	NLLIBS += $(shell $(PKG_CONFIG) --libs libnl-genl-3.0)
+ 	NLLIBNAME = libnl-3.0
+ 	else
+ 		ifeq ($(NL2FOUND),Y)
+@@ -85,8 +85,8 @@ ifeq ($(NLLIBNAME),)
+ $(error Cannot find development files for any supported version of libnl)
+ endif
+ 
+-NLLIBS += `pkg-config --libs $(NLLIBNAME)`
+-CFLAGS += `pkg-config --cflags $(NLLIBNAME)`
++NLLIBS += `$(PKG_CONFIG) --libs $(NLLIBNAME)`
++CFLAGS += `$(PKG_CONFIG) --cflags $(NLLIBNAME)`
+ 
+ ifeq ($(V),1)
+ Q=
+-- 
+2.3.3
+

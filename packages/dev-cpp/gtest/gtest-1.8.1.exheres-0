@@ -1,0 +1,58 @@
+# Copyright 2008, 2009, 2010 Ingmar Vanhassel <ingmar@exherbo.org>
+# Distributed under the terms of the GNU General Public License v2
+
+require gtest
+require cmake [ api=2 ]
+
+LICENCES="BSD-3"
+SLOT="0"
+PLATFORMS="~amd64 ~armv7 ~armv8 ~x86"
+MYOPTIONS="
+    examples
+    googlemock [[ description = [ Framework for writing and using C++ mock classes ] ]]
+    vim-syntax
+"
+
+DEPENDENCIES="
+    build:
+        dev-lang/python:2.7
+    suggestion:
+        vim-syntax? ( app-vim/googletest-syntax )
+"
+
+DEFAULT_SRC_PREPARE_PATCHES=(
+    "${FILES}"/79875d320ea4616e18f03ecc2e20fda7bb154812.patch
+)
+
+CMAKE_SOURCE=${WORKBASE}/googletest-release-${PV}
+
+# Force using python2 for tests until https://github.com/google/googletest/pull/1839 is merged
+CMAKE_SRC_CONFIGURE_PARAMS+=(
+    -DBUILD_SHARED_LIBS:BOOL=TRUE
+    -Dgtest_disable_pthreads:BOOL=FALSE
+    -Dgtest_hide_internal_symbols:BOOL=FALSE
+    -DPYTHON_EXECUTABLE=/usr/$(exhost --target)/bin/python2.7
+)
+CMAKE_SRC_CONFIGURE_OPTIONS=(
+    'examples gtest_build_samples'
+)
+CMAKE_SRC_CONFIGURE_OPTION_BUILDS=(
+    'googlemock GMOCK'
+)
+CMAKE_SRC_CONFIGURE_TESTS=(
+    '-Dgtest_build_tests=TRUE -Dgtest_build_tests=FALSE'
+)
+
+src_prepare() {
+    cmake_src_prepare
+
+    # gtest looks for its tests in ${WORK}/None because we set
+    # CMAKE_BUILD_TYPE to None, but the test executeables are in ${WORK}
+    edo sed "s/\$<CONFIGURATION>//" -i googletest/cmake/internal_utils.cmake
+
+    # remove failing test, last checked: 1.8.1
+    edo sed \
+        -e '/py_test(googletest-catch-exceptions-test)/d' \
+        -i googletest/CMakeLists.txt
+}
+

@@ -1,0 +1,20 @@
+# Copyright 2007 Bryan Østergaard
+# Distributed under the terms of the GNU General Public License v2
+
+require binutils
+
+PLATFORMS="~amd64 ~arm ~armv7 ~armv8 ~x86"
+
+MYOPTIONS+="
+    ( linguas:
+        bg da de eo es fi fr ga hr id it ja ms nl pt_BR ro ru rw sk sr sv tr
+        uk vi zh_CN zh_TW
+    )
+"
+
+DEFAULT_SRC_PREPARE_PATCHES+=(
+    "${FILES}/${PN}-2.29-support-canonical-windows-targets.patch"
+    "${FILES}/${PNV}-330b90b5ffbbc20c5de6ae6c7f60c40fab2e7a4f.patch"
+    "${FILES}"/${PNV}-PR22764-LD-AARCH64-Allow-R_AARCH64_ABS16-and-R_AARCH.patch
+)
+

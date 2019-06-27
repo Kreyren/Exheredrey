@@ -1,0 +1,18 @@
+# Copyright 2017 Marc-Antoine Perennou <keruspe@exherbo.org>
+# Distributed under the terms of the GNU General Public License v2
+
+MY_PV="${PV:0:4}-${PV:4:2}-${PV:6:2}"
+
+require github [ user=google tag=${MY_PV} ]
+
+SUMMARY="RE2 is a fast, safe, thread-friendly alternative to backtracking regular expression engines"
+
+LICENCES="BSD-3"
+SLOT="0"
+PLATFORMS="~amd64 ~armv8"
+MYOPTIONS=""
+
+BUGS_TO="keruspe@exherbo.org"
+
+DEFAULT_SRC_INSTALL_PARAMS=( prefix=/usr/$(exhost --target) )
+

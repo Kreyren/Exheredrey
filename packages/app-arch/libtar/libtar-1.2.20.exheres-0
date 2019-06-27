@@ -1,0 +1,46 @@
+# Copyright 2010 Ingmar Vanhassel
+# Distributed under the terms of the GNU General Public License v2
+
+COMMIT_ID=0907a9034eaf2a57e8e4a9439f793f3f05d446cd
+
+require autotools [ supported_autoconf=[ 2.5 ] supported_automake=[ 1.15 ] ]
+
+SUMMARY="Tar file manipulation API"
+HOMEPAGE="http://repo.or.cz/w/${PN}.git"
+DOWNLOADS="${HOMEPAGE}/snapshot/${COMMIT_ID}.tar.gz -> ${PNV}.tar.gz"
+
+LICENCES="UoI-NCSA"
+SLOT="0"
+PLATFORMS="~amd64"
+MYOPTIONS=""
+
+DEPENDENCIES="
+    build+run:
+        sys-libs/zlib
+"
+
+DEFAULT_SRC_PREPARE_PATCHES=(
+    "${FILES}"/30e5556d1c9323e9f1887b28d42581c2954b53c9.patch
+    "${FILES}"/560911b694055b0c677431cf85d4d0d5ebd1a3fd.patch
+    "${FILES}"/abd0274e6b2f708e9eaa29414b07b3f542cec694.patch
+    "${FILES}"/36629a41208375f5105427e98078127551692028.patch
+    "${FILES}"/f3c711cf3054ff366a1a3500cdc8c64ecc2d2da6.patch
+    "${FILES}"/ec613af2e9371d7a3e1f7c7a6822164a4255b4d1.patch
+    "${FILES}"/20aa09bd7775094a2beb0f136c2c7d9e9fd6c7e6.patch
+    "${FILES}"/e4c1f2974258d6a325622cfd712873d49b5e7a73.patch
+)
+
+DEFAULT_SRC_CONFIGURE_PARAMS=( --disable-static )
+
+DEFAULT_SRC_INSTALL_PARAMS=( INSTALL_PROGRAM=install )
+
+WORK=${WORKBASE}/${PN}-${COMMIT_ID:0:7}
+
+src_prepare() {
+    edo sed \
+        -e '/INSTALL_PROGRAM/s:-s::' \
+        -i {doc,lib{,tar}}/Makefile.in
+
+    autotools_src_prepare
+}
+

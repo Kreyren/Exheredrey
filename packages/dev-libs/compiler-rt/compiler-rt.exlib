@@ -1,0 +1,75 @@
+# Copyright 2015 Niels Ole Salscheider <niels_ole@salscheider-online.de>
+# Copyright 2012 Elias Pipping <pipping@exherbo.org>
+# Distributed under the terms of the GNU General Public License v2
+
+if ever is_scm ; then
+    SCM_REPOSITORY="https://git.llvm.org/git/compiler-rt.git"
+
+    require scm-git
+else
+    MY_PNV=compiler-rt-${PV}.src
+    WORK=${WORKBASE}/${MY_PNV}
+
+    if [[ ${PV} == *rc* ]]; then
+        DOWNLOADS="https://prereleases.llvm.org/${PV%*rc*}/rc${PV#*rc}/compiler-rt-${PV}.src.tar.xz"
+    else
+        DOWNLOADS="https://llvm.org/releases/${PV}/compiler-rt-${PV}.src.tar.xz"
+    fi
+fi
+
+require python [ blacklist=none has_bin=false has_lib=true multibuild=false ]
+require cmake [ api=2 ]
+
+export_exlib_phases src_prepare src_configure
+
+SUMMARY="Sanitizer and profiling runtimes for clang"
+HOMEPAGE="https://compiler-rt.llvm.org/"
+
+if ever at_least 9.0; then
+    LICENCES="Apache-2.0-with-LLVM-exception"
+else
+    LICENCES="|| ( MIT UoI-NCSA )"
+fi
+
+if [[ ${PV} == scm ]]; then
+    SLOT="9"
+elif ever is_scm ; then
+    SLOT="${PV%-scm}"
+else
+    SLOT="$(ever major)"
+fi
+
+LLVM_PVR=${PV}
+
+MYOPTIONS=""
+
+DEPENDENCIES="
+    build+run:
+        dev-lang/clang:${SLOT}
+        dev-lang/llvm:${SLOT}
+        !dev-libs/compiler-rt:0 [[
+            description = [ Old, unslotted compiler-rt ]
+            resolution = upgrade-blocked-before
+        ]]
+"
+
+compiler-rt_src_prepare() {
+    edo pushd "${CMAKE_SOURCE}"
+    default
+
+    # Use our prefixed NM
+    edo sed -e "s/\['nm', library\]/\['${NM}', library\]/" \
+            -i lib/sanitizer_common/scripts/gen_dynamic_list.py
+    edo popd
+}
+
+compiler-rt_src_configure() {
+    local clang_exe=$(llvm-config --bindir)/clang
+    local resource_dir=$(${clang_exe} -print-resource-dir)
+    local args=(
+        -DCOMPILER_RT_INSTALL_PATH=${resource_dir}
+    )
+
+    ecmake "${args[@]}"
+}
+

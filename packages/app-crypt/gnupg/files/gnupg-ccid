@@ -1,0 +1,11 @@
+#!/bin/bash
+
+GROUP=scard
+
+if [ "${ACTION}" = "add" ] && [ -f "${DEVNAME}" ]
+then
+    chmod o-rwx "${DEVNAME}"
+    chgrp "${GROUP}" "${DEVNAME}"
+    chmod g+rw "${DEVNAME}"
+fi
+

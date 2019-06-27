@@ -1,0 +1,14 @@
+# Copyright 2012 Saleem Abdulrasool <compnerd@compnerd.org>
+# Distributed under the terms of the GNU General Public License v2
+
+require dwz
+
+LICENCES="GPL-3"
+SLOT="0"
+PLATFORMS="~amd64 ~arm ~armv7 ~armv8 ~x86"
+MYOPTIONS=""
+
+DEFAULT_SRC_PREPARE_PATCHES=( "${FILES}"/dwz-0.11-musl.patch )
+DEFAULT_SRC_COMPILE_PARAMS=( CFLAGS="${CFLAGS}" )
+DEFAULT_SRC_INSTALL_PARAMS=( exec_prefix=/usr/$(exhost --target) )
+

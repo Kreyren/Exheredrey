@@ -1,0 +1,165 @@
+# Copyright 2007 Bryan Østergaard <kloeri@exherbo.org>
+# Copyright 2009-2011 Wulf C. Krueger <philantrop@exherbo.org>
+# Copyright 2011,2013 Alex Elsayed <eternaleye@gmail.com>
+# Distributed under the terms of the GNU General Public License v2
+# Based in part upon 'syslog-ng-2.0.9.ebuild' from Gentoo, which is:
+#     Copyright 1999-2008 Gentoo Foundation
+
+require github [ user=balabit suffix=tar.gz release=${PNV} ]
+require openrc-service [ openrc_confd_files=[ "${FILES}"/openrc/confd ] ]
+require systemd-service [ systemd_files=[ contrib/systemd/syslog-ng@.service ] ]
+
+export_exlib_phases src_prepare src_install pkg_postinst
+
+SUMMARY="Popular system logger"
+HOMEPAGE="https://www.syslog-ng.com"
+
+LICENCES="GPL-2"
+SLOT="0"
+MYOPTIONS="
+    amqp    [[ description = [ Output logs over AMQP ] ]]
+    caps
+    geoip
+    json    [[ description = [ Ingest and produce json-formatted log data ] ]]
+    mongodb [[ description = [ Write logs to a mongodb instance ] ]]
+    sql     [[ description = [ Write logs to an SQL server ] ]]
+    smtp    [[ description = [ Send mail as part of the logging pipeline ] ]]
+    systemd
+    tcpd
+    vim-syntax
+    ( providers: libressl openssl ) [[ number-selected = exactly-one ]]
+"
+RESTRICT="test"
+# Fails to compile
+#    pacct   [[ description = [ Read process accounting logs (experimental) ] ]]
+
+# JSON support can use json-glib too, but:
+# a.) They can only be switched at build time
+# b.) While json output works with both, ingestion is json-c only.
+# Since json-c has no deps, ignore json-glib entirely.
+DEPENDENCIES="
+    build:
+        sys-devel/bison[>=2.4] [[ note = [ maybe not needed due to pre-compiled .c ] ]]
+        virtual/pkg-config
+    build+run:
+        !sys-apps/eventlog [[
+            description = [ Bundled now, conflicting file: libevtlog.so ]
+            resolution = uninstall-blocked-after
+        ]]
+        dev-libs/glib:2[>=2.26.1]
+        dev-libs/ivykis[>=0.36.1]
+        dev-libs/pcre[>=6.1]
+        net-misc/curl [[ note = [ http() destination support ] ]]
+        amqp? ( net-libs/librabbitmq[>=0.5.3] )
+        caps? ( sys-libs/libcap )
+        geoip? ( net-libs/libmaxminddb )
+        json? ( dev-libs/json-c[>=0.9] )
+        mongodb? ( net-libs/libmongoc[>=1.0.0] )
+        smtp? ( net-libs/libesmtp )
+        sql? ( dev-libs/libdbi[>=0.9.0] )
+        systemd? ( sys-apps/systemd[>=209] )
+        tcpd? ( sys-apps/tcp-wrappers[>=7.6] )
+        providers:libressl? ( dev-libs/libressl:= )
+        providers:openssl? ( dev-libs/openssl[>=0.9.8] )
+    post:
+        vim-syntax? ( app-editors/vim-runtime:*[>=7] )
+    recommendation:
+        app-admin/logrotate [[
+            description = [ Rotate and remove old logs ] ]]
+"
+
+DEFAULT_SRC_INSTALL_EXTRA_DOCS=( contrib/syslog-ng.conf.doc )
+
+DEFAULT_SRC_CONFIGURE_PARAMS=(
+    --sysconfdir=/etc/syslog-ng
+
+    --disable-env-wrapper
+    --disable-geoip  # marked as deprecated, replaced to --enable-geoip2
+    --disable-java
+    --disable-python
+    --disable-redis
+    --disable-riemann
+    --disable-spoof-source
+    --disable-sun-streams
+    --disable-valgrind
+    --enable-dynamic-linking
+    --enable-ipv6
+    --enable-manpages
+    --with-ivykis=system
+    --with-module-dir=/usr/$(exhost --target)/lib/syslog-ng
+    --with-pidfile-dir=/run
+    --without-libnet
+)
+
+DEFAULT_SRC_CONFIGURE_OPTION_ENABLES=(
+    amqp
+    "caps linux-caps"
+    "geoip geoip2"
+    json
+    mongodb
+#    pacct
+    smtp
+    sql
+    systemd
+    "tcpd tcp-wrapper"
+)
+
+DEFAULT_SRC_CONFIGURE_OPTION_WITHS=(
+    "amqp librabbitmq-client"
+    "mongodb libmongo-client system"
+    "systemd systemdsystemunitdir ${SYSTEMDSYSTEMUNITDIR}"
+    "json json-c system"
+)
+
+syslog-ng_src_prepare() {
+    # Don't install plugins dependent on disabled modules. Find them as:
+    # for mod in modules/*; do grep -R "@requires $(basename $mod)" scl; done
+    if ! option json; then
+        for plugin in cim elasticsearch ewmm graylog2 loggly logmatic; do
+            edo rm -r "scl/${plugin}"
+        done
+        # Depends on ewmm
+        edo rm -r "scl/default-network-drivers"
+        edo sed '/default-network-drivers/,/);/ d' -i scl/syslog-ng.conf
+    fi
+}
+
+syslog-ng_src_install() {
+    default
+
+    if option vim-syntax ; then
+        insinto /usr/share/vim/vimfiles/syntax/
+        doins "${WORK}"/contrib/syslog-ng.vim
+    fi
+
+    dodoc "${FILES}"/syslog-ng.conf.sample
+
+    insinto /etc/logrotate.d
+    newins "${FILES}"/syslog-ng.logrotate syslog-ng
+
+    keepdir /etc/syslog-ng/patterndb.d
+
+    edo rmdir "${IMAGE}"/var/lib
+    keepdir /var/log
+
+    if option systemd; then
+        insinto /etc/default
+        doins "${WORK}/contrib/systemd/syslog-ng@default"
+    fi
+
+    install_openrc_files
+}
+
+syslog-ng_pkg_postinst() {
+    default
+
+    if [[ -d "${ROOT}"/etc/env.d/alternatives/systemd-logger ]]; then
+        nonfatal edo rm -r "${ROOT}"/etc/env.d/alternatives/systemd-logger || \
+            ewarn "Removing /etc/env.d/alternatives/systemd-logger failed"
+    fi
+    if [[ -f "${ROOT}"/usr/share/eclectic/modules/auto/systemd-logger.eclectic ]]; then
+        nonfatal edo rm "${ROOT}"/usr/share/eclectic/modules/auto/systemd-logger.eclectic || \
+            ewarn "Removing /etc/env.d/alternatives/systemd-logger failed"
+    fi
+}
+

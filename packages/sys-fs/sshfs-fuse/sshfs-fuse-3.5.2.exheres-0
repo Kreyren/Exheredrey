@@ -1,0 +1,36 @@
+# Copyright 2009 Maxime Coste <frrrwww@gmail.com>
+# Distributed under the terms of the GNU General Public License v2
+
+require github [ user=libfuse pn=sshfs release=sshfs-${PV} suffix=tar.xz ]
+require python [ blacklist=2 multibuild=false ] meson
+
+SUMMARY="FUSE filesystem client to access remote filesystems via SSH"
+DESCRIPTION="
+This is a FUSE filesystem client based on the SSH File Transfer Protocol. Since most SSH servers
+already support this protocol it is very easy to set up: i.e. on the server side there is nothing
+to do. On the client side mounting the filesystem is as easy as logging into the server with SSH.
+"
+
+LICENCES="GPL-2"
+SLOT="0"
+PLATFORMS="~amd64 ~arm ~armv7 ~armv8 ~x86"
+MYOPTIONS=""
+
+DEPENDENCIES="
+    build:
+        dev-lang/python:*[>=3]
+        dev-python/docutils   [[ note = [ rst2man for man page ] ]]
+        virtual/pkg-config
+    build+run:
+        sys-fs/fuse:3[>=3.1]
+        dev-libs/glib:2[>=2.0]
+    run:
+        net-misc/openssh[>=4.4]
+    test:
+        dev-python/pytest[python_abis:*(-)?]
+"
+
+src_test() {
+    edo ${PYTHON} -m pytest test
+}
+

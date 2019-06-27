@@ -1,0 +1,18 @@
+# Copyright 2008, 2009, 2012 Ingmar Vanhassel
+# Distributed under the terms of the GNU General Public License v2
+
+require tig autotools [ supported_autoconf=[ 2.5 ] supported_automake=[ none ] ]
+
+PLATFORMS="~amd64 ~x86"
+
+DEPENDENCIES="
+    build:
+        app-text/xmlto      [[ description = [ Necessary to build man-pages ] ]]
+        app-doc/asciidoc    [[ description = [ Necessary to build man-pages ] ]]
+"
+
+src_prepare() {
+    # Don't use autoreconf, we only use autoconf and simple GNU Make
+    edo ./autogen.sh
+}
+

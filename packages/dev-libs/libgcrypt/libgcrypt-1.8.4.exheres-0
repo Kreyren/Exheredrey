@@ -1,0 +1,46 @@
+# Copyright 2009, 2010 Ingmar Vanhassel <ingmar@exherbo.org>
+# Distributed under the terms of the GNU General Public License v2
+# Based in part upon 'libgcrypt-1.4.0-r1.ebuild' from Gentoo, which is:
+#     Copyright 1999-2008 Gentoo Foundation.
+
+require flag-o-matic
+
+SUMMARY="General purpose crypto library based on the code used in GnuPG"
+HOMEPAGE="https://www.gnupg.org"
+DOWNLOADS="mirror://gnupg/${PN}/${PNV}.tar.bz2"
+
+LICENCES="
+    LGPL-2.1 [[ note = [ Applies to the library ] ]]
+    GPL-2    [[ note = [ Applies to the manual & tools ] ]]
+"
+SLOT="0"
+PLATFORMS="~amd64 ~arm ~armv7 ~armv8 ~x86"
+MYOPTIONS="caps"
+
+DEPENDENCIES="
+    build+run:
+        dev-libs/libgpg-error[>=1.25]
+        caps? ( sys-libs/libcap )
+"
+
+src_configure() {
+    # FIXME(compnerd) using -Os on recent x86_64 CPUs (e.g. IvyBridge) results in a broken
+    # libgcrypt.  Cursory inspection indicates either a mis-aligned SIMD access or an invalid memory
+    # reference.  This is detected via test/basic which fails.
+    replace-flags -O* -O2
+
+    # --enable-static - cryptsetup wants static
+    # --disable-padlock-support - Suggested by upstream, also see Gentoo #201917
+    # ac_cv_sys_symbol_underscore=no - NOTE(compnerd) ELF does not have a global symbol prefix unlike COFF
+    # (which is default on *BSD) this should be safe to unconditionally set until we support non-ELF targets
+    CC_FOR_BUILD=$(exhost --build)-cc \
+    econf \
+        --enable-static \
+        --enable-jent-support \
+        --disable-O-flag-munging \
+        --disable-padlock-support \
+        --with-gpg-error-prefix=/usr/$(exhost --target) \
+        ac_cv_sys_symbol_underscore=no \
+        $(option_with caps capabilities)
+}
+

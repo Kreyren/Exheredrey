@@ -1,0 +1,18 @@
+From: http://rpm5.org/cvs/chngview?cn=14337
+Reason: Fix for automake-1.13
+Upstream: Fixed in trunk
+
+Index: popt/Makefile.am
+RCS File: /v/rpm/cvs/popt/Makefile.am,v
+rcsdiff -q -kk '-r1.69' '-r1.70' -u '/v/rpm/cvs/popt/Makefile.am,v' 2>/dev/null
+--- popt-1.16/Makefile.am	2010/07/28 14:00:49	1.69
++++ popt-1.16/Makefile.am	2010/07/30 13:58:56	1.70
+@@ -37,7 +37,7 @@ noinst_SCRIPTS = testit.sh
+ TESTS_ENVIRONMENT = \
+ test1="$(top_builddir)/test1"
+ 
+-TESTS = $(top_srcdir)/testit.sh
++TESTS = testit.sh
+ 
+ include_HEADERS = popt.h
+ 

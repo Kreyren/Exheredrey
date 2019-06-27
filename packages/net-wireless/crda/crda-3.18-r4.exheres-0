@@ -1,0 +1,88 @@
+# Copyright 2009 Daniel Mierswa <impulze@impulze.org>
+# Distributed under the terms of the GNU General Public License v2
+
+require udev-rules
+
+SUMMARY="Central Regulatory Domain Agent"
+DESCRIPTION="
+CRDA acts as the udev helper for communication between the kernel and userspace
+for regulatory compliance. It relies on nl80211 for communication. CRDA is
+intended to be run only through udev communication from the kernel. The user
+should never have to run it manually except if debugging udev issues.
+"
+HOMEPAGE="https://wireless.wiki.kernel.org/en/developers/Regulatory/CRDA"
+DOWNLOADS="mirror://kernel/software/network/${PN}/${PNV}.tar.xz"
+
+UPSTREAM_DOCUMENTATION="https://wireless.wiki.kernel.org/en/developers/Regulatory#crda"
+
+LICENCES="ISC"
+SLOT="0"
+PLATFORMS="~x86 ~amd64"
+
+MYOPTIONS="
+    ( providers: gcrypt libressl openssl ) [[ number-selected = exactly-one ]]
+"
+
+DEPENDENCIES="
+    build:
+        dev-lang/python:*[>=2&<3]
+        dev-python/M2Crypto[python_abis:2.7]
+        net-wireless/wireless-regdb[>=2015.04.06-r1]
+        virtual/pkg-config
+    build+run:
+        net-libs/libnl:3.0
+        providers:gcrypt? ( dev-libs/libgcrypt )
+        providers:libressl? ( dev-libs/libressl:= )
+        providers:openssl? ( dev-libs/openssl[<1.1] )
+"
+
+DEFAULT_SRC_PREPARE_PATCHES=(
+    "${FILES}"/${PN}-3.18-no-ldconfig.patch
+    "${FILES}"/${PN}-3.18-openssl.patch
+    "${FILES}"/${PN}-3.18-libreg-link.patch
+    "${FILES}"/${PN}-3.18-pkg-config.patch
+    "${FILES}"/${PN}-3.18-fix-python-shebang.patch
+)
+
+CRDA_DIR=/usr/share/crda
+
+src_prepare() {
+    default
+
+    # do not add debug symbols by default, uncompressed manuals, -Werror
+    edo sed -e /'^CFLAGS +='/s:-g:: \
+            -e /'^CFLAGS +='/s:-Werror:: \
+            -e /crda.8.gz/s:.gz::g \
+            -e /regdbdump.8.gz/s:.gz::g \
+            -i Makefile
+
+    # remove hardcoded search paths
+    edo sed -e /"\"\/usr\/local\/lib\/crda\/regulatory.bin\","/d \
+            -e /"\"\/lib\/crda\/regulatory.bin\","/d \
+            -i crda.c
+
+    # set proper search path
+    edo sed -e "s:/usr/lib:/usr/share:g" \
+            -i crda.c
+}
+
+src_compile() {
+    emake REG_BIN=${CRDA_DIR}/regulatory.bin \
+          PUBKEY_DIR=${CRDA_DIR}/pubkeys \
+          CC="${CC}" \
+          $(option providers:gcrypt || echo USE_OPENSSL=1) \
+          all_noverify \
+          $(exhost --is-native -q && echo verify)
+}
+
+src_install() {
+    emake DESTDIR="${IMAGE}" \
+          UDEV_RULE_DIR="${UDEVRULESDIR}" \
+          SBINDIR=/usr/$(exhost --target)/bin/ \
+          PREFIX=/usr/$(exhost --target) \
+          $(option providers:gcrypt || echo USE_OPENSSL=1) \
+          install
+
+    emagicdocs
+}
+

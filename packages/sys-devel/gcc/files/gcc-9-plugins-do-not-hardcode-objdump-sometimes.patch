@@ -1,0 +1,56 @@
+From 628af0f6bc0b55eb50bfbc41cafc286225c3f140 Mon Sep 17 00:00:00 2001
+From: Saleem Abdulrasool <compnerd@compnerd.org>
+Date: Sun, 19 Jun 2016 04:22:12 +0000
+Subject: [PATCH 4/5] plugins: do not hardcode objdump sometimes
+
+When doing a cross-compile, it would use the proper objdump.  However, this was
+a case of a missed hardcoded tool rather than using the defined value
+${ac_cv_prog_OBJDUMP} or ${OBJDUMP}.
+---
+ config/gcc-plugin.m4 | 2 +-
+ gcc/configure        | 2 +-
+ libcc1/configure     | 2 +-
+ 3 files changed, 3 insertions(+), 3 deletions(-)
+
+diff --git a/config/gcc-plugin.m4 b/config/gcc-plugin.m4
+index 8f278719118..36ed5c308bd 100644
+--- a/config/gcc-plugin.m4
++++ b/config/gcc-plugin.m4
+@@ -45,7 +45,7 @@ AC_DEFUN([GCC_ENABLE_PLUGINS],
+      ;;
+      *)
+        if test x$build = x$host; then
+-	 export_sym_check="objdump${exeext} -T"
++	 export_sym_check="${ac_cv_prog_OBJDUMP} -T"
+        elif test x$host = x$target; then
+ 	 export_sym_check="$gcc_cv_objdump -T"
+        else
+diff --git a/gcc/configure b/gcc/configure
+index ba9c3dc69db..0f6cb19bc3c 100755
+--- a/gcc/configure
++++ b/gcc/configure
+@@ -29886,7 +29886,7 @@ fi
+      ;;
+      *)
+        if test x$build = x$host; then
+-	 export_sym_check="objdump${exeext} -T"
++	 export_sym_check="${ac_cv_prog_OBJDUMP} -T"
+        elif test x$host = x$target; then
+ 	 export_sym_check="$gcc_cv_objdump -T"
+        else
+diff --git a/libcc1/configure b/libcc1/configure
+index 53f40d31135..17989f1d06b 100755
+--- a/libcc1/configure
++++ b/libcc1/configure
+@@ -14809,7 +14809,7 @@ fi
+      ;;
+      *)
+        if test x$build = x$host; then
+-	 export_sym_check="objdump${exeext} -T"
++	 export_sym_check="${ac_cv_prog_OBJDUMP} -T"
+        elif test x$host = x$target; then
+ 	 export_sym_check="$gcc_cv_objdump -T"
+        else
+-- 
+2.21.0
+

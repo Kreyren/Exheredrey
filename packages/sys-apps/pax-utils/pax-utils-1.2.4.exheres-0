@@ -1,0 +1,42 @@
+# Copyright 2008-2015 Wulf C. Krueger
+# Distributed under the terms of the GNU General Public License v2
+
+SUMMARY="Utilities for ELF binaries (e. g. scanelf)"
+HOMEPAGE="https://wiki.gentoo.org/wiki/Hardened/PaX_Utilities"
+DOWNLOADS="mirror://gentoo/${PNV}.tar.xz"
+
+LICENCES="GPL-2"
+SLOT="0"
+PLATFORMS="~amd64 ~armv8 ~x86"
+MYOPTIONS="
+    caps
+    debug
+    seccomp [[ description = [ System call filtering support via seccomp ] ]]
+"
+
+DEPENDENCIES="
+    build:
+        caps? ( virtual/pkg-config )
+        seccomp? ( virtual/pkg-config )
+    build+run:
+        caps? ( sys-libs/libcap )
+        seccomp? ( sys-libs/libseccomp )
+"
+
+DEFAULT_SRC_CONFIGURE_PARAMS=( --without-python )
+DEFAULT_SRC_CONFIGURE_OPTION_WITHS=(
+    caps
+    debug
+    seccomp
+)
+
+src_prepare() {
+    # py script is not compatible with cross, sh needs a tweak.
+    edo rm -rf tests/lddtree
+    edo sed \
+        -e "s/strings/$(exhost --tool-prefix)strings/" \
+        -i lddtree.sh
+
+    default
+}
+

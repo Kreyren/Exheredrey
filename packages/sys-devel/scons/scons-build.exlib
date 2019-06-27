@@ -1,0 +1,33 @@
+# Copyright 2009 Saleem Abdulrasool <compnerd@compnerd.org>
+# Distributed under the terms of the GNU General Public License v2
+
+require setup-py [ import=distutils blacklist=2 has_bin=true multibuild=false ]
+
+export_exlib_phases src_install
+
+SUMMARY="Open Source software construction tool"
+HOMEPAGE="https://www.scons.org"
+DOWNLOADS="mirror://sourceforge/${PN}/${PNV}.tar.gz"
+
+LICENCES="MIT"
+SLOT="0"
+MYOPTIONS=""
+
+# scons uses non-standard installation paths, this variable will override those
+SETUP_PY_SRC_INSTALL_PARAMS=(
+    --install-data=/usr/share
+)
+
+scons-build_src_install() {
+    SETUP_PY_SRC_INSTALL_PARAMS+=(
+        "--install-lib=$(python_get_sitedir)"
+    )
+
+    setup-py_src_install
+
+    # add version to shebangs
+    edo sed \
+        -e 's/python/python'"$(python_get_abi)/" \
+        -i "${IMAGE}"/usr/$(exhost --target)/bin/*
+}
+

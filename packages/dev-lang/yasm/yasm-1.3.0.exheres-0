@@ -1,0 +1,37 @@
+# Copyright 2008, 2009, 2010 Ingmar Vanhassel <ingmar@exherbo.org>
+# Distributed under the terms of the GNU General Public License v2
+
+require python [ with_opt=true blacklist=3 ]
+
+SUMMARY="YASM Modular Assembler Project"
+DESCRIPTION="
+Yasm is a complete rewrite of the NASM assembler under the "new" BSD License.
+Yasm currently supports the x86 and AMD64 instruction sets, accepts NASM and GAS assembler syntaxes,
+outputs binary, ELF32, ELF64, 32 and 64-bit Mach-O, RDOFF2, COFF, Win32, and Win64 object formats,
+and generates source debugging information in STABS, DWARF 2, and CodeView 8 formats.
+"
+HOMEPAGE="http://${PN}.tortall.net"
+DOWNLOADS="http://www.tortall.net/projects/${PN}/releases/${PNV}.tar.gz"
+
+REMOTE_IDS="freecode:${PN}"
+
+UPSTREAM_RELEASE_NOTES="${HOMEPAGE}/releases/Release${PV}.html"
+
+LICENCES="BSD-2 BSD-3 || ( Artistic GPL-2 LGPL-2 )"
+SLOT="0"
+PLATFORMS="~amd64 ~armv7 ~armv8 ~x86"
+MYOPTIONS="python"
+
+DEPENDENCIES="
+    build:
+        sys-devel/gettext[>=0.18.3]
+    build+run:
+        python? ( dev-python/Cython )
+"
+
+DEFAULT_SRC_CONFIGURE_PARAMS=( --enable-nls )
+DEFAULT_SRC_CONFIGURE_OPTION_ENABLES=(
+    python
+    'python python-bindings'
+)
+

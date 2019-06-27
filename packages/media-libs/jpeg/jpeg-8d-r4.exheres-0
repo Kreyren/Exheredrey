@@ -1,0 +1,11 @@
+# Copyright 2008 Kim Højgaard-Hansen
+# Distributed under the terms of the GNU General Public License v2
+
+require jpeg
+
+PLATFORMS="~amd64 ~arm ~x86"
+
+SLOT="8"
+
+DEFAULT_SRC_PREPARE_PATCHES=( -p3 "${FILES}"/${PN}-jdmarker.patch )
+

@@ -1,0 +1,16 @@
+# Copyright 2010-2012 Wulf C. Krueger <philantrop@exherbo.org>
+# Distributed under the terms of the GNU General Public License v2
+
+[Unit]
+Description=Network Time Service
+After=network.target nss-lookup.target
+Conflicts=systemd-timesyncd.service
+
+[Service]
+Type=forking
+ExecStart=/usr/bin/ntpd -u ntp:ntp -g
+PrivateTmp=true
+Restart=always
+
+[Install]
+WantedBy=multi-user.target

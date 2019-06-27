@@ -1,0 +1,49 @@
+# Copyright 2008-2010 Wulf C. Krueger <philantrop@exherbo.org>
+# Distributed under the terms of the GNU General Public License v2
+
+require github [ user=ani6al ]
+
+SUMMARY="Tool to manage archives in the .arc format"
+DESCRIPTION="
+This is a port of SEA arc which is a general archive and file compression utility,
+used to maintain a compressed archive of files. It creates, modifies, and extracts
+from .arc files using the old Crunch, Squash, and Squeeze compression methods for
+each file within the archive, based on whichever method yields the smallest result.
+Arc runs on most Unix/POSIX systems as well as mainframes and other microcomputers.
+ARC is an old format that's rarely used nowadays but you may still encounter .arc
+format archives, e. g. in FidoNet.
+"
+
+BUGS_TO="philantrop@exherbo.org"
+
+LICENCES="GPL-2"
+SLOT="0"
+PLATFORMS="~amd64 ~x86"
+MYOPTIONS=""
+
+DEPENDENCIES=""
+
+DEFAULT_SRC_INSTALL_EXTRA_DOCS=(
+    Arc521.doc
+    Arcinfo
+)
+
+src_prepare() {
+    # Fixing the version
+    edo sed -i -e 's:\(VERSION =\).*:\1 5.21q:' Makefile
+    # Respect the user's flags
+    edo sed -i -e "s:^\(OPT = \).*:\1 ${CFLAGS} ${LDFLAGS}:" Makefile
+    # Set the compiler
+    edo sed -i -e "s:^\(CC = \).*:\1 ${CC}:" Makefile
+    # Add a fake install target
+    echo -e "\ninstall:\n" >> Makefile
+    # Don't strip on your own.
+    edo sed -i -e "s:\(install \)-s:\1:" Makefile
+    # Fix installation prefix
+    edo sed -i -e "s:\(PREFIX = /usr\)/local:\1:" Makefile
+    # Fix installation location
+    edo sed -i -e "s:bin:$(exhost --target)/bin:g" Makefile
+
+    default
+}
+

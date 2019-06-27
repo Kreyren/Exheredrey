@@ -1,0 +1,82 @@
+# Copyright 2008 Alexander Færøy <eroyf@exherbo.org>
+# Copyright 2011 Wulf C. Krueger <philantrop@exherbo.org>
+# Distributed under the terms of the GNU General Public License v2
+
+require systemd-service udev-rules
+require openrc-service [ openrc_confd_files=[ "${FILES}"/openrc/confd ] ]
+
+SUMMARY="ALSA utilities"
+DESCRIPTION="
+The following utilities are included:
+* aconnect - ALSA sequencer connection manager
+* alsactl - advanced controls and daemon (store/restore/init/remove hardware settings)
+* alsaloop - create a PCM loopback between a PCM capture device and a PCM playback device
+* alsamixer - ncurses-based mixer
+* alsaucm - something that doesn't work here.
+* amidi - read from and write to ALSA RawMIDI ports
+* amixer - command-line mixer
+* aplay - command-line sound player
+* aplaymidi - play Standard MIDI Files
+* arecord - command-line sound recorder
+* arecordmidi - record Standard MIDI Files
+* aseqdump - show the events received at an ALSA sequencer port
+* aseqnet - ALSA sequencer connectors over network
+* axfer - command-line recorder and player
+* iecset - Set or dump IEC958 status bits
+* speaker-test - command-line speaker test tone generator
+"
+HOMEPAGE="https://www.alsa-project.org"
+DOWNLOADS="mirror://alsaproject/${PN#alsa-}/${PNV}.tar.bz2"
+
+LICENCES="GPL-2"
+SLOT="0"
+PLATFORMS="~amd64 ~x86"
+MYOPTIONS="
+    alsaloop    [[ description = [ Tool to create playback/capture loops  ] ]]
+    bat         [[ description = [ Tool to test audio card output ] ]]
+    ( linguas: de fr ja )
+"
+
+# generator.c:9:10: fatal error: generator.h: No such file or directory
+# last checked: 1.1.8
+RESTRICT="test"
+
+# NOTE: automagic dependency on libffado (not recommended/technical preview)
+DEPENDENCIES="
+    build:
+        sys-devel/gettext[>=0.19.8]
+        virtual/pkg-config
+    build+run:
+        sys-libs/ncurses
+        sys-sound/alsa-lib[>=1.0.27-r1]
+        alsaloop? ( media-libs/libsamplerate [[ note = [ Used by alsaloop, which is optional ] ]] )
+        bat? ( sci-libs/fftw )
+"
+
+DEFAULT_SRC_CONFIGURE_PARAMS=(
+    --enable-nls
+    --disable-alsabat-backend-tiny
+    # disable alsaconf like all other distros do
+    --disable-alsaconf
+    --disable-rst2man
+    --disable-xmlto
+    --with-alsactl-lock-dir=/run/lock
+    --with-systemdsystemunitdir="${SYSTEMDSYSTEMUNITDIR}"
+    --with-udev-rules-dir="${UDEVRULESDIR}"
+)
+DEFAULT_SRC_CONFIGURE_OPTION_ENABLES=( alsaloop bat )
+
+src_install() {
+    default
+
+    keepdir /var/lib/alsa
+
+    dodir /etc/alsa
+    edo echo "# Remove this file to disable the alsactl daemon mode" > \
+        "${IMAGE}"/etc/alsa/state-daemon.conf
+
+    edo rmdir "${IMAGE}"/usr/share/man/man7
+
+    install_openrc_files
+}
+

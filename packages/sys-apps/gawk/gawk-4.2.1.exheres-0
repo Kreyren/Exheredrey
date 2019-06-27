@@ -1,0 +1,12 @@
+# Copyright 2007 Bryan Østergaard <kloeri@exherbo.org>
+# Copyright 2008 Bo Ørsted Andresen <zlin@exherbo.org>
+# Distributed under the terms of the GNU General Public License v2
+
+require gawk
+
+PLATFORMS="~amd64 ~arm ~armv7 ~armv8 ~x86"
+
+MYOPTIONS="
+    ( linguas: ca da de es fi fr id it ja ms nl pl pt_BR sv vi zh_CN )
+"
+

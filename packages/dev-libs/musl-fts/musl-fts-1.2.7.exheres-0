@@ -1,0 +1,22 @@
+# Copyright 2015 Kylie McClain <somasis@exherbo.org>
+# Distributed under the terms of the GNU General Public License v2
+
+require autotools [ supported_autoconf=[ 2.5 ] supported_automake=[ 1.15 ] ]
+require github [ user='pullmoll' tag=v${PV} ]
+
+SUMMARY="An implementation of the fts(3) functions for musl libc"
+SLOT="0"
+LICENCES="BSD-3"
+
+MYOPTIONS=""
+
+PLATFORMS="~amd64"
+
+DEPENDENCIES="
+    run:
+        !sys-libs/glibc [[
+            description = [ fts is part of glibc ]
+            resolution = manual
+        ]]
+"
+

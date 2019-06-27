@@ -1,0 +1,34 @@
+# Copyright 2007 Bryan Østergaard <kloeri@exherbo.org>
+# Distributed under the terms of the GNU General Public License v2
+
+SUMMARY="Collection of Linux man pages"
+HOMEPAGE="https://www.kernel.org/doc/${PN}"
+DOWNLOADS="mirror://kernel/linux/docs/${PN}/${PNV}.tar.xz"
+
+LICENCES="${PN}"
+SLOT="0"
+PLATFORMS="~amd64 ~arm ~armv7 ~armv8 ~x86"
+MYOPTIONS=""
+
+DEPENDENCIES="
+    run:
+        virtual/man
+    suggestion:
+        sys-apps/man-pages-posix
+"
+
+src_compile() {
+    # has a Makefile with various targets, but none that we want
+    :
+}
+
+src_install() {
+    default
+
+    # avoid collision with timezone-data
+    edo rm "${IMAGE}"/usr/share/man/man5/tzfile.5
+    for i in tzselect zdump zic; do
+        edo rm "${IMAGE}"/usr/share/man/man8/${i}.8
+    done
+}
+

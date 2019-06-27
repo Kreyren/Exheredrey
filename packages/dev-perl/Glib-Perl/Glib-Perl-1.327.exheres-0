@@ -1,0 +1,30 @@
+# Copyright 2008 Wulf C. Krueger <philantrop@exherbo.org>
+# Distributed under the terms of the GNU General Public License v2
+# Based in part upon 'glib-perl-1.200.ebuild' from Gentoo, which is:
+#     Copyright 1999-2008 Gentoo Foundation
+
+MY_PN=Glib
+MY_PNV=${MY_PN}-${PV}
+
+require perl-module [ module_author=XAOC ]
+
+SUMMARY="Glib - Perl wrappers for the GLib utility and Object libraries"
+
+REMOTE_IDS+=" sourceforge:gtk2-perl"
+
+LICENCES="LGPL-2.1"
+SLOT="0"
+PLATFORMS="~amd64 ~x86"
+MYOPTIONS=""
+
+DEPENDENCIES="
+    build:
+        dev-perl/ExtUtils-Depends[>=0.301]
+        dev-perl/ExtUtils-PkgConfig[>=1.11]
+        virtual/pkg-config
+    build+run:
+        dev-libs/glib:2[>=2.32.0]
+"
+
+WORK=${WORKBASE}/${MY_PNV}
+

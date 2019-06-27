@@ -1,0 +1,24 @@
+Source: https://salsa.debian.org/gnome-team/glib/blob/debian/master/debian/patches/skip-broken-timer-test.patch
+From: Iain Lane <laney@debian.org>
+Date: Tue, 18 Mar 2014 15:43:35 +0000
+Subject: Skip test which performs some unreliable floating point comparisons
+
+Bug: https://bugzilla.gnome.org/show_bug.cgi?id=722604
+Upstream: No
+---
+ glib/tests/timer.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/glib/tests/timer.c b/glib/tests/timer.c
+index d6938f1..dbd7790 100644
+--- a/glib/tests/timer.c
++++ b/glib/tests/timer.c
+@@ -203,7 +203,7 @@ main (int argc, char *argv[])
+ {
+   g_test_init (&argc, &argv, NULL);
+ 
+-  g_test_add_func ("/timer/basic", test_timer_basic);
++/*  g_test_add_func ("/timer/basic", test_timer_basic);*/
+   g_test_add_func ("/timer/stop", test_timer_stop);
+   g_test_add_func ("/timer/continue", test_timer_continue);
+   g_test_add_func ("/timer/reset", test_timer_reset);

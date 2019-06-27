@@ -1,0 +1,12 @@
+# Copyright 2009-2017 Wulf C. Krueger <philantrop@exherbo.org>
+# Distributed under the terms of the GNU General Public License v2
+
+require ddclient
+
+PLATFORMS="~amd64 ~armv7 ~x86"
+
+DEFAULT_SRC_PREPARE_PATCHES=(
+    "${FILES}"/0001-freedns-send-IP-address.patch
+    -p0 "${FILES}"/${PN}-reasonable-security.patch
+)
+

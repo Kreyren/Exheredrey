@@ -1,0 +1,29 @@
+# Copyright 2015 Kylie McClain <somasis@exherbo.org>
+# Distributed under the terms of the GNU General Public License v2
+
+SUMMARY="Virtual: man providers"
+HOMEPAGE=""
+
+SLOT="0"
+PLATFORMS="~amd64 ~armv7 ~armv8 ~x86"
+MYOPTIONS="
+    ( providers:
+        busybox
+        man
+        man-db
+        mandoc
+    ) [[
+        *description = [ man provider ]
+        number-selected = at-least-one
+    ]]
+"
+
+DEPENDENCIES="
+    providers:busybox? ( sys-apps/busybox )
+    providers:man? ( sys-apps/man )
+    providers:man-db? ( sys-apps/man-db )
+    providers:mandoc? ( sys-apps/mandoc )
+    recommendation:
+        sys-apps/man-pages
+"
+

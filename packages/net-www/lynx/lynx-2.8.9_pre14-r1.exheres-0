@@ -1,0 +1,72 @@
+# Copyright 2013 Tod Jackson <tod.jackson@gmail.com>
+# Distributed under the terms of the GNU General Public License v2
+
+MYPNV="${PN}${PV/_pre/dev.}"
+WORK="${WORKBASE}/${MYPNV}"
+
+SUMMARY="Classic text-based web browser"
+HOMEPAGE="http://lynx.browser.org/"
+DOWNLOADS="http://invisible-mirror.net/archives/lynx/tarballs/${MYPNV}.tar.bz2"
+
+LICENCES="GPL-2"
+SLOT="0"
+PLATFORMS="~amd64 ~armv7 ~armv8 ~x86"
+MYOPTIONS="
+    debug
+    idn
+    ( providers: gnutls libressl openssl ) [[ number-selected = exactly-one ]]
+"
+
+DEPENDENCIES="
+    build:
+        dev-util/intltool
+    build+run:
+        sys-libs/ncurses
+        idn? ( net-dns/libidn )
+        providers:gnutls? ( dev-libs/gnutls )
+        providers:libressl? ( dev-libs/libressl:= )
+        providers:openssl? ( dev-libs/openssl )
+"
+
+DEFAULT_SRC_PREPARE_PATCHES=(
+    "${FILES}"/0001-Fix-build-with-libressl-2.5.x.patch
+)
+
+DEFAULT_SRC_CONFIGURE_PARAMS=(
+    --enable-cgi-links
+    --enable-file-upload
+    --enable-ipv6
+    --enable-nls
+    --with-nls-datadir=/usr/share
+    --hates=docdir
+    --sysconfdir='/etc/lynx'
+    --with-pkg-config=/usr/$(exhost --build)/bin/$(exhost --tool-prefix)pkg-config
+    --with-screen=ncursesw
+    cf_cv_func_gettext=yes # lynx uses an old macro for detecting gettext
+)
+
+DEFAULT_SRC_CONFIGURE_OPTION_ENABLES=(
+    debug
+    'debug find-leaks'
+    'debug vertrace'
+    'idn idna'
+)
+
+DEFAULT_SRC_CONFIGURE_OPTION_WITHS=(
+    'providers:gnutls gnutls'
+    '!providers:gnutls ssl'
+)
+
+src_prepare() {
+    default
+    edo intltoolize --force --automake --copy
+}
+
+src_configure() {
+    BUILD_CC=$(exhost --build)-cc \
+    BUILD_CFLAGS=$(print-build-flags CFLAGS) \
+    BUILD_CPPFLAGS=$(print-build-flags CPPFLAGS) \
+    BUILD_LDFLAGS=$(print-build-flags LDFLAGS) \
+        default
+}
+

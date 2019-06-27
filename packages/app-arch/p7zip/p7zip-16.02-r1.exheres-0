@@ -1,0 +1,84 @@
+# Copyright 2009 Ingmar Vanhassel <ingmar@exherbo.org>
+# Distributed under the terms of the GNU General Public License v2
+
+MY_PNV="${PNV/-/_}"
+require sourceforge [ pnv="${MY_PNV}_src_all" ]
+
+SUMMARY="A UNIX port of 7z"
+
+LICENCES="|| ( LGPL-3 LGPL-2.1 ) unRAR"
+SLOT="0"
+PLATFORMS="~amd64 ~armv7 ~x86"
+MYOPTIONS="platform: amd64 x86"
+
+DEPENDENCIES="
+    build:
+        platform:amd64? ( dev-lang/yasm )
+        platform:x86? ( dev-lang/nasm )
+"
+
+WORK=${WORKBASE}/${MY_PNV}
+
+DEFAULT_SRC_PREPARE_PATCHES=(
+    "${FILES}"/${PN}-16.02-CVE-2017-17969.patch
+    "${FILES}"/${PN}-16.02-CVE-2018-5996.patch
+)
+
+DEFAULT_SRC_COMPILE_PARAMS=( all3 )
+DEFAULT_SRC_INSTALL_PARAMS=(
+    DEST_DIR="${IMAGE}"
+    DEST_HOME="/usr/$(exhost --target)"
+    DEST_SHARE_DOC="/usr/share/doc/${PNVR}"
+    DEST_MAN="/usr/share/man"
+)
+
+src_prepare() {
+    default
+
+    local makefile
+
+    case "$(exhost --target)" in
+    x86_64-*)
+        makefile=linux_amd64_asm
+        ;;
+    i686-*)
+        makefile=linux_x86_asm_gcc_4.X
+        ;;
+    arm*-*)
+        makefile=linux_cross_arm
+        ;;
+    *)
+        die "Don't know what makefile to use. Find the correct one and patch the exheres to use it."
+        ;;
+    esac
+
+    edo cp -f makefile.${makefile} makefile.machine
+
+    edo sed -e "s:-m32 ::g" \
+            -e "s:-m64 ::g" \
+            -e "/^OPTFLAGS/s:-O -s::" \
+            -e "s:^CC=[^ ]\+:CC=$(exhost --tool-prefix)cc ${CFLAGS}:" \
+            -e "s:^CXX=[^ ]\+:CXX=$(exhost --tool-prefix)c++ ${CXXFLAGS}:" \
+            -i makefile.machine
+
+    edo sed -i -e "/strip/d" install.sh
+}
+
+src_test() {
+    emake -j1 all_test
+}
+
+src_install() {
+    default
+
+    herebin 7z <<EOF
+#!/bin/bash
+exec /usr/$(exhost --target)/lib/${PN}/\${0##*/} "\${@}"
+EOF
+    dosym 7z /usr/$(exhost --target)/bin/7za
+    dosym 7z /usr/$(exhost --target)/bin/7zr
+    edo rm -rf "${IMAGE}"/usr/bin
+
+    edo find "${IMAGE}" -type f -iname "*License*" -o -iname "*copying*" -delete
+}
+

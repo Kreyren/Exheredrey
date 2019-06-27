@@ -1,0 +1,20 @@
+# Copyright 2008-2013 Wulf C. Krueger <philantrop@exherbo.org>
+# Copyright 2011 Ingmar Vanhassel
+# Distributed under the terms of the GNU General Public License v2
+# Based in part upon 'openssh-5.0_p1-r1.ebuild' from Gentoo, which is:
+#     Copyright 1999-2008 Gentoo Foundation
+
+require openssh
+
+PLATFORMS="~amd64 ~arm ~armv7 ~armv8 ~x86"
+
+DEFAULT_SRC_PREPARE_PATCHES=(
+    "${FILES}"/${PN}-7.8_p1-GSSAPI-dns.patch
+    "${FILES}"/${PN}-7.9_p1-openssl-1.0.2-compat.patch
+    "${FILES}"/${PN}-7.9_p1-CVE-2018-20685.patch
+    "${FILES}"/${PN}-7.9_p1-CVE-2019-6109-part1.patch
+    "${FILES}"/${PN}-7.9_p1-CVE-2019-6109-part2.patch
+    "${FILES}"/${PN}-7.9_p1-CVE-2019-6111-part1.patch
+    "${FILES}"/${PN}-7.9_p1-CVE-2019-6111-part2.patch
+)
+

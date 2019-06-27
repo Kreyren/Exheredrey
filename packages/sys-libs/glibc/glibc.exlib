@@ -1,0 +1,313 @@
+# Copyright 2007-2008 Bryan Østergaard <kloeri@exherbo.org>
+# Copyright 2008-2010 Ingmar Vanhassel <ingmar@exherbo.org>
+# Copyright 2010, 2012 Saleem Abdulrasool <compnerd@compnerd.org>
+# Distributed under the terms of the GNU General Public License v2
+
+myexparam source_uri="mirror://gnu/${PN}/${PNV}.tar.bz2"
+
+require flag-o-matic systemd-service [ systemd_files=[ nscd.service ] ] kernel
+require toolchain-funcs
+
+export_exlib_phases pkg_pretend pkg_setup src_unpack src_prepare src_configure src_install pkg_preinst pkg_postinst
+
+# TODO(compnerd) add exparam to run eautoconf
+
+SUMMARY="GNU C library"
+HOMEPAGE="https://www.gnu.org/software/libc"
+
+exparam -v source_uri source_uri
+
+myexparam minimum_kernel_version="2.6.22"
+exparam -v MINIMUM_KERNEL_VERSION minimum_kernel_version
+
+DOWNLOADS="${source_uri}"
+
+LICENCES="|| ( GPL-3 GPL-2 ) || ( LGPL-3 LGPL-2.1 )"
+SLOT="0"
+MYOPTIONS="
+    systemd [[ description = [ Add systemd-specific bits to nsswitch.conf for dynamic users/groups ] ]]
+    ( linguas:
+        be bg ca cs da de el en_GB eo es fi fr gl hr hu id it ja ko lt nb nl pl pt_BR ru rw sk sv tr
+        vi zh_CN zh_TW
+    )
+"
+
+# tests are expensive
+RESTRICT=test
+
+# TODO(compnerd): we need a way to handle this sort of dependency
+#        $(for host in arm-exherbo-linux-gnueabi i686-pc-linux-gnu x86_64-pc-linux-gnu ; do
+#            echo "hosts:${host}? ( sys-devel/gcc[targets:${host}] )"
+#          done)
+DEPENDENCIES="
+    build:
+        dev-lang/perl:*
+        sys-apps/gawk
+        sys-apps/texinfo[>=4.7]
+        sys-devel/bison[>=2.7]
+        sys-kernel/linux-headers[>=3.2]
+        virtual/sed
+    run:
+        sys-libs/timezone-data[>=2015f-r1] [[ note = [ files used to collide, rebuild to change mtime ] ]]
+"
+
+if ever at_least 2.28 ; then
+    DEPENDENCIES+="
+        build:
+            sys-devel/binutils[>=2.29] [[ note = [ required for Intel CET ] ]]
+            sys-devel/gcc:*[>=8] [[ note = [ required for Intel CET ] ]]
+        build+run:
+            net-dns/libidn2:=[>=2.0.5]
+    "
+else
+    DEPENDENCIES+="
+        build:
+            sys-devel/binutils[>=2.25]
+            sys-devel/gcc:*[>=4.7]
+    "
+fi
+
+if ever at_least 2.29 ; then
+    DEPENDENCIES+="
+        build:
+            dev-lang/python:*[>=3]
+    "
+fi
+
+ECONF_SOURCE="${WORK}"
+WORK="${WORKBASE}/build"
+
+DEFAULT_SRC_INSTALL_PARAMS=(
+    install_root="${IMAGE}"
+    sbindir=/usr/$(exhost --target)/bin
+    rootsbindir=/usr/$(exhost --target)/bin
+)
+
+glibc_pkg_pretend() {
+    if [[ $(exhost --target) != *-gnu* ]];then
+        die "Installing glibc on a non *-gnu* CHOST is a really, really bad idea and will definitely break your system."
+    fi
+
+    if cc-is-gcc ; then
+        if ! ever at_least 8 $(gcc-version) ; then
+            eerror "sys-devel/gcc[>=8] is required to build sys-libs/glibc."
+            eerror "You can use 'eclectic gcc' to change the active compiler."
+            die
+        fi
+    else
+        die "Building glibc with a compiler other than GCC is very likely to break your system. Aborting."
+    fi
+
+    if ! kernel_version_at_least $MINIMUM_KERNEL_VERSION ; then
+        ewarn "Your currently booted kernel-version is to old ($(uname -r))."
+        ewarn "If you continue you will probably break your system."
+        ewarn "Please upgrade your kernel to a version >=$MINIMUM_KERNEL_VERSION"
+    fi
+
+    if [[ -f "${ROOT}etc/tmpfiles.d/nscd.conf" ]] ; then
+        ewarn "The configuration file /etc/tmpfiles.d/nscd.conf has been moved to"
+        ewarn "/usr/$(exhost --target)/lib/tmpfiles.d/nscd.conf and can be safely removed after"
+        ewarn "upgrade if you did not make any changes to it."
+    fi
+
+    # TODO(compnerd) consider using filter-flags rather than dying here
+    if [[ $(get-flag -ggdb3) == '-ggdb3' ]]; then
+        die "Building glibc with CFLAGS=-ggdb3 is broken. Aborting."
+    fi
+}
+
+glibc_pkg_setup() {
+    # NOTE(compnerd) glibc doesn't compile with -Os. See bug:
+    # http://sourceware.org/bugzilla/show_bug.cgi?id=5203 for details
+    filter-flags -O*
+    append-flags -O2
+
+    # NOTE(compnerd) glibc doesnt build with LTO (bug 52489/51255)
+    # http://gcc.gnu.org/bugzilla/show_bug.cgi?id=51255
+    # reproducible with BFD ld and gold (.init_array/.fini_array is discarded by linker)
+    filter-flags -flto
+
+    # NOTE(moben) parts of glibc can't be built with -fstack-protector.
+    # configure's --enable-stack-protector=strong handles the parts that can be
+    filter-flags -fstack-protector -fstack-protector-all -fstack-protector-strong
+
+    # NOTE(moben) glibc can't be built with -D_FORTIFY_SOURCE and configure appends -U_FORTIFY_SOURCE
+    # for that reason. But we set CPPFLAGS=${CFLAGS} which causes _FORTIFY_SOURCE to be defined again.
+    # NOTE(moben) -Ufoo does not cancel out -Wp,-Dfoo
+    append-cppflags -U_FORTIFY_SOURCE -Wp,-U_FORTIFY_SOURCE
+
+    # NOTE(compnerd) use -fuse-ld to specify the linker if available
+    filter-flags -fuse-ld*
+    append-flags '-fuse-ld=bfd'
+}
+
+glibc_src_unpack() {
+    default
+    edo mkdir "${WORK}"
+}
+
+glibc_src_prepare() {
+    edo cd "${ECONF_SOURCE}"
+
+    if [[ -d ${FILES}/patches-${PV} ]]; then
+        expatch -p1 "${FILES}"/patches-${PV}
+    fi
+
+    edo sed \
+        -e "s:/lib/cpp:/usr/$(exhost --target)/bin/$(exhost --tool-prefix)cpp:" \
+        -e 's:\(CPP = "\)cpp:\1'$(exhost --tool-prefix)cpp: \
+        -i "${WORKBASE}/${PNV}"/sunrpc/rpc_main.c
+
+    default
+}
+
+glibc_src_configure() {
+    local target=$(exhost --target) build=$(exhost --build)
+
+    local myconf=()
+
+    myconf+=(
+        --build=${build}
+        --cache-file=config.cache
+        --datarootdir=/usr/share
+        --host=${target}
+        --libdir=/usr/${target}/lib
+        --localedir=/usr/share/locale
+        --localstatedir=/var/$(exhost --target)
+        --prefix=/usr/${target}
+        --sysconfdir=/etc
+        --enable-experimental-malloc
+        --enable-kernel=${MINIMUM_KERNEL_VERSION}
+        --enable-obsolete-nsl
+        --enable-obsolete-rpc
+        --enable-pt_chown
+        --enable-stackguard-randomization
+        --enable-stack-protector=strong
+        --enable-tunables
+        --disable-nss-crypt
+        --disable-profile
+        --disable-selinux
+        --disable-static-pie
+        --disable-systemtap
+        --disable-timezone-tools
+        --disable-werror
+        --with-headers=/usr/${target}/include
+        --without-gd
+    )
+
+    if [[ $(exhost --target) == x86_64-pc-linux-gnu ]] ; then
+        myconf+=( --enable-mathvec )
+    else
+        myconf+=( --disable-mathvec )
+    fi
+
+    if ever at_least 2.28 ; then
+        myconf+=(
+            --enable-crypt
+        )
+        if [[ $(exhost --target) == i686-pc-linux-gnu ]] || [[ $(exhost --target) == x86_64-pc-linux-gnu ]] ; then
+            myconf+=( --enable-cet )
+        else
+            myconf+=( --disable-cet )
+        fi
+    fi
+
+    # TODO(compnerd) determine how to handle non-gcc compilers
+    # NOTE(compnerd) export readelf and NM explicitly because the immensely dumb configure
+    # script does not bother to check for the prefixed tools!
+    edo env \
+        NM="${target}-nm" \
+        READELF="${target}-readelf" \
+        BUILD_CC="${build}-gcc" \
+        CC="${target}-gcc" \
+        CPP="/usr/${build}/bin/${target}-cpp" \
+        CXX="/usr/${build}/bin/${target}-g++" \
+        CPPFLAGS="-DLD_SO_CONF='\"/etc/ld-$(exhost --target).path\"' -DLD_SO_CACHE='\"/etc/ld-$(exhost --target).cache\"' ${CPPFLAGS}" \
+        "${WORKBASE}/${PNV}/configure" \
+        "${myconf[@]}"
+}
+
+glibc_src_install() {
+    local conf_files=(
+        "${WORKBASE}/${PNV}/nscd/nscd.conf"
+        "${WORKBASE}/${PNV}/nss/nsswitch.conf"
+        "${WORKBASE}/${PNV}/posix/gai.conf"
+    )
+    local noins_files=(
+        "${IMAGE}/etc/ld.so.cache"
+        "${IMAGE}/etc/localtime"
+    )
+
+    export LANGUAGE=C
+
+    emake -j1 "${DEFAULT_SRC_INSTALL_PARAMS[@]}" DESTDIR="${IMAGE}" install
+
+    # don't install /etc/{ld.so.cache,localtime}
+    edo rm -f "${noins_files[@]}"
+
+    # install additional base configuration files
+    insinto /etc
+    doins "${conf_files[@]}"
+
+    # Remove db values from nssswitch.conf
+    # Remove lingering [STATUS=action] values
+    edo sed -e '/^.*:/s/db //' \
+            -e '/\t\+\[.*\]/s/\[.*] //' \
+            -i "${IMAGE}/etc/nsswitch.conf"
+
+    if option systemd; then
+        edo sed -e '/^passwd/s/$/ systemd/' \
+                -e '/^group/s/$/ systemd/'  \
+                -i "${IMAGE}/etc/nsswitch.conf"
+    fi
+
+    # systemd units
+    insinto "/usr/$(exhost --target)/lib/tmpfiles.d"
+    doins "${FILES}/systemd/nscd.conf"
+    install_systemd_files
+
+    # configure default locale
+    hereenvd 02locale <<-EOF
+LANG=en_GB.utf8
+EOF
+
+    # remove empty locale dirs
+    edo find "${IMAGE}"/usr/share/locale/ -type d -empty -delete
+
+    # create a target file so eclectic knows to generate a ld config file for this target
+    edo mkdir -p "${IMAGE}"/etc/env.d/targets
+    edo touch "${IMAGE}"/etc/env.d/targets/$(exhost --target)
+}
+
+glibc_pkg_preinst() {
+    if exhost --is-native -q && [[ $(readlink -f "${ROOT##/}"/lib) == ${ROOT##/}/lib*([^/]) ]] ; then
+        # NOTE(compnerd) maintain compatibility with pre-existing binaries by symlinking the loaders
+        # into the legacy paths
+        # TODO(compnerd) workout the set of multilib directories and symlink those across each other
+        # e.g. i686-pc-linux-gnu, x86_64-pc-linux-gnu under i686-pc-linux-gnu, and x86_64-pc-linux-gnu
+        local loader= cp=$(type -P cp)
+        for loader in "${IMAGE}"/usr/$(exhost --target)/lib/ld-linux* ; do
+            local loader_bn=$(basename "${loader}")
+            if [[ -e ${ROOT}/lib/${loader_bn} && ! -e ${ROOT}/usr/$(exhost --target)/lib/${loader_bn} ]] ; then
+                nonfatal edo cp "${ROOT}/lib/${loader_bn}" "${ROOT}/usr/$(exhost --target)/lib/${loader_bn}"
+            fi &&
+            nonfatal edo ln -sf "../usr/$(exhost --target)/lib/${loader_bn}" "${ROOT}/lib/${loader_bn}" ||
+                eerror ln "../usr/$(exhost --target)/lib/${loader_bn}" "${ROOT}/lib/${loader_bn}" failed
+        done
+    fi
+}
+
+glibc_pkg_postinst() {
+    local locales=( en_US.UTF-8 en_GB.UTF-8 )
+    local localedef="${ROOT}"usr/$(exhost --target)/bin/localedef
+    local locale=
+
+    # localedef fails if /usr/$(exhost --target)/lib/locale does not exist
+    edo mkdir -p "${ROOT}"usr/$(exhost --target)/lib/locale
+
+    for locale in "${locales[@]}" ; do
+        I18NPATH="${ROOT}"usr/share/i18n nonfatal edo \
+            "${localedef}" --prefix="${ROOT}" -i ${locale%.*} -f ${locale#*.} ${locale}
+    done
+}
+

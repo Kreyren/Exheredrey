@@ -1,0 +1,39 @@
+Source: https://salsa.debian.org/gnome-team/glib/blob/debian/master/debian/patches/0001-timer-test-use-volatile-for-locals.patch
+From: Ryan Lortie <desrt@desrt.ca>
+Date: Tue, 4 Mar 2014 09:20:38 -0500
+Subject: timer test: use 'volatile' for locals
+
+GCC seems to be failing to follow the letter of the C spec by allowing extra
+precision in floating point values to persist across assignments which are
+optimised away.
+
+Force its hand by using 'volatile' on the locals in question.
+
+Bug: https://bugzilla.gnome.org/show_bug.cgi?id=722604
+Pending? See bug above
+---
+ glib/tests/timer.c | 4 ++--
+ 1 file changed, 2 insertions(+), 2 deletions(-)
+
+diff --git a/glib/tests/timer.c b/glib/tests/timer.c
+index cb9a268..d6938f1 100644
+--- a/glib/tests/timer.c
++++ b/glib/tests/timer.c
+@@ -27,7 +27,7 @@ static void
+ test_timer_basic (void)
+ {
+   GTimer *timer;
+-  gdouble elapsed;
++  volatile gdouble elapsed;
+   gulong micros;
+ 
+   timer = g_timer_new ();
+@@ -44,7 +44,7 @@ static void
+ test_timer_stop (void)
+ {
+   GTimer *timer;
+-  gdouble elapsed, elapsed2;
++  volatile gdouble elapsed, elapsed2;
+ 
+   timer = g_timer_new ();
+ 

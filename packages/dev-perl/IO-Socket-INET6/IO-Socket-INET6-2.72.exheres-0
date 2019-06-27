@@ -1,0 +1,32 @@
+# Copyright 2013 Markus Rothe
+# Distributed under the terms of the GNU General Public License v2
+
+require perl-module [ module_author=SHLOMIF ]
+
+SUMMARY="Object interface for AF_INET|AF_INET6 domain sockets"
+
+SLOT="0"
+PLATFORMS="~amd64 ~armv7 ~armv8 ~x86"
+MYOPTIONS=""
+
+DEPENDENCIES="
+    build+run:
+        dev-perl/Socket6
+    test:
+        dev-perl/Test-Pod
+"
+
+DEFAULT_SRC_PREPARE_PATCHES=( -p2 "${FILES}"/${PN}-2.71-fix_tests.patch )
+
+src_test() {
+    esandbox allow_net --connect "LOOPBACK6@0"
+    esandbox allow_net "LOOPBACK6@0"
+    esandbox allow_net --connect "LOOPBACK@0"
+    esandbox allow_net "LOOPBACK@0"
+    perl-module_src_test
+    esandbox disallow_net "LOOPBACK@0"
+    esandbox disallow_net --connect "LOOPBACK@0"
+    esandbox disallow_net "LOOPBACK6@0"
+    esandbox disallow_net --connect "LOOPBACK6@0"
+}
+

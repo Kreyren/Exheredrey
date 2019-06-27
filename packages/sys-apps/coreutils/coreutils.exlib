@@ -1,0 +1,210 @@
+# Copyright 2007-2009 Bryan Østergaard <kloeri@exherbo.org>
+# Copyright 2009 Ingmar Vanhassel <ingmar@exherbo.org>
+# Copyright 2014 Wulf C. Krueger <philantrop@exherbo.org>
+# Copyright 2015 Kylie McClain <somasis@exherbo.org>
+# Distributed under the terms of the GNU General Public License v2
+
+require gnu [ suffix=tar.xz ] alternatives
+
+export_exlib_phases src_{configure,test,test_expensive,install} \
+                    pkg_{preinst,postinst}
+
+SUMMARY="Core file, shell and text utilities expected to be on any system."
+
+BUGS_TO="philantrop@exherbo.org"
+
+LICENCES="GPL-3"
+SLOT="0"
+MYOPTIONS="
+    acl
+    caps
+    gmp [[ description = [ The utilities time, factor and expr support arbitrarily large numbers ] ]]
+    selinux
+    xattr
+"
+
+DEPENDENCIES="
+    build:
+        dev-lang/perl:* [[ description = [ needed by help2man & colour stuff ] ]]
+        sys-devel/gettext[>=0.19.2]
+    build+run:
+        acl? ( sys-apps/acl )
+        caps? ( sys-libs/libcap )
+        gmp? ( dev-libs/gmp:= )
+        selinux? ( security/libselinux )
+        xattr? ( sys-apps/attr )
+        !sys-apps/net-tools[<1.60_p20120127084908-r1]  [[
+            description = [ used to install /bin/hostname ]
+            resolution = uninstall-blocked-after
+        ]]
+        !sys-process/procps[<3.3.10-r2] [[
+            description = [ conflicts with uptime alternatives ]
+            resolution = upgrade-blocked-before
+        ]]
+    test:
+        sys-apps/sydbox[>=0.6.8] [[ note = [ tests fail with sydbox older than 0.6.8 ] ]]
+"
+
+DEFAULT_SRC_CONFIGURE_OPTION_ENABLES=(
+    acl
+    "caps libcap"
+    xattr
+)
+
+DEFAULT_SRC_CONFIGURE_OPTION_WITHS=( gmp selinux )
+
+DEFAULT_SRC_CONFIGURE_PARAMS=(
+    --enable-install-program=arch,hostname
+    --enable-largefile
+    --program-prefix=g
+    gt_cv_func_gnugettext{1,2}_libc=yes
+)
+
+DEFAULT_SRC_INSTALL_EXCLUDE=( thanks-gen THANKS.in )
+
+coreutils_src_configure() {
+    # Configuration takes a million years without this hack.
+    # Only necessary with older sydbox versions.
+    if has_version --root "sys-apps/sydbox[<1.0.0_pre]"; then
+        esandbox hack_toolong
+        default
+        esandbox nohack_toolong
+    else
+        default
+    fi
+}
+
+coreutils_src_test() {
+    # hard code the limit until we find a better way
+    edo sed -e 's/name_max=$(stat -f -c %l .)/name_max=150/' \
+        -i tests/du/long-from-unreadable.sh \
+        -i tests/rm/deep-2.sh
+
+    esandbox allow /dev/full
+
+    default
+
+    esandbox disallow /dev/full
+}
+
+coreutils_src_test_expensive() {
+    local -a expensive_tests
+
+    edo pushd tests
+    expensive_tests=($( find . -type f | xargs grep -E --files-with-matches '^(very_|)expensive_$' | sed -e 's:^\./::g'))
+    expensive_tests=("${expensive_tests[@]:-expensive_tests_grep_broke}")
+    emake check RUN_{VERY_,}EXPENSIVE_TESTS=yes TESTS="${expensive_tests[*]}"
+    edo popd
+}
+
+preinst=()
+
+coreutils_src_install() {
+    default
+
+    # sys-apps/shadow installs the same binary and manpage
+    # since shadow deals with logins and such anyway, it is preferred
+    edo rm "${IMAGE}"/usr/$(exhost --target)/bin/ggroups
+    edo rm "${IMAGE}"/usr/share/man/man1/ggroups.1
+
+    # musl file conflicts
+    nonfatal edo rm -f "${IMAGE}"/usr/$(exhost --target)/lib/charset.alias
+    nonfatal edo rmdir "${IMAGE}"/usr/$(exhost --target)/lib
+
+    local coreutils_alternatives=()
+    for prog in "${IMAGE}"/usr/$(exhost --target)/bin/*;do
+        prog=$(basename "${prog}")
+        prog=${prog/g}
+        case "${prog}" in
+            hostname|uptime) ;;
+            '[') # no manpage
+                coreutils_alternatives+=(
+                    /usr/$(exhost --target)/bin/${prog} g${prog}
+                )
+            ;;
+            *)
+                coreutils_alternatives+=(
+                    /usr/$(exhost --target)/bin/${prog} g${prog}
+                    /usr/share/man/man1/${prog}.1       g${prog}.1
+                )
+                case "${prog}" in
+                    '['|arch) ;; # hit errors while trying to copy these for some reason
+                    *) preinst+=( "${prog}" ) ;;
+                esac
+            ;;
+        esac
+    done
+    alternatives_for coreutils  gnu 1000       "${coreutils_alternatives[@]}"
+    alternatives_for hostname   gnu 100                     \
+        /usr/$(exhost --target)/bin/hostname    ghostname   \
+        /usr/share/man/man1/hostname.1          ghostname.1
+    alternatives_for uptime     gnu 50                      \
+        /usr/$(exhost --target)/bin/uptime      guptime     \
+        /usr/share/man/man1/uptime.1            guptime.1
+
+    insinto /etc
+    newins src/dircolors.hin DIR_COLORS
+}
+
+coreutils_pkg_preinst() {
+    edo pushd "${ROOT}"usr/$(exhost --target)/bin
+    for bin in "${preinst[@]}";do
+        if [[ -e "${bin}" && ! -L "${bin}" ]];then
+            edo cp "${bin}" g"${bin}"
+            edo ln -sf g"${bin}" "${bin}"
+        fi
+    done
+    edo popd
+    exhost --is-native -q || return
+
+    # NOTE(compnerd) preserve legacy paths for paludis
+    if [[ $(readlink -f "${ROOT##/}"/bin) == ${ROOT##/}/bin ]]; then
+        for bin in echo pwd rm readlink env; do
+            if [[ ! -e ${ROOT}/usr/$(exhost --target)/bin/${bin} ]]; then
+                nonfatal edo cp "${ROOT}bin/${bin}" "${ROOT}usr/$(exhost --target)/bin/${bin}"
+            fi
+            nonfatal edo ln -sf ../usr/$(exhost --target)/bin/${bin} "${ROOT}bin/${bin}" || \
+                eerror ln -sf ../usr/$(exhost --target)/bin/${bin} "${ROOT}bin/${bin}" failed
+        done
+    fi
+    if [[ $(readlink -f "${ROOT##/}"/usr/bin) == ${ROOT##/}/usr/bin ]]; then
+        for bin in echo env readlink; do
+            nonfatal edo ln -sf ../$(exhost --target)/bin/${bin} "${ROOT}usr/bin/${bin}" || \
+                eerror nonfatal edo ln -sf ../$(exhost --target)/bin/${bin##*/} "${ROOT}usr/bin/${bin}" failed
+        done
+    fi
+}
+
+coreutils_pkg_postinst() {
+    # build is used so cross compilation works fine when we can't run the target binary
+    local altpath="${ROOT}"/etc/env.d/alternatives/coreutils/gnu/usr/$(exhost --build)/bin:"${PATH}"
+    # without PATH stuff, eclectic will pull coreutils out from under its feet
+    if has_version 'sys-apps/busybox[<1.23.2-r3]' && [[ -f /usr/share/eclectic/modules/auto/coreutils.eclectic ]];then
+        if ! nonfatal edo env PATH="${altpath}" eclectic coreutils set --force gnu;then
+            exlogfailure
+            eerror "Something failed while trying to forcibly set gnu as the coreutils provider."
+        fi
+    fi
+
+    # this PATH magic is needed so it can keep writing the coreutils auto module!
+    PATH="${altpath}" alternatives_pkg_postinst
+    if [[ "$(eclectic hostname show)" == coreutils ]];then
+        if ! nonfatal edo env PATH="${altpath}" eclectic hostname set --force gnu;then
+            exlogfailure
+            eerror "Something failed setting the hostname provider."
+        fi
+    fi
+    if [[ "$(eclectic uptime show)" == coreutils ]];then
+        if ! nonfatal edo env PATH="${altpath}" eclectic uptime set --force gnu;then
+            exlogfailure
+            eerror "Something failed setting the uptime provider."
+        fi
+    fi
+    if has_version 'sys-apps/busybox[<1.23.2-r3]';then
+        if ! nonfatal edo env PATH="${altpath}" eclectic coreutils set --force gnu;then
+            exlogfailure
+            eerror "Something failed setting the coreutils provider."
+        fi
+    fi
+}
+

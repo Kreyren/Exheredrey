@@ -1,0 +1,30 @@
+# Copyright 2018 Timo Gurr <tgurr@exherbo.org>
+# Distributed under the terms of the GNU General Public License v2
+
+require github [ user=nlohmann tag=v${PV} ] \
+    cmake [ api=2 ]
+
+SUMMARY="JSON for Modern C++"
+
+LICENCES="MIT"
+SLOT="0"
+PLATFORMS="~amd64"
+MYOPTIONS=""
+
+DEPENDENCIES=""
+
+CMAKE_SRC_CONFIGURE_PARAMS=(
+    -DCMAKE_BUILD_TYPE:STRING=Release
+    -DJSON_MultipleHeaders:BOOL=FALSE
+    -DJSON_Install:BOOL=TRUE
+)
+
+CMAKE_SRC_CONFIGURE_TESTS=(
+    '-DBUILD_TESTING:BOOL=TRUE -DBUILD_TESTING:BOOL=FALSE'
+    '-DJSON_BuildTests:BOOL=TRUE -DJSON_BuildTests:BOOL=FALSE'
+    -DJSON_Coverage:BOOL=FALSE
+    -DJSON_NoExceptions:BOOL=FALSE
+    -DJSON_Sanitizer:BOOL=FALSE
+    -DJSON_Valgrind:BOOL=FALSE
+)
+

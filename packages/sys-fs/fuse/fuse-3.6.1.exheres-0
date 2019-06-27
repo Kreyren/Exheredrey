@@ -1,0 +1,69 @@
+# Copyright 2009 Maxime Coste <frrrwww@gmail.com>
+# Copyright 2017-2018 Heiko Becker <heirecka@exherbo.org>
+# Distributed under the terms of the GNU General Public License v2
+
+require github [ user=lib${PN} project=lib${PN} release=${PNV} suffix=tar.xz ]
+require python [ blacklist=2 multibuild=false ]
+require meson alternatives
+
+SUMMARY="Filesystems in Userspace"
+DESCRIPTION="
+FUSE (Filesystem in Userspace) is a simple interface for userspace programs to export a virtual
+filesystem to the Linux kernel. FUSE also aims to provide a secure method for non privileged users
+to create and mount their own filesystem implementations.
+"
+
+LICENCES="GPL-2 LGPL-2.1"
+SLOT="3"
+PLATFORMS="~amd64 ~arm ~armv7 ~armv8 ~x86"
+MYOPTIONS="
+    ( providers: eudev systemd ) [[ number-selected = exactly-one ]]
+"
+
+DEPENDENCIES="
+    build:
+        (
+            providers:eudev? ( sys-apps/eudev )
+            providers:systemd? ( sys-apps/systemd )
+        ) [[ note = [ pkgconfig_variable('udevdir') ] ]]
+    run:
+        sys-apps/util-linux[>=2.18]
+        !sys-fs/fuse:0[<2.9.7-r1] [[
+            description = [ Alternatives conflict ]
+            resolution = upgrade-blocked-before
+        ]]
+    test:
+        dev-python/pytest[python_abis:*(-)?]
+"
+
+DEFAULT_SRC_PREPARE_PATCHES=(
+    "${FILES}"/${PN}-Define-ALLPERMS-for-musl-libc-systems.patch
+)
+
+MESON_SRC_CONFIGURE_PARAMS=(
+    # Examples aren't installed anyway
+    -Dexamples=false
+    -Dutils=true
+)
+
+src_prepare() {
+    meson_src_prepare
+
+    # Don't try to mknod /dev/fuse TODO: Fix this upstream
+    edo sed -e 's:if test ! -e "${DESTDIR}/dev/fuse":if false:' \
+            -i util/install_helper.sh
+}
+
+src_test() {
+    edo ${PYTHON} -m pytest test
+}
+
+src_install() {
+    meson_src_install
+
+    edo rm -r "${IMAGE}"/etc
+
+    alternatives_for _${PN} ${SLOT} ${SLOT} \
+        /usr/share/man/man8/mount.fuse.8 mount.fuse-${SLOT}.8
+}
+

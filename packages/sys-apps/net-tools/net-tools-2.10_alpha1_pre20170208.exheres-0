@@ -1,0 +1,43 @@
+# Copyright 2007 Bryan Østergaard
+# Distributed under the terms of the GNU General Public License v2
+
+require sourceforge alternatives
+
+SUMMARY="A deprecated, but familiar collection of basic networking tools"
+DOWNLOADS="https://dev.exherbo.org/distfiles/${PN}/${PNV}.tar.xz"
+
+LICENCES="GPL-2"
+SLOT="0"
+PLATFORMS="~amd64 ~arm ~armv7 ~armv8 ~x86"
+MYOPTIONS=""
+
+DEPENDENCIES="
+    build:
+        sys-devel/gettext
+"
+
+DEFAULT_SRC_INSTALL_PARAMS=(
+    BINDIR=/usr/$(exhost --target)/bin
+    SBINDIR=/usr/$(exhost --target)/bin
+)
+
+src_configure() {
+    yes "" | edo ./configure.sh config.in
+    edo sed -e 's:I18N 0:I18N 1:'           \
+            -e 's:AFECONET 1:AFECONET 0:'   \
+            -i config.h
+}
+
+src_install() {
+    default
+
+    edo mv "${IMAGE}"/usr/$(exhost --target)/bin/{hostname,domainname}
+    for i in {dns,yp,nis}domainname; do
+        dosym domainname /usr/$(exhost --target)/bin/${i}
+    done
+
+    alternatives_for hostname net-tools 5000 \
+        /usr/$(exhost --target)/bin/hostname /usr/$(exhost --target)/bin/domainname \
+        /usr/share/man/man1/hostname.1 /usr/share/man/man1/hostname.net-tools.1
+}
+

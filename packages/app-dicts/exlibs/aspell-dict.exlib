@@ -1,0 +1,43 @@
+# Copyright 2008 Richard Brown <rbrown@exherbo.org>
+# Distributed under the terms of the GNU General Public License v2
+# Based in part upon 'aspell-dict.eclass' from Gentoo, which is:
+#     Copyright 1999-2008 Gentoo Foundation
+
+# An eclass to streamline the construction of ebuilds for new aspell dicts
+
+# Which language is the dictionary for? It's used for the DESCRIPTION of the
+# package.
+myexparam desc
+
+# What major version of aspell is this dictionary for?
+myexparam major_pv=
+
+require versionator
+
+# replace last separator
+myexparam pv=$(ever replace $(get_last_version_component_index) '-' $PV)
+
+export_exlib_phases src_configure
+
+SPELL_LANG=${PN/aspell-/}
+
+MY_PNV=aspell$(exparam major_pv)-${SPELL_LANG}-$(exparam pv)
+WORK="${WORKBASE}/${MY_PNV}"
+
+SUMMARY="$(exparam desc) language dictionary for aspell"
+HOMEPAGE="http://aspell.net"
+DOWNLOADS="mirror://gnu/aspell/dict/${SPELL_LANG}/${MY_PNV}.tar.bz2"
+
+MYOPTIONS=""
+
+DEPENDENCIES="
+    build+run:
+        app-spell/aspell
+"
+
+aspell-dict_src_configure() {
+    edo ./configure
+}
+
+DEFAULT_SRC_INSTALL_EXTRA_DOCS=( info )
+

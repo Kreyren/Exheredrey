@@ -1,0 +1,29 @@
+# Copyright 2014-2015 Wulf C. Krueger <philantrop@exherbo.org>
+# Distributed under the terms of the GNU General Public License v2
+
+SUMMARY="Virtual for Java Development Kits"
+
+SLOT="1.8"
+PLATFORMS="~amd64 ~x86"
+MYOPTIONS="
+    ( providers:
+        graalvm-ce
+        icedtea
+        openjdk
+        openjdk-bin
+        oraclejdk
+    ) [[
+        *description = [ jdk provider ]
+        number-selected = at-least-one
+    ]]
+"
+
+DEPENDENCIES="
+    run:
+        providers:icedtea? ( dev-lang/icedtea8:${SLOT} )
+        providers:openjdk? ( dev-lang/openjdk8:${SLOT} )
+        providers:openjdk-bin? ( dev-lang/openjdk-bin:${SLOT} )
+        providers:oraclejdk? ( dev-lang/oracle-jdk-bin:${SLOT} )
+        providers:graalvm-ce? ( dev-lang/graalvm-ce:${SLOT} )
+"
+

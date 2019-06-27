@@ -1,0 +1,71 @@
+Author: Thomas Witt
+Upstream: maybe later
+Reason: bind tests only to localhost for sydboxing
+
+
+diff -ru a/IO-Socket-INET6-2.71/t/blocking.t b/IO-Socket-INET6-2.71/t/blocking.t
+--- a/IO-Socket-INET6-2.71/t/blocking.t	2013-06-23 16:09:47.000000000 +0200
++++ b/IO-Socket-INET6-2.71/t/blocking.t	2013-12-28 10:51:04.560526754 +0100
+@@ -33,9 +33,10 @@
+ 
+ my $listen = IO::Socket::INET6->new(Listen => 2,
+ 				Proto => 'tcp',
++				LocalAddr => '[::1]',
+ 				Timeout => 15,
+ 				Blocking => 0,
+-			       ) or die "$@";
++			) or die "$@";
+ 
+ # TEST
+ is($listen->blocking(), 0, 'Non-blocking works on listeners');
+diff -ru a/IO-Socket-INET6-2.71/t/host6.t b/IO-Socket-INET6-2.71/t/host6.t
+--- a/IO-Socket-INET6-2.71/t/host6.t	2013-06-23 16:09:47.000000000 +0200
++++ b/IO-Socket-INET6-2.71/t/host6.t	2013-12-28 10:49:08.617597203 +0100
+@@ -34,6 +34,7 @@
+ 
+ my $listen = IO::Socket::INET6->new(Listen => 2,
+ 				Proto => 'tcp',
++				LocalAddr => '[::1]',
+ 				# some systems seem to need as much as 10,
+ 				# so be generous with the timeout
+ 				Timeout => 15,
+diff -ru a/IO-Socket-INET6-2.71/t/io_sock6.t b/IO-Socket-INET6-2.71/t/io_sock6.t
+--- a/IO-Socket-INET6-2.71/t/io_sock6.t	2013-06-23 16:09:47.000000000 +0200
++++ b/IO-Socket-INET6-2.71/t/io_sock6.t	2013-12-28 11:07:56.297066391 +0100
+@@ -46,6 +46,7 @@
+ 
+ my $listen = IO::Socket::INET6->new(Listen => 2,
+ 				Proto => 'tcp',
++				LocalAddr => '[::1]',
+ 				# some systems seem to need as much as 10,
+ 				# so be generous with the timeout
+ 				Timeout => 15,
+@@ -107,7 +108,7 @@
+ 
+ # Test various other ways to create INET sockets that should
+ # also work.
+-$listen = IO::Socket::INET6->new(Listen => '', Timeout => 15) or die "$@";
++$listen = IO::Socket::INET6->new(Listen => '', LocalAddr => '[::1]', Timeout => 15) or die "$@";
+ $port = $listen->sockport;
+ 
+ if($pid = fork()) {
+@@ -243,7 +244,7 @@
+ ### TEST 16
+ ### Start the server
+ #
+-$listen = IO::Socket::INET6->new( Listen => 2, Proto => 'tcp', Timeout => 15) ||
++$listen = IO::Socket::INET6->new( Listen => 2, Proto => 'tcp', LocalAddr => '[::1]', Timeout => 15) ||
+     print "not ";
+ print "ok 16\n";
+ die if( !defined( $listen));
+diff -ru a/IO-Socket-INET6-2.71/t/listen_port_only.t b/IO-Socket-INET6-2.71/t/listen_port_only.t
+--- a/IO-Socket-INET6-2.71/t/listen_port_only.t	2013-06-23 16:09:47.000000000 +0200
++++ b/IO-Socket-INET6-2.71/t/listen_port_only.t	2013-12-28 11:08:23.756250134 +0100
+@@ -14,6 +14,7 @@
+ {
+     $port = int(rand(50000)+2000);
+     $server = IO::Socket::INET6->new(
++		LocalAddr => '[::1]',
+         LocalPort => $port,
+         Listen => 10,
+     );

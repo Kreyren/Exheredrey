@@ -1,0 +1,96 @@
+# Copyright 2008 Mike Kelly <pioto@exherbo.org>
+# Distributed under the terms of the GNU General Public License v2
+# Based in part upon 'sudo-1.6.9_p12.ebuild' from Gentoo, which is:
+#     Copyright 1999-2008 Gentoo Foundation
+
+require pam
+
+MY_PNV="${PNV/_p/p}"
+
+SUMMARY="Allows users to run programs with the security privileges of another user"
+DESCRIPTION="
+Allows a system administrator to delegate authority to give certain users (or
+groups of users) the ability to run some (or all) commands as root or another
+user while providing an audit trail of the commands and their arguments.
+"
+HOMEPAGE="https://www.${PN}.ws"
+DOWNLOADS="${HOMEPAGE}/${PN}/dist/${MY_PNV}.tar.gz"
+
+REMOTE_IDS="freecode:${PN}"
+
+UPSTREAM_CHANGELOG="${HOMEPAGE}/${PN}/changes.html [[ lang = en ]]"
+UPSTREAM_RELEASE_NOTES="${HOMEPAGE}/${PN}/stable.html [[ lang = en ]]"
+
+LICENCES="ISC BSD-3"
+SLOT="0"
+PLATFORMS="~amd64 ~arm ~armv7 ~armv8 ~x86"
+MYOPTIONS="
+    pam
+    ( linguas: ca cs da de eo es eu fi fr fur gl hr hu it ja ko nb nl nn pl pt_BR ru sk sl sr sv
+               tr uk vi zh_CN zh_TW
+    )
+"
+
+# TODO: Hard-enable PAM
+DEPENDENCIES="
+    build:
+        sys-devel/gettext
+    build+run:
+        pam? ( sys-libs/pam )
+"
+
+WORK=${WORKBASE}/${MY_PNV}
+
+DEFAULT_SRC_CONFIGURE_PARAMS=(
+    --enable-nls
+    --enable-tmpfiles.d=/usr/$(exhost --target)/lib/tmpfiles.d
+    --disable-gcrypt
+    --disable-openssl
+    --disable-sasl
+    --disable-static
+    --with-all-insults
+    --with-env-editor
+    --with-insults
+    --with-plugindir=/usr/$(exhost --target)/lib/sudo
+    --with-rundir=/run/sudo
+    --with-secure-path=/usr/local/bin:/usr/local/sbin:/usr/$(exhost --target)/bin
+    --with-tzdir=/usr/share/zoneinfo
+    --with-vardir=/var/db/sudo
+    --without-AFS
+    --without-DCE
+    --without-kerb5
+    --without-ldap
+    --without-linux-audit
+    --without-selinux
+    --without-sssd
+    MVPROG=/usr/$(exhost --target)/bin/mv
+)
+DEFAULT_SRC_CONFIGURE_OPTION_WITHS=( pam )
+
+# OPTIONS is a var in the makefile
+DEFAULT_SRC_COMPILE_PARAMS=( OPTIONS= )
+
+DEFAULT_SRC_INSTALL_EXTRA_DOCS=( TROUBLESHOOTING UPGRADE )
+
+src_configure() {
+    econf   \
+        ${DEFAULT_SRC_CONFIGURE_PARAMS[@]} \
+        $(if [[ $(exhost --target) == i686-*-musl ]];then
+            echo --disable-hardening
+        else
+            echo --enable-hardening
+        fi)
+}
+
+src_install() {
+    default
+
+    keepdir /etc/sudoers.d /var/db/sudo{,/lectured}
+
+    if option pam ; then
+        pamd_mimic_system sudo auth auth account password session
+    fi
+
+    edo rmdir "${IMAGE}"/run/{sudo,}
+}
+

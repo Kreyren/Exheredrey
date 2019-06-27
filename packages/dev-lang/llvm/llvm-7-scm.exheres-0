@@ -1,0 +1,23 @@
+# Copyright 2012 Elias Pipping <pipping@exherbo.org>
+# Distributed under the terms of the GNU General Public License v2
+
+SCM_BRANCH="release_70"
+require llvm
+
+PLATFORMS="~amd64"
+
+DEFAULT_SRC_PREPARE_PATCHES+=(
+    "${FILES}"/${PN}-fix-buildtype-test.patch
+)
+
+src_prepare() {
+    llvm_src_prepare
+
+    edo pushd "${CMAKE_SOURCE}"
+    # Doesn't pass, upstream knows about it
+    # https://reviews.llvm.org/D43113
+    edo rm test/BugPoint/unsymbolized.ll
+
+    edo popd
+}
+

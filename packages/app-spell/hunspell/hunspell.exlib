@@ -1,0 +1,81 @@
+# Copyright 2008 Bo Ørsted Andresen <zlin@exherbo.org>
+# Distributed under the terms of the GNU General Public License v2
+
+require github [ tag=v${PV} ] alternatives
+
+export_exlib_phases src_install
+
+SUMMARY="Spell checker, stemmer and morphological analyzer"
+DESCRIPTION="
+Hunspell is a spell checker and morphological analyzer library and program
+designed for languages with rich morphology and complex word compounding or
+character encoding. Hunspell interfaces: Ispell-like terminal interface
+using Curses library, Ispell pipe interface, OpenOffice.org UNO module.
+"
+
+LICENCES="|| ( MPL-1.1 GPL-3 LGPL-3 )"
+SLOT="$(ever range 1-2)"
+MYOPTIONS=""
+
+DEPENDENCIES="
+    build:
+        sys-devel/gettext[>=0.17]
+    build+run:
+        sys-libs/ncurses
+        sys-libs/readline:=
+    run:
+        (
+            !app-spell/hunspell:0[<1.5.4-r1]
+            !app-spell/hunspell:0[>=1.6.0&<1.6.0-r1]
+        ) [[
+            *description = [ Alternatives conflict ]
+            *resolution = upgrade-blocked-before
+        ]]
+    suggestion:
+        app-dicts/myspell-de [[
+            description = [ German, Austrian-German and Swiss-German language dictionary ]
+        ]]
+        virtual/unzip [[
+            description = [ OpenDocument (ODF and Flat ODF) support ]
+        ]]
+"
+
+DEFAULT_SRC_CONFIGURE_PARAMS=(
+    --enable-nls
+    --disable-static
+    --with-readline
+    --with-ui
+    gt_cv_func_gnugettext{1,2}_libc=yes
+)
+
+hunspell_src_install() {
+    default
+
+    local host=$(exhost --target)
+
+    # these binaries are rarely used and have very generic names. move them to a separate dir.
+    dodir /usr/${host}/libexec/${PN}
+    edo mv "${IMAGE}"/usr/${host}/bin/{analyze,chmorph,hzip,hunzip} \
+        "${IMAGE}"/usr/${host}/libexec/${PN}/
+
+    alternatives_for _${PN} ${SLOT} ${SLOT} \
+        /usr/share/man/hu/man1/${PN}.1      ${PN}-${SLOT}.1           \
+        /usr/share/man/man1/${PN}.1         ${PN}-${SLOT}.1           \
+        /usr/share/man/man1/hunzip.1        hunzip-${SLOT}.1          \
+        /usr/share/man/man1/hzip.1          hzip-${SLOT}.1            \
+        /usr/share/man/man3/${PN}.3         ${PN}-${SLOT}.3           \
+        /usr/share/man/man5/${PN}.5         ${PN}-${SLOT}.5           \
+        /usr/${host}/bin/affixcompress      affixcompress-${SLOT}     \
+        /usr/${host}/bin/${PN}              ${PN}-${SLOT}             \
+        /usr/${host}/bin/ispellaff2myspell  ispellaff2myspell-${SLOT} \
+        /usr/${host}/bin/makealias          makealias-${SLOT}         \
+        /usr/${host}/bin/munch              munch-${SLOT}             \
+        /usr/${host}/bin/unmunch            unmunch-${SLOT}           \
+        /usr/${host}/bin/wordforms          wordforms-${SLOT}         \
+        /usr/${host}/bin/wordlist2${PN}     wordlist2${PN}-${SLOT}    \
+        /usr/${host}/libexec/${PN}          ${PN}-${SLOT}             \
+        /usr/${host}/lib/lib${PN}.so        lib${PN}-${SLOT}.so       \
+        /usr/${host}/lib/pkgconfig/${PN}.pc ${PN}-${SLOT}.pc          \
+        /usr/${host}/include/${PN}          ${PN}-${SLOT}
+}
+

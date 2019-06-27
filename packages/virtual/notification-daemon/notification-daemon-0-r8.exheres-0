@@ -1,0 +1,47 @@
+# Copyright 2009 Mike Kelly
+# Copyright 2014 Quentin "Sardem FF7" Glidic <sardemff7@exherbo.org>
+# Distributed under the terms of the GNU General Public License v2
+
+SUMMARY="Virtual: Freedesktop notifications providers"
+HOMEPAGE=""
+
+SLOT="0"
+PLATFORMS="~amd64 ~x86"
+MYOPTIONS="
+    ( providers:
+        awesome
+        dunst
+        eventd
+        gnome-shell
+        mako
+        notification-daemon
+        notification-daemon-xfce
+        notify-osd
+        plasma
+        xfce4-notifyd
+    ) [[
+        *description = [ Freedesktop notifications provider ]
+        number-selected = at-least-one
+    ]]
+"
+
+DEPENDENCIES="
+    build+run:
+        providers:awesome? ( x11-wm/awesome[>=3.1] [[ description = [ with the naughty library ] ]] )
+        providers:dunst? ( x11-apps/dunst )
+        providers:eventd? ( net/eventd[>=0.3] [[ description = [ D-Bus interface only ] ]] )
+        providers:gnome-shell? ( gnome-desktop/gnome-shell )
+        providers:mako? ( wayland-apps/mako )
+        providers:notification-daemon? ( x11-apps/notification-daemon )
+        providers:notification-daemon-xfce? ( xfce-extra/notification-daemon-xfce )
+        providers:notify-osd? ( x11-apps/notify-osd )
+        providers:plasma? ( kde/plasma-workspace [[ description = [ Use Plasma 5 as notification daemon ] ]] )
+        providers:xfce4-notifyd? ( xfce-extra/xfce4-notifyd )
+    recommendation:
+        providers:eventd? (
+            net/eventd[plugins:notification-daemon][X] [[
+                description = [ Needed options to provide the UI features ]
+            ]]
+        )
+"
+

@@ -1,0 +1,32 @@
+# Copyright 2017-2018 Timo Gurr <tgurr@exherbo.org>
+# Distributed under the terms of the GNU General Public License v2
+
+require github [ user=sgallagher release=${PNV} suffix=tar.xz ] meson
+
+SUMMARY="Simple SSL certificate generator"
+DESCRIPTION="
+A utility to aid in the creation of more secure \"self-signed\" certificates. The certificates
+created by this tool are generated in a way so as to create a CA certificate that can be safely
+imported into a client machine to trust the service certificate without needing to set up a full
+PKI environment and without exposing the machine to a risk of false signatures from the service
+certificate.
+"
+
+LICENCES="GPL-3"
+SLOT="0"
+PLATFORMS="~amd64"
+MYOPTIONS="
+    ( providers: libressl openssl ) [[ number-selected = exactly-one ]]
+"
+
+DEPENDENCIES="
+    build:
+        virtual/pkg-config
+    build+run:
+        dev-libs/ding-libs[>=0.2.0]
+        dev-libs/popt[>=1.14]
+        dev-libs/talloc
+        providers:libressl? ( dev-libs/libressl:= )
+        providers:openssl? ( dev-libs/openssl )
+"
+

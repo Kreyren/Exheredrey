@@ -1,0 +1,49 @@
+# Copyright 2009 Wulf C. Krueger <philantrop@exherbo.org>
+# Distributed under the terms of the GNU General Public License v2
+# Based in part upon 'acl-2.2.47.ebuild' from Gentoo, which is:
+#     Copyright 1999-2008 Gentoo Foundation
+
+require flag-o-matic
+require autotools [ supported_autoconf=[ 2.5 ] supported_automake=[ 1.16 ] ]
+
+SUMMARY="Access control list utilities, libraries and headers"
+HOMEPAGE="http://savannah.nongnu.org/projects/${PN}/"
+DOWNLOADS="http://download.savannah.gnu.org/releases/${PN}/${PNV}.tar.gz"
+
+LICENCES="LGPL-2.1"
+SLOT="0"
+PLATFORMS="~amd64 ~arm ~armv7 ~armv8 ~x86"
+MYOPTIONS=""
+
+DEPENDENCIES="
+    build:
+        sys-devel/gettext[>=0.18.2]
+    build+run:
+        sys-apps/attr[>=2.4]
+"
+
+DEFAULT_SRC_CONFIGURE_PARAMS=(
+    --enable-shared
+    --disable-static
+)
+
+src_prepare() {
+    # Two tests fail with coreutils[-acl] but depending on it would create a
+    # dependency cycle
+    if ! has_version sys-apps/coreutils[acl] ; then
+        edo sed \
+            -e "/test\/cp.test/d" \
+            -e "/test\/misc.test/d" \
+            -i test/Makemodule.am
+
+        autotools_src_prepare
+    fi
+}
+
+src_install() {
+    default
+
+    # We don't install static libraries
+    edo rm "${IMAGE}"/usr/$(exhost --target)/lib/libacl.la
+}
+

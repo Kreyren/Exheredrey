@@ -1,0 +1,26 @@
+# Copyright 2018 Heiko Becker <heirecka@exherbo.org>
+# Distributed under the terms of the GNU General Public License v2
+
+require sourceforge [ suffix=tar.gz ]
+
+SUMMARY="Two small scripts to convert xml to man pages in groff format or html"
+
+LICENCES="GPL-2"
+SLOT="0"
+PLATFORMS="~amd64"
+MYOPTIONS=""
+
+DEPENDENCIES="
+    run:
+        dev-lang/perl:*
+        dev-perl/XML-Parser
+"
+
+src_prepare() {
+    default
+
+    edo sed -e "s:\$(PREFIX)/share/:/usr/share/:" -i Makefile
+}
+
+DEFAULT_SRC_INSTALL_PARAMS=( PREFIX="/usr/$(exhost --target)" )
+

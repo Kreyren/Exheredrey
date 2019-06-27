@@ -1,0 +1,11 @@
+# Copyright 2009-2016 Wulf C. Krueger <philantrop@exherbo.org>
+# Distributed under the terms of the GNU General Public License v2
+
+require podofo
+
+PLATFORMS="~amd64 ~armv8 ~x86"
+
+DEFAULT_SRC_PREPARE_PATCHES+=(
+    -p0 "${FILES}"/${PN}-cmake-3.12.patch
+)
+

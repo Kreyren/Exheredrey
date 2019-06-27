@@ -1,0 +1,31 @@
+# Copyright 2017 Marc-Antoine Perennou
+# Based on elixir-*.exheres-0 which is Copyright 2016 Julian Ospald <hasufell@posteo.de>
+# Distributed under the terms of the GNU General Public License v2
+
+set_utf8_locale() {
+    if [[ $(exhost --target) == *-musl* ]]; then
+        # musl does UTF-8 out of the box
+        edo export LC_ALL="en_US.UTF-8"
+        return 0
+    fi
+
+    if [[ $(locale charmap) != UTF-8 ]]; then
+        local lang locales=(en_US.UTF-8 $(locale -a))
+
+        for lang in "${locales[@]}"; do
+            if [[ $(LC_ALL=${lang} locale charmap 2>/dev/null) == UTF-8 ]]; then
+                edo export LC_ALL=${lang}
+                return 0
+            fi
+        done
+
+        return 1
+    fi
+
+    return 0
+}
+
+require_utf8_locale() {
+    set_utf8_locale || die "Could not find UTF-8 locale!"
+}
+

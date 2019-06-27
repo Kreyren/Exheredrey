@@ -1,0 +1,32 @@
+# Copyright 2012 Marc-Antoine Perennou <Marc-Antoine@Perennou.com>
+# Distributed under the terms of the GNU General Public License v2
+
+require github [ user=google ] cmake [ api=2 ]
+
+SUMMARY="A fast compressor/decompressor"
+
+LICENCES="BSD-3"
+SLOT="0"
+PLATFORMS="~amd64 ~armv7 ~armv8 ~x86"
+MYOPTIONS=""
+
+# tests fail to build, last checked: 1.1.7
+RESTRICT="test"
+
+DEPENDENCIES="
+    build+test:
+        dev-cpp/gtest
+"
+
+src_configure() {
+    local cmakeargs=(
+        -DBUILD_SHARED_LIBS:BOOL=TRUE
+        -DCMAKE_DISABLE_FIND_PACKAGE_Gflags:BOOL=TRUE
+        -DHAVE_LIBLZO2:BOOL=FALSE # only used for benchmarks
+        -DHAVE_LIBZ:BOOL=FALSE # only used for benchmarks
+        -DSNAPPY_BUILD_TESTS:BOOL=$(expecting_tests TRUE FALSE)
+    )
+
+    ecmake "${cmakeargs[@]}"
+}
+

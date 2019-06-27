@@ -1,0 +1,39 @@
+# Copyright 2008 Ingmar Vanhassel <ingmar@exherbo.org>
+# Distributed under the terms of the GNU General Public License v2
+
+require github [ user=yaml ]
+require autotools [ supported_autoconf=[ 2.5 ] supported_automake=[ 1.16 ] ]
+
+SUMMARY="YAML 1.1 parser and emitter written in C"
+HOMEPAGE="https://pyyaml.org/wiki/LibYAML"
+
+LICENCES="MIT"
+SLOT="0"
+PLATFORMS="~amd64 ~arm ~armv7 ~armv8 ~x86"
+MYOPTIONS="examples"
+
+DEPENDENCIES=""
+
+DEFAULT_SRC_CONFIGURE_PARAMS=( --disable-static )
+
+src_compile() {
+    default
+
+    # Doxygen config file appears to be a bit out of date and running doxygen
+    # wants to create files in /doc/...
+    # option doc && edo doxygen doc/doxygen.cfg
+}
+
+src_install() {
+    default
+
+    #if option doc; then
+    #    insinto /usr/share/doc/${PNVR}
+    #    doins -r doc/html
+    #fi
+    if option examples; then
+        insinto /usr/share/doc/${PNVR}/examples
+        doins tests/example-*.c
+    fi
+}
+

@@ -1,0 +1,42 @@
+# Copyright 2008, 2009 Ingmar Vanhassel <ingmar@exherbo.org>
+# Distributed under the terms of the GNU General Public License v2
+# Based in part upon 'bc-1.06.95.ebuild' from Gentoo, which is:
+#     Copyright 1999-2008 Gentoo Foundation.
+
+require gnu [ suffix=tar.bz2 ]
+
+SUMMARY="Handy console-based calculator utility"
+DOWNLOADS="ftp://alpha.gnu.org/gnu/${PN}/${PNV}.tar.bz2
+    mirror://gnu/${PN}/${PNV}.tar.bz2"
+
+LICENCES="|| ( GPL-2 LGPL-2.1 )"
+SLOT="0"
+PLATFORMS="~amd64 ~arm ~armv7 ~armv8 ~x86"
+MYOPTIONS="parts: binaries documentation"
+
+DEPENDENCIES="
+    build:
+        sys-devel/flex
+    build+run:
+        sys-libs/ncurses
+        sys-libs/readline:=
+"
+
+DEFAULT_SRC_PREPARE_PATCHES+=(
+    "${FILES}"/${PN}-1.06.95-void_uninitialized.patch
+)
+DEFAULT_SRC_CONFIGURE_PARAMS=(
+    --hates=docdir
+    --hates=datarootdir
+    --with-readline
+    --without-libedit
+)
+DEFAULT_SRC_COMPILE_PARAMS=( AR="${AR}" )
+
+src_install() {
+    default
+
+    expart binaries /usr/$(exhost --target)/bin
+    expart documentation /usr/share/{doc,info,man}
+}
+

@@ -1,0 +1,19 @@
+# Copyright 2010 Elias Pipping <pipping@exherbo.org>
+# Distributed under the terms of the GNU General Public License v2
+
+require gnu [ suffix=tar.xz ]
+
+SUMMARY="Library for manipulating Unicode and C strings according to the Unicode standard"
+
+LICENCES="|| ( GPL-2 LGPL-3 )"
+SLOT="0"
+PLATFORMS="~amd64 ~armv7 ~armv8 ~x86"
+MYOPTIONS=""
+
+DEPENDENCIES=""
+
+DEFAULT_SRC_PREPARE_PATCHES=(
+    "${FILES}"/cca32830b57e91f837c01d15b8732f23ff97fc36.patch
+)
+DEFAULT_SRC_CONFIGURE_PARAMS=( --disable-static )
+

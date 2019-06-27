@@ -1,0 +1,169 @@
+# Copyright 2008-2018 Wulf C. Krueger <philantrop@exherbo.org>
+# Distributed under the terms of the GNU General Public License v2
+
+require sourceforge [ project=nfs suffix=tar.xz ] \
+    openrc-service [ openrc_confd_files=[ "${FILES}"/openrc/confd ] ] \
+    systemd-service \
+    autotools [ supported_autoconf=[ 2.5 ] supported_automake=[ 1.16 ] ]
+
+export_exlib_phases src_prepare src_install pkg_postinst
+
+SUMMARY="NFS client and server daemons"
+DESCRIPTION="
+nfs-utils provides the required support programs for using the Linux kernel's NFS
+support, either as a client or as a server (or as both).
+"
+HOMEPAGE+=" https://git.linux-nfs.org/?p=steved/${PN}.git"
+
+BUGS_TO="philantrop@exherbo.org"
+
+LICENCES="
+    BSD-3 [[ note = [ bundled libnfsidmap ] ]]
+    GPL-2
+"
+SLOT="0"
+MYOPTIONS="
+    caps
+    kerberos
+    nfsv4 [[ description = [ Enable support for NFSv4, including 4.1 ] ]]
+    tcpd
+
+    kerberos? ( ( providers: heimdal krb5 ) [[ number-selected = exactly-one ]] )
+"
+
+# tests fail to build/link, last checked: 2.3.4
+RESTRICT="test"
+
+DEPENDENCIES="
+    build:
+        virtual/pkg-config
+    build+run:
+        !net-libs/libnfsidmap [[
+            description = [ nfs-utils now bundles libnfsidmap ]
+            resolution = uninstall-blocked-after
+        ]]
+        user/rpcuser
+        group/rpcuser
+        dev-libs/libxml2:2.0[>=2.4] [[ note = [ for junction ] ]]
+        net-libs/libtirpc[kerberos?]
+        sys-apps/keyutils
+        sys-apps/util-linux[>=2.20]
+        sys-fs/e2fsprogs[>=1.40.9]
+        caps? ( sys-libs/libcap )
+        kerberos? (
+            providers:heimdal? ( app-crypt/heimdal )
+            providers:krb5? ( app-crypt/krb5 )
+        )
+        nfsv4? (
+            dev-db/sqlite:3[>=3.3]
+            dev-libs/libevent:=[>=1.0b]
+            sys-fs/lvm2
+        )
+        tcpd? ( sys-apps/tcp-wrappers[>=7.6] )
+    run:
+        net-nds/rpcbind[>=0.2.0-r4]
+"
+
+DEFAULT_SRC_CONFIGURE_PARAMS=(
+    --mandir=/usr/share/man
+    --enable-ipv6
+    --enable-junction
+    --enable-largefile
+    --enable-libmount-mount
+    --enable-mount
+    --enable-mountconfig
+    --enable-tirpc
+    --disable-gums
+    --disable-ldap
+    --disable-static
+    --with-rpcgen=/usr/$(exhost --build)/bin/rpcgen
+    --with-statduser=rpcuser
+    --with-statedir=/var/lib/nfs
+    --with-statdpath=/var/lib/nfs/statd
+    --with-systemd=${SYSTEMDSYSTEMUNITDIR}
+    --without-gssglue
+)
+
+DEFAULT_SRC_CONFIGURE_OPTION_WITHS=(
+    "kerberos krb5 /usr/$(exhost --target)"
+    "tcpd tcp-wrappers"
+)
+
+DEFAULT_SRC_CONFIGURE_OPTION_ENABLES=(
+    caps
+    "kerberos gss"
+    "kerberos svcgss"
+    nfsv4
+    "nfsv4 nfsv41"
+    "nfsv4 nfsdcld"
+    "nfsv4 nfsdcltrack"
+)
+
+# Override hardcoded /sbin location for kernel-executed tools
+DEFAULT_SRC_INSTALL_PARAMS=( sbindir=/usr/$(exhost --target)/bin )
+
+DEFAULT_SRC_INSTALL_EXTRA_DOCS=( KNOWNBUGS NEW )
+DEFAULT_SRC_INSTALL_EXTRA_SUBDIRS=( linux-nfs )
+
+nfs-utils_src_prepare() {
+    edo sed \
+        -e 's:/var/run:/run:g' \
+        -i utils/statd/{sm-notify.c,start-statd,statd.c,statd.man} \
+        -i utils/blkmapd/device-discovery.c \
+        -i tests/test-lib.sh
+
+    edo sed \
+        -e 's:/usr/sbin:/usr/bin:g' \
+        -i systemd/nfs-{blkmap,idmapd,mountd,server}.service \
+        -i systemd/rpc-{statd-notify,statd,svcgssd}.service \
+        -i systemd/rpc-gssd.service.in
+
+    edo sed \
+        -e '/-Werror/d' \
+        -i configure.ac
+
+    autotools_src_prepare
+}
+
+
+nfs-utils_src_install() {
+    default
+
+    keepdir /etc/exports.d
+    keepdir /var/lib/nfs{,/statd{,/{sm,sm.bak}}}
+
+    # Make sure statd uses the correct uid/gid and permissions
+    edo touch "${IMAGE}"/var/lib/nfs/statd/state
+    edo chown -R rpcuser:rpcuser "${IMAGE}"/var/lib/nfs/statd
+    edo chmod 0700 "${IMAGE}"/var/lib/nfs/statd{,/{sm,sm.bak}}
+    edo chmod 0644 "${IMAGE}"/var/lib/nfs/statd/state
+
+    # Don't overwrite existing xtab/etab, install the original
+    # versions somewhere safe. cf. pkg_postinst.
+    dodir /usr/$(exhost --target)/lib/nfs/statd
+    edo mv "${IMAGE}"/var/lib/nfs/* "${IMAGE}"/usr/$(exhost --target)/lib/nfs
+    edo mv "${IMAGE}"/usr/lib/systemd/* "${IMAGE}"/usr/$(exhost --target)/lib/systemd/
+    edo rmdir "${IMAGE}"/usr/lib/{systemd,}
+
+    insinto /etc
+    doins nfs.conf
+    doins utils/mount/nfsmount.conf
+
+    insinto /etc/request-key.d
+    doins "${FILES}"/id_resolver.conf
+
+    install_openrc_files
+}
+
+nfs-utils_pkg_postinst() {
+    # Install default xtab and friends if there's none existing.
+    # In src_install we put them in /usr/$(exhost --target)/lib/nfs for safe-keeping, but
+    # the daemons actually use the files in /var/lib/nfs. cf. Gentoo bug 30486.
+    local f
+    for f in "${ROOT}"/usr/$(exhost --target)/lib/nfs/*; do
+        [[ -e ${ROOT}/var/lib/nfs/${f##*/} ]] && continue
+        nonfatal edo cp -a "${f}" "${ROOT}"/var/lib/nfs/ || ewarn "cp failed"
+    done
+    [[ -e ${ROOT}/etc/exports ]] || edo touch "${ROOT}"/etc/exports
+}
+

@@ -1,0 +1,61 @@
+# Copyright 2008 Ali Polatel
+# Distributed under the terms of the GNU General Public License v2
+# Based in part upon 'docbook-xsl-stylesheets-1.73.2.ebuild' from Gentoo, which is:
+#   Copyright 1999-2008 Gentoo Foundation
+
+MY_PNV="${PNV/-ns-stylesheets}"
+
+require github [ user=docbook project=xslt10-stylesheets release=release%2F${PV} pnv=${MY_PNV} suffix=tar.bz2 ]
+
+SUMMARY="XSL Stylesheets for Docbook"
+HOMEPAGE+=" https://github.com/docbook/wiki/wiki/DocBookXslStylesheets"
+
+LICENCES="BSD-3"
+SLOT="0"
+PLATFORMS="~amd64 ~arm ~armv7 ~armv8 ~x86"
+MYOPTIONS=""
+
+RESTRICT="test"
+
+DEPENDENCIES="
+    build:
+        app-text/build-docbook-catalog[>=1.5]
+"
+
+WORK=${WORKBASE}/${MY_PNV}
+
+DEFAULT_SRC_PREPARE_PATCHES=( "${FILES}"/1c41ae5ae3d4816687467712580d5f05957b3b88.patch )
+
+src_compile() { : ; }
+
+src_install() {
+    insinto /usr/share/sgml/docbook/xsl-ns-stylesheets
+
+    local i
+    for sheet in */ ; do
+        i=$(basename ${sheet})
+        edo pushd "${WORK}"/${i} >/dev/null
+        for doc in ChangeLog README; do
+            if [[ -e ${doc} ]]; then
+                edo mv ${doc} ${doc}.${i}
+                dodoc ${doc}.${i}
+                edo rm ${doc}.${i}
+            fi
+        done
+
+        doins -r "${WORK}"/${i}
+        edo popd > /dev/null
+    done
+
+    doins VERSION{,.xsl}
+    emagicdocs
+}
+
+pkg_postinst() {
+    build-docbook-catalog
+}
+
+pkg_postrm() {
+    build-docbook-catalog
+}
+

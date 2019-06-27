@@ -1,0 +1,9 @@
+# Copyright 2008 Alexander Færøy <ahf@exherbo.org>
+# Distributed under the terms of the GNU General Public License v2
+
+require libpng
+
+PLATFORMS="~amd64 ~arm ~x86"
+
+SLOT="1.5"
+

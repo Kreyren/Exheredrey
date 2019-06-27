@@ -1,0 +1,45 @@
+From 488db3f013e3d50c104760df8fa0771a2f679d9c Mon Sep 17 00:00:00 2001
+From: Marvin Schmidt <marv@exherbo.org>
+Date: Sun, 25 Sep 2016 20:00:02 +0200
+Subject: [PATCH 1/2] tests: Use correctly prefixed nm binary
+
+---
+ configure.ac                | 4 ++++
+ tests/check-namespace.sh.in | 4 ++--
+ 2 files changed, 6 insertions(+), 2 deletions(-)
+
+diff --git a/configure.ac b/configure.ac
+index cffe19b..61f6cfc 100644
+--- a/configure.ac
++++ b/configure.ac
+@@ -21,6 +21,10 @@ LT_INIT
+ AM_PROG_AS
+ AM_PROG_CC_C_O
+ 
++dnl for namespace test
++AC_PROG_GREP
++AC_PROG_NM
++
+ dnl Checks for libraries.
+ AC_CHECK_LIB(uca, __uc_get_grs)
+ OLD_LIBS=${LIBS}
+diff --git a/tests/check-namespace.sh.in b/tests/check-namespace.sh.in
+index d2e6efb..56a63f1 100644
+--- a/tests/check-namespace.sh.in
++++ b/tests/check-namespace.sh.in
+@@ -28,10 +28,10 @@ fetch_symtab () {
+     # Unfortunately, "nm --defined" is a GNU-extension.  For portability,
+     # build the list of defined symbols by hand.
+     #
+-    symtab=`nm -g $filename`
++    symtab=`$NM -g $filename`
+     saved_IFS="$IFS"
+     IFS=""
+-    undef=`nm -g -u $filename`
++    undef=`$NM -g -u $filename`
+     for line in $undef; do
+ 	symtab=`echo "$symtab" | grep -v "^${line}"\$`
+     done;
+-- 
+2.10.0
+

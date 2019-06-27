@@ -1,0 +1,42 @@
+# Copyright 2008 Alexander Færøy <ahf@exherbo.org>
+# Distributed under the terms of the GNU General Public License v2
+
+SUMMARY="An interactive process viewer for Linux"
+HOMEPAGE="https://hisham.hm/${PN}"
+DOWNLOADS="${HOMEPAGE}/releases/${PV}/${PNV}.tar.gz"
+
+REMOTE_IDS="freecode:${PN}"
+
+UPSTREAM_CHANGELOG="https://github.com/hishamhm/${PN}/commits/master"
+
+LICENCES="GPL-2"
+SLOT="0"
+PLATFORMS="~amd64 ~arm ~armv7 ~armv8 ~x86"
+MYOPTIONS="
+    delay-accounting [[ description = [ Displays delay accounting info from the Linux kernel ] ]]
+"
+
+DEPENDENCIES="
+        virtual/pkg-config
+    build+run:
+        sys-libs/ncurses
+        delay-accounting? ( net-libs/libnl:3.0 )
+    suggestion:
+        dev-util/strace  [[ description = [ Trace system calls of the selected process ] ]]
+        sys-process/lsof [[ description = [ Display a list of open files of the selected process ] ]]
+"
+
+DEFAULT_SRC_CONFIGURE_PARAMS=(
+    --enable-cgroup
+    --enable-openvz
+    --enable-proc
+    --enable-shared
+    --enable-taskstats
+    --enable-unicode
+    --enable-vserver
+    --disable-ancient-vserver
+    --disable-hwloc
+    --disable-static
+)
+DEFAULT_SRC_CONFIGURE_OPTION_ENABLES=( 'delay-accounting delayacct' )
+

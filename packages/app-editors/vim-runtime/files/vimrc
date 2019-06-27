@@ -1,0 +1,95 @@
+scriptencoding utf-8            " must be first to ensure file is read properly
+
+" system-wide vim configuration for exherbo
+"
+" Based in part upon 'vimrc' from Gentoo, which is:
+"   Written by Aron Griffis <agriffis@gentoo.org>
+"   Modified by Ryan Phillips <rphillips@gentoo.org>
+"   Modified some more by Ciaran McCreesh <ciaranm@gentoo.org>
+"   Added Redhat's vimrc info by Seemant Kulleen <seemant@gentoo.org>
+"
+" You can override any of these settings on a global basis via the
+" "/etc/vim/vimrc.local" file, and on a per-user basis via the "~/.vimrc" file.
+" You may need to create those files.
+
+" {{{ General Settings
+set nocompatible                " use vim defaults (much better!)
+set backspace=indent,eol,start  " allow backspacing over everything in insert mode
+
+set history=50                  " keep 50 lines of command history
+set ruler                       " show the cursor position all the time
+
+" suffixes are given a lower priority when performing tab completion for files.
+" The following extensions are less likely to be files that are desired to be
+" read
+set suffixes=~,.aux,.bak,.dvi,.lo,.o,.out,.swp
+" }}}
+
+" {{{ Locale Settings
+" Honour the BOM, check for UTF-8, and fallback to the latin character set if we
+" have a unicode enabled language.
+if v:lang =~ "utf8$" || v:lang =~ "UTF-8$"
+    set fileencodings=ucs-bom,utf-8,latin1
+endif
+" }}}
+
+" {{{ Modeline Settings
+" disable modelines by default as it has historically been a source of
+" security vulnerabilities in vim.  securemodelines provides a secure
+" alternative, and is a package suggestion on exherbo.
+"
+" You can re-enable this functionality by adding "set modeline" to the
+" appropriate vimrc.
+set nomodeline
+" }}}
+
+" {{{ Terminal Settings
+" xterm on exherbo is configured with 256 colours so set up the terminal
+" appropriately.
+if &term == "xterm"
+    set t_Co=256
+    set t_Sf=^[3%dm
+    set t_Sb=^[4%dm
+
+    set ttymouse=xterm2
+endif " &term == "xterm"
+" }}}
+
+" {{{ autocommands
+if has("autocmd")
+    autocmd!
+
+    augroup exherbo
+        " configure tab behaviour for package definition files
+        autocmd BufRead,BufNewFile *.exheres-0,*.exlib
+            \ set expandtab shiftwidth=4 tabstop=4
+    augroup END
+
+    " prevent writing of swap files on directories most commonly used for
+    " mountpoints
+    autocmd BufNewFile,BufReadPre /media/*,/mnt/* set directory=/tmp,/var/tmp
+endif " has("autocmd")
+" }}}
+
+" {{{ Shell Settings
+" ensure that a shell is always defined (gentoo bug #101665)
+if &shell == ""
+    if executable("/bin/bash")
+        set shell=/bin/bash
+    elseif executable("/bin/sh")
+        set shell=/bin/sh
+    endif
+endif " &shell == ""
+
+" the default shell on exherbo is bash
+let is_bash=1
+" }}}
+
+" {{{ vimrc.local
+if filereadable("/etc/vim/vimrc.local")
+    source /etc/vim/vimrc.local
+endif " filereadable("/etc/vim/vimrc.local")
+" }}}
+
+" vim: set et fdm=marker fenc=utf-8 sw=4 sts=4 ts=8 tw=80 :
+

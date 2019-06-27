@@ -1,0 +1,79 @@
+# Copyright 2011 Elias Pipping <pipping@exherbo.org>
+# Distributed under the terms of the GNU General Public License v2
+
+require github [ user=ninja-build tag=v${PV} ]
+require elisp [ with_opt=true source_directory=misc ]
+require bash-completion zsh-completion
+
+export_exlib_phases pkg_pretend src_compile src_test src_install
+
+SUMMARY="Small build system with a focus on speed"
+
+LICENCES="Apache-2.0"
+SLOT="0"
+MYOPTIONS="bash-completion vim-syntax zsh-completion"
+
+# FIXME: need ninja installed for the native host when cross-compiling
+DEPENDENCIES="
+    build:
+        app-doc/asciidoc
+        app-text/docbook-xsl-stylesheets
+        dev-lang/python:*
+        dev-libs/libxslt
+    test:
+        dev-cpp/gtest
+        dev-lang/python:*
+"
+# NOTE: There's an automagic build dep on dev-util/re2 to regenerate two files
+#       which are shipped with the tarball anyway.
+
+DEFAULT_SRC_PREPARE_PATCHES=(
+    "${FILES}"/567815df38a2ff54ad7478a90bd75c91e434236a.patch
+)
+
+ninja_pkg_pretend() {
+    if ! exhost --is-native -q && [[ ! -x /usr/$(exhost --build)/bin/ninja ]] ; then
+        ewarn "You need to install ${PN} for $(exhost --build) if "
+        ewarn "you want to build ${PN} for $(exhost --target)"
+        die "Native ${PN} is required to cross-compile ${PN}"
+    fi
+}
+
+ninja_src_compile() {
+    if exhost --is-native -q; then
+        edo ./configure.py --bootstrap --verbose
+        edo ./ninja manual
+    else
+        edo ./configure.py --verbose
+        edo ninja
+        edo ninja manual
+    fi
+    elisp_src_compile
+}
+
+ninja_src_test() {
+    edo ./ninja ninja_test
+    edo ./ninja_test
+}
+
+ninja_src_install() {
+    dobin ninja
+    dodoc doc/manual.html
+    dodoc HACKING.md README
+
+    if option bash-completion; then
+        dobashcompletion misc/bash-completion ninja
+    fi
+
+    if option vim-syntax; then
+        insinto /usr/share/vim/vimfiles/syntax/
+        doins misc/ninja.vim
+    fi
+
+    if option zsh-completion; then
+        dozshcompletion misc/zsh-completion _ninja
+    fi
+
+    elisp_src_install
+}
+
