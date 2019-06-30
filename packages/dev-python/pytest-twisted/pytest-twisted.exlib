@@ -15,7 +15,6 @@ DESCRIPTION="pytest-twisted is a plugin for pytest, which allows to test code, w
 UPSTREAM_DOCUMENTATION="https://pypi.org/project/pytest-twisted/#description"
 UPSTREAM_CHANGELOG="https://pypi.org/project/pytest-twisted/#history"
 HOMEPAGE="https://pypi.org/project/pytest-twisted/"
-DOWNLOADS="https://github.com/pytest-dev/pytest-twisted/archive/${PV}.tar.gz"
 LICENCES="BSD-3"
 DEPENDENCIES="
   test:
