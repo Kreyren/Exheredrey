@@ -3,24 +3,19 @@
 
 require pypi [ suffix=zip ]
 require setup-py [ import=setuptools test=pytest ]
-## From https://github.com/pytest-dev/pytest-twisted/blob/81b91f174c19a7337386700275dcc30e2487ee3e/setup.py#L1 -> setuptools
-## Blacklist not needed assuming 2.7,3.4,3.5,3.7 supported
-### TODO: Make whitelist function, reason: sanitized
 
 BUGS_TO="exherbo.gitlab+kreyren-exheredrey-779-2e93xao4j6itjj8byb9pqb5vc-issue@gmail.com"
 
-# INFO
 SUMMARY="Python twisted framework test function."
-DESCRIPTION="pytest-twisted is a plugin for pytest, which allows to test code, which uses the twisted framework. test functions can return Deferred objects and pytest will wait for their completion with this plugin."
-UPSTREAM_DOCUMENTATION="https://pypi.org/project/pytest-twisted/#description"
-UPSTREAM_CHANGELOG="https://pypi.org/project/pytest-twisted/#history"
-HOMEPAGE="https://pypi.org/project/pytest-twisted/"
+DESCRIPTION="Plugin for pytest, which allows to test twisted framework code."
 LICENCES="BSD-3"
 DEPENDENCIES="
-  test:
-    dev-python/decorator[python_abis:*(-)?]
-    dev-python/greenlet[python_abis:*(-)?]
-    net-twisted/Twisted[python_abis:*(-)?]
+    build+run:
+        dev-python/decorator[python_abis:*(-)?]
+        dev-python/greenlet[python_abis:*(-)?]
+        dev-python/pytest[python_abis:*(-)?]
+    test:
+        net-twisted/Twisted[python_abis:*(-)?]
 "
 MYOPTIONS=""
 SLOT="0"
