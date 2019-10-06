@@ -1,3 +1,0 @@
-#!/bin/execlineb -P
-
-udevadm trigger --type=devices --action=add

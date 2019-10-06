@@ -1,9 +1,0 @@
-# Copyright Arnaud Lefebvre <a.lefebvre@outlook.fr>
-# Distributed under the terms of the GNU General Public License v2
-
-require node
-
-SUMMARY="Evented I/O for V8 Javascript (LTS version)"
-
-PLATFORMS="~amd64 ~x86"
-

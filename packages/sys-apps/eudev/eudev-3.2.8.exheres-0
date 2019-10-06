@@ -1,9 +1,0 @@
-# Copyright 2015 Kylie McClain <somasis@exherbo.org>
-# Distributed under the terms of the GNU General Public License v2
-
-OPENRC_SCRIPTS_VER=32
-
-require eudev
-
-PLATFORMS="~amd64 ~armv7 ~armv8"
-

@@ -1,9 +1,0 @@
-# Copyright 2013-2017 Wulf C. Krueger <philantrop@exherbo.org>
-# Distributed under the terms of the GNU General Public License v2
-
-require php
-
-PLATFORMS="~amd64"
-
-DEFAULT_SRC_PREPARE_PATCHES+=( -p0 "${FILES}"/libressl-2.7.patch )
-

@@ -1,7 +1,0 @@
-# Copyright 2009-2014 Wulf C. Krueger
-# Distributed under the terms of the GNU General Public License v2
-
-require libcap
-
-PLATFORMS="~amd64 ~arm ~armv7 ~armv8 ~x86"
-

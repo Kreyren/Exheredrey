@@ -1,8 +1,0 @@
-# Copyright 2009 Wulf C. Krueger <philantrop@exherbo.org>
-# Distributed under the terms of the GNU General Public License v2
-
-require libevent
-
-SLOT="2.1"
-PLATFORMS="~amd64 ~arm ~armv7 ~armv8 ~x86"
-

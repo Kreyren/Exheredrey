@@ -1,8 +1,0 @@
-# Copyright 2013 NAKAMURA Yoshitaka
-# Copyright 2015 Kylie McClain <somasis@exherbo.org>
-# Distributed under the terms of the GNU General Public License v2
-
-require go
-
-PLATFORMS="~amd64 ~armv7"
-

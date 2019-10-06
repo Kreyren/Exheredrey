@@ -1,7 +1,0 @@
-# Copyright 2018 Bjorn Pagen <bjornpagen@gmail.com>
-# Distributed under the terms of the GNU General Public License v2
-
-require 66-exherbo
-
-PLATFORMS="~amd64 ~arm ~armv7 ~x86"
-

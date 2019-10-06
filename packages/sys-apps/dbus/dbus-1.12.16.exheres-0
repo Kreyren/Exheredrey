@@ -1,8 +1,0 @@
-# Copyright 2008 Bo Ørsted Andresen <zlin@exherbo.org>
-# Copyright 2010-2015 Wulf C. Krueger <philantrop@exherbo.org>
-# Distributed under the terms of the GNU General Public License v2
-
-require dbus
-
-PLATFORMS="~amd64 ~arm ~armv7 ~armv8 ~x86"
-

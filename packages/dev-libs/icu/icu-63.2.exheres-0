@@ -1,7 +1,0 @@
-# Copyright 2008 Saleem Abdulrasool <compnerd@compnerd.org>
-# Distributed under the terms of the GNU General Public License v2
-
-require icu
-
-PLATFORMS="~amd64 ~armv7 ~armv8 ~x86"
-

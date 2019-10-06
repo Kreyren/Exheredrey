@@ -1,9 +1,0 @@
-# Copyright 2008 Bernd Steinhauser <berniyh@exherbo.org>
-# Distributed under the terms of the GNU General Public License v2
-# Based in part upon 'iso-codes-1.5.ebuild' from Gentoo, which is:
-#     Copyright 1999-2008 Gentoo Foundation.
-
-require iso-codes
-
-PLATFORMS="~amd64 ~armv8 ~x86"
-

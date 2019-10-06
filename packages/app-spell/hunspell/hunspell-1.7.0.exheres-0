@@ -1,8 +1,0 @@
-# Copyright 2008 Bo Ørsted Andresen <zlin@exherbo.org>
-# Distributed under the terms of the GNU General Public License v2
-
-require hunspell \
-    autotools [ supported_autoconf=[ 2.5 ] supported_automake=[ 1.16 ] ]
-
-PLATFORMS="~amd64 ~armv8 ~x86"
-
