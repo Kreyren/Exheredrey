@@ -1,0 +1,62 @@
+# Copyright 2009 Hong Hao <oahong@gmail.com>
+# Distributed under the terms of the GNU General Public License v2
+# Based in part upon 'tint2-9999.ebuild' from gentoo china overlay, which is:
+#     Copyright 1999-2009 Gentoo Foundation
+
+require gitlab [ user=o9000 ] cmake [ api=2 ]
+
+export_exlib_phases src_unpack
+
+SUMMARY="A simple panel/taskbar intentionally made for openbox3"
+
+LICENCES="GPL-2"
+SLOT="0"
+MYOPTIONS="
+    gtk [[ description = [ Build tint2conf, a GTK+-2 theme switcher for ${PN} ] ]]
+"
+
+DEPENDENCIES="
+    build:
+        x11-proto/xorgproto
+    build+run:
+        dev-libs/glib:2
+        gnome-desktop/librsvg
+        media-libs/imlib2[X]
+        x11-libs/cairo[X]
+        x11-libs/libX11
+        x11-libs/libXcomposite
+        x11-libs/libXdamage
+        x11-libs/libXinerama
+        x11-libs/libXrandr
+        x11-libs/libXrender
+        x11-libs/pango[X]
+        x11-libs/startup-notification
+        gtk? (
+          x11-libs/gtk+:2
+          gnome-bindings/pygtk:2
+        )
+"
+
+BUGS_TO="oahong@gmail.com"
+UPSTREAM_CHANGELOG="https://gitlab.com/o9000/tint2/blob/0.12.2/ChangeLog"
+UPSTREAM_DOCUMENTATION="https://gitlab.com/o9000/tint2/wikis/home"
+
+tint2_src_unpack() {
+    cmake_src_unpack
+
+    # Simplify WORK
+    if ! ever is_scm;then
+
+        edo pushd "${WORKBASE}"
+        edo mv ${PNV}-* ${PNV}
+        edo popd
+    fi
+}
+
+
+CMAKE_SRC_CONFIGURE_PARAMS=(
+    -DENABLE_BATTERY:BOOL=TRUE
+    -DENABLE_EXAMPLES:BOOL=TRUE
+    -DDOCDIR:PATH="/usr/share/doc/${PNVR}"
+)
+CMAKE_SRC_CONFIGURE_OPTION_ENABLES=( 'gtk TINT2CONF' )
