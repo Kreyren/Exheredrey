@@ -1,0 +1,16 @@
+# Copyright 2019 Jacob Hrbek <kreyren@rixotstudio.cz>
+# Distributed under the terms of the GNU General Public License v3
+
+# Purpose: exlib to export debug function to output debug messages if env var DEBUG is non-zero
+# Maintainer: Jacob Hrbek <kreyren@rixotstudio.cz>
+# Usage: exdebug "message"
+exdebug(){
+	if [ -n "$DEBUG" ]; then
+		# QA: Supports only first variable, die if second is parsed
+		[ -z "$2" ] && die "Second argument was parsed in 'debug' function invoked as '$@' which is not supported, did you forget to quote?"
+		printf '%s\n' "DEBUG: $1"
+	fi
+
+	# Used for logic in exheres in case exdebug is not exported
+	export DEBUG_INIT="kreyren"
+}
