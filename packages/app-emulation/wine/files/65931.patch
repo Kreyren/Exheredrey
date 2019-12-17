@@ -1,0 +1,34 @@
+From d456cc8c0dc9ecb58bfc0f146a0d64c64acc0381 Mon Sep 17 00:00:00 2001
+From: Louis Lenders <xerox.xerox2000x@gmail.com>
+Date: Tue, 10 Dec 2019 19:38:31 +0100
+Subject: [PATCH] wine.inf: install powershell.exe in WindowsPowerShell/v1.0/
+
+https://bugs.winehq.org/show_bug.cgi?id=47820
+Signed-off-by: Louis Lenders <xerox.xerox2000x@gmail.com>
+---
+ loader/wine.inf.in | 2 ++
+ 1 file changed, 2 insertions(+)
+
+diff --git a/loader/wine.inf.in b/loader/wine.inf.in
+index c830525379..71e95dfa7b 100644
+--- a/loader/wine.inf.in
++++ b/loader/wine.inf.in
+@@ -2675,6 +2675,7 @@ HKLM,%CurrentVersion%\Telephony\Country List\998,"SameAreaRule",,"G"
+ 11,gecko\plugin,npmshtml.dll
+ 11,Speech\Common,sapi.dll
+ 11,wbem,mofcomp.exe
++11,WindowsPowerShell\v1.0,powershell.exe
+ 10,syswow64,stdole2.tlb
+ 11,,iexplore.exe
+ 11,,winetest.exe,-
+@@ -2759,6 +2760,7 @@ HKLM,%CurrentVersion%\Telephony\Country List\998,"SameAreaRule",,"G"
+ 11,wbem,wbemprox.dll
+ 11,wbem,wmic.exe
+ 11,wbem,wmiutils.dll
++11,WindowsPowerShell\v1.0,powershell.exe
+ ; empty folders to make sure the parent dirs are not removed
+ 16410,Microsoft,
+ 16412,Microsoft,
+-- 
+2.24.0
+
