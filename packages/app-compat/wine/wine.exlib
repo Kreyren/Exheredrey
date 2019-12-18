@@ -1,0 +1,381 @@
+# Modified by Jacob Hrbek <kreyren@rixotstudio.cz> in 2019 under the terms of GNUv3 (https://www.gnu.org/licenses/gpl-3.0.en.html)
+# Modified by Wulf C. Krueger <philantrop@exherbo.org> in 2009-2018 under the terms of GNUv2 (https://www.gnu.org/licenses/old-licenses/gpl-2.0.en.html)
+# Created by Kylie McClain <somasis@exherbo.org> in 2015 under the terms of GNUv2 (https://www.gnu.org/licenses/old-licenses/gpl-2.0.en.html)
+# Based in part on app-emulation/wine from github.com/bobwya/bobwya which is:
+# 	Copyright 2017-2019 Robert Walker <FIXME_EMAIL> under the terms of GNUv2 (https://www.gnu.org/licenses/old-licenses/gpl-2.0.en.html)
+
+# shellcheck shell=bash # Paludis doesn't expect shebang, Exheres are using arrays which are not supported in POSIX sh
+# shellcheck disable=SC2034 # Appears unused is invalid for paludis variables
+
+: '
+	This is library used for building WINE on paludis-based operating systems
+
+	Features:
+	- Builds on Linux (in progress..)
+
+	TODO:
+	- Implement fetching master version (scm)
+	- Implement auto-bumps
+	- Implement staging
+	- Implement mono
+	- Implement gecko
+	- Implement shellcheck QA adapted for paludis
+	- Implement building of package on multiple platforms for verification (CI)
+	- Deploy binary if all the checks pass (CD)
+	- Build on Linux
+	- Build on MacOS
+	- Build on FreeBSD
+	- Build on Redox (Stubbed, redox not ready for development)
+'
+
+# Functions #
+
+# Output fixme messages for unimplemented features
+fixme() { printf 'FIXME: %s\n' "$1" ;}
+
+# Output debug messages for easier debugging
+debug() { [ -n "$DEBUG" ] && printf 'DEBUG: %s\n' "$1" ;}
+
+DEBUG=y
+
+# Metadata #
+
+SUMMARY="Compatibility layer capable of running Windows applications"
+DESCRIPTION="
+	Wine is an implementation of the Windows API on top of X and Unix. It does not require Microsoft Windows, but can use native Windows DLLs if they are available. It provides both a development toolkit for porting Windows source code to Unix as well as a program loader, allowing many unmodified Windows programs to run on x86-based Unixes."
+HOMEPAGE="https://www.winehq.org"
+DOWNLOADS="https://dl.winehq.org/wine/source/4.x/wine-$PV.tar.xz"
+BUGS_TO="exherbo.gitlab+kreyren-exheredrey-779-2e93xao4j6itjj8byb9pqb5vc-issue@gmail.com"
+UPSTREAM_CHANGELOG="https://www.winehq.org/news/ [[ lang = en ]]"
+UPSTREAM_DOCUMENTATION="
+	${HOMEPAGE//www./wiki.}/Main_Page [[ lang = en ]]
+	${HOMEPAGE//www./wiki.}/StartSeite [[ lang = de ]]
+	${HOMEPAGE//www./wiki.}/Main_Page_ko [[ lang = ko ]]
+	${HOMEPAGE//www./wiki.}/Wine_Developer%27s_Guide [[ lang = en ]]"
+LICENCES="
+	LGPL-2.1 [[ note = [ wine ] ]]
+	MPL-2.0  [[ note = [ wine-gecko ] ]]
+	mono? ( LGPL-2 [[ note = [ wine-mono ] ]] )"
+SLOT="0" # Slotting is not needed
+
+
+# Technical #
+
+# Verification of 'camera' deps in 'build+run' required
+# Verification of 'isdn' deps in 'build+run' required
+DEPENDENCIES=(
+	"build:"
+		"sys-devel/bison"
+		"sys-devel/flex[>=2.6.4] [[ note = [ https://bugs.winehq.org/show_bug.cgi?id=42132 ] ]]"
+		"sys-devel/gettext"
+		"virtual/pkg-config"
+		"x11-proto/xorgproto"
+	"build+run:"
+		"alsa? ( sys-sound/alsa-lib )" # QA?
+		"camera? ( media-libs/libgphoto2 )" # QA?
+		"cups? ( net-print/cups )" # QA?
+		"dbus? ( sys-apps/dbus )" # QA?
+		"faudio? ( media-libs/faudio )" # QA?
+		"ffmpeg? ( media/ffmpeg )" # QA?
+		"fontconfig? ("
+			"media-libs/fontconfig" # QA?
+			"media-libs/freetype:2[>=2.0.0]" # QA?
+		")"
+		"gsm? ( media-libs/gsm )" # QA?
+		"gstreamer? ("
+			"media-libs/gstreamer:1.0" # QA?
+			"media-plugins/gst-plugins-base:1.0" # QA?
+		")"
+		"openal? ( media-libs/openal )" # QA?
+		"opengl? ("
+			"x11-dri/glu" # QA?
+			"x11-dri/mesa[>=9.0]" # QA?
+		")"
+		"oss? ( sys-sound/oss )" # QA?
+		"pcap? ( dev-libs/libpcap )" # QA?
+		"png? ( media-libs/libpng )" # QA?
+		"pulseaudio? ( media-sound/pulseaudio )" # QA?
+		"providers:eudev? ( sys-apps/eudev )" # QA?
+		"providers:ijg-jpeg? ( media-libs/jpeg:= )" # QA?
+		"providers:jpeg-turbo? ( media-libs/libjpeg-turbo )" # QA?
+		"providers:systemd? ( sys-apps/systemd )" # QA?
+		"samba? ( net-fs/samba[>=3.0.25] )"# QA?
+		"sdl? ( media-libs/SDL:2 )" # QA?
+		"tiff? ( media-libs/tiff )" # QA?
+		"isdn? ( dev-libs/libcapi20 )" # QA?
+		"jpeg? ( media-libs/jpeg )"
+		"kerberos? ("
+			"providers:heimdal? ( app-crypt/heimdal )"
+			"providers:krb5? ( app-crypt/krb5 )"
+		")"
+		"vkd3d? ( app-emulation/vkd3d )" # QA?
+		"vulkan? ( sys-libs/vulkan-loader[X?][wayland?] )" # QA?
+		"wayland? ( sys-libs/wayland )" # QA?
+		"xinerama? ( x11-libs/libXinerama )" # QA?
+		"xml? ( dev-libs/libxml )" # QA?
+		"xrandr? ( x11-libs/libXrandr )" # QA?
+		"X? (" # Based on https://github.com/bobwya/bobwya/blob/master/app-emulation/wine-staging/wine-staging-4.9_p1-r3.ebuild#L41
+			"x11-libs/libXcursor" # QA?
+			"x11-libs/libXext" # QA?
+			"x11-libs/libXfixes" # QA?
+			"x11-libs/libXi" # QA?
+			"x11-libs/libXxf86vm" # QA?
+		")"
+		"zlib? ( sys-libs/zlib )" # QA?
+	"suggestion:"
+		"fonts/corefonts [[ description = [ Microsoft(R) Core fonts ] ]]"
+)
+# FIXME: Test other platforms
+CROSS_COMPILE_TARGETS="
+	aarch64-unknown-linux-gnueabi
+	aarch64-unknown-linux-musleabi
+	armv4-unknown-linux-gnueabi
+	armv4-unknown-linux-gnueabihf
+	armv4-unknown-linux-musleabi
+	armv4-unknown-linux-musleabihf
+	armv5-unknown-linux-gnueabi
+	armv5-unknown-linux-gnueabihf
+	armv5-unknown-linux-musleabi
+	armv5-unknown-linux-musleabihf
+	armv6-unknown-linux-gnueabi
+	armv6-unknown-linux-gnueabihf
+	armv6-unknown-linux-musleabi
+	armv6-unknown-linux-musleabihf
+	armv7-unknown-linux-gnueabi
+	armv7-unknown-linux-gnueabihf
+	armv7-unknown-linux-musleabi
+	armv7-unknown-linux-musleabihf
+	i686-pc-linux-gnu
+	i686-pc-linux-musl
+	ia64-unknown-linux-gnu
+	powerpc64-unknown-linux-gnu
+	x86_64-pc-linux-gnu
+	x86_64-pc-linux-musl"
+
+# Do not add `+=`, expected to be declared first by design
+myMYOPTIONS=(
+	"alsa"
+	"capi"
+	"cms"
+	"coreaudio"
+	"cups"
+	"curses"
+	"dbus"
+	"faudio"
+	"fontconfig"
+	"freetype"
+	"gettext"
+	"gettextpo"
+	"gphoto"
+	"glu"
+	"gnutls"
+	"gecko"
+	"gsm"
+	"gssapi"
+	"gstreamer"
+	"hal"
+	"inotify"
+	"jpeg"
+	"krb5"
+	"ldap"
+	"mingw"
+	"mono"
+	"mpg123"
+	"netapi"
+	"openal"
+	"opencl"
+	"opengl"
+	"osmesa [[ requires = opengl ]]" # osmesa - requires opengl (https://github.com/bobwya/bobwya/blob/master/app-emulation/wine-vanilla/wine-vanilla-4.9_p1-r2.ebuild#L33)
+	"oss"
+	"pcap"
+	"png"
+	"pthread"
+	"pulse"
+	"sane"
+	"sdl"
+	"staging"
+	"tiff"
+	"udev"
+	"unwind"
+	"v4l2"
+	"vkd3d [[ requires = vulkan ]]" # vkd3d needs vulkan (https://github.com/bobwya/bobwya/blob/master/app-emulation/wine-vanilla/wine-vanilla-4.9_p1-r2.ebuild#L35)
+	"vulkan"
+	"X"
+	"xcomposite"
+	"xcursor"
+	"xfixes"
+	"xinerama [[ requires = X ]]"
+	"xinput"
+	"xinput2"
+	"xml"
+	"xrandr"
+	"xrender"
+	"xshape"
+	"xshm"
+	"xslt"
+	"xxf86vm"
+	"wayland"
+	"zlib"
+	"syswow64"
+	"( targets: $CROSS_COMPILE_TARGETS ) [[ number-selected = at-least-one ]]"
+)
+# MYOPTIONS doesnt accept arrays, this is workaround (FIXME?)
+MYOPTIONS="${myMYOPTIONS[*]}"
+
+# !!! Variable DEFAULT_SRC_CONFIGURE_PARAMS must be set to an invariant value in global scope
+## FIXME: Disable this shit in paludis - OR - Make proper implementation
+DEFAULT_SRC_CONFIGURE_PARAMS=""
+unset DEFAULT_SRC_CONFIGURE_PARAMS # Yes, I feel clever :) .. someone tell me why is this a thing
+
+pkg_setup() {
+	ewarn "Not all platforms were tested, report a bug to $BUGS_TO if you encountered an issue"
+	fixme "Only vulkan-loader is currently implemented, fixme!"
+}
+
+# Unpack source
+src_unpack() {
+	# INFO: ARCHIVES points to a filename of downloaded file in DOWNLOADS value
+	if [ -n "$ARCHIVES" ]; then
+		unpack --if-compressed "$ARCHIVES"
+	elif [ -z "$ARCHIVES" ]; then
+		die "Unable to unpack wine source, Variable ARCHIVES is blank"
+	else
+		die "Unexpected in src_unpack, checking archives"
+	fi
+}
+
+src_configure() {
+	fixme "Rewrite src_prepare to accept different arguments for configure"
+
+	einfo "Applying configuration"
+
+	# HELPER: Include based on option used
+	wine_include() {
+		local arg="$1"
+
+		debug "executing: wine_include $arg"
+
+		if option "$arg"; then
+			DEFAULT_SRC_COMPILE_PARAMS+=( "--with-$arg" )
+		elif ! option "$arg"; then
+			DEFAULT_SRC_COMPILE_PARAMS+=( "--without-$arg" )
+		else
+			die "Unexpeceted in src_configure, $arg"
+		fi
+	}
+
+	wine_include alsa
+	wine_include dbus
+	wine_include gnutls
+	wine_include gstreamer
+	wine_include hal
+	wine_include jpeg
+	wine_include ldap
+	wine_include openal
+	wine_include opengl
+	wine_include oss
+	wine_include vulkan
+	wine_include tiff
+	wine_include X
+	wine_include xinerama
+	wine_include zlib
+
+	# HELPER: Fixme unimplemented options
+	wine_fixme() {
+		local arg="$1"
+
+		debug "executing: wine_fixme $arg"
+
+		if option "$arg"; then
+			ewarn "Option $arg is not implemented, fixme disabling for now"
+		elif ! option "$arg"; then
+			debug "Option $arg is not used"
+		else
+			die "Unexpeceted in src_configure, $arg"
+		fi
+
+		DEFAULT_SRC_COMPILE_PARAMS+=( "--without-$arg" )
+	}
+
+	einfo "Excluding unsupported configuration"
+
+	wine_fixme capi
+	wine_fixme cms
+	wine_fixme coreaudio
+	wine_fixme cups
+	wine_fixme curses
+	wine_fixme faudio
+	wine_fixme fontconfig
+	wine_fixme freetype
+	wine_fixme gettext
+	wine_fixme gettextpo
+	wine_fixme gphoto
+	wine_fixme glu
+	wine_fixme gsm
+	wine_fixme gssapi
+	wine_fixme inotify
+	wine_fixme krb5
+	wine_fixme mingw
+	wine_fixme mpg123
+	wine_fixme netapi
+	wine_fixme opencl
+	wine_fixme osmesa
+	wine_fixme pcap
+	wine_fixme png
+	wine_fixme pthread
+	wine_fixme pulse
+	wine_fixme sane
+	wine_fixme sdl
+	wine_fixme udev
+	wine_fixme unwind
+	wine_fixme v4l2
+	wine_fixme vkd3d
+	wine_fixme xcomposite
+	wine_fixme xcursor
+	wine_fixme xfixes
+	wine_fixme xinput
+	wine_fixme xinput2
+	wine_fixme xml
+	wine_fixme xrandr
+	wine_fixme xrender
+	wine_fixme xshape
+	wine_fixme xshm
+	wine_fixme xslt
+	wine_fixme xxf86vm
+	wine_fixme staging
+	wine_fixme mono
+	wine_fixme gecko
+
+	ieinfo "Generating Makefile"
+
+	# Build for 64-bit if specified
+	## INFO: For wine to build on 64-bit system flag --enable-win64 has to be used
+	if option targets:x86_64-pc-linux-gnu || option targets:x86_64-pc-linux-musl; then
+		DEFAULT_SRC_CONFIGURE_PARAMS+=( "--enable-win64" )
+	elif option i686-pc-linux-gnu || option i686-pc-linux-musl; then
+		einfo "This is 32-bit system, we will not build 64-bit binaries"
+	else
+		die "Unimplemented target '$(exhost --target)' has been used, file a compatibility request to $BUGS_TO"
+	fi
+
+	# Action
+	if [ -e "$WORKBASE/$PNV/configure" ]; then
+		# --srcdir="$WORKBASE/$PNV"
+		"$WORKBASE/$PNV/configure" "${DEFAULT_SRC_CONFIGURE_PARAMS[*]}" --disable-tests || die "Configuration of $PNV failed"
+	elif [ ! -e "$WORKBASE/$PNV/configure" ]; then
+		die "Expected file '$WORKBASE/$PNV/configure' does not exists, dieing.."
+	else
+		die "Unexpected in src_configure, configure"
+	fi
+}
+
+src_compile() {
+	fixme "Requires to unban 'as' to work, fixme exherbo won't provide instructions"
+	fixme "Requires to unban 'ar' to work, fixme exherbo won't provide instructions"
+	fixme "Requires to unban 'ranlib' to work, fixme exherbo won't provide instructions"
+	emake -C "$WORKBASE/$PNV"
+
+	if option syswow64; then
+		fixme "Build syswow64"
+	fi
+}

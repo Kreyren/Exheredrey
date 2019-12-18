@@ -1,7 +1,6 @@
 # Copyright 2009-2017 Wulf C. Krueger <philantrop@exherbo.org>
 # Distributed under the terms of the GNU General Public License v2
 
-require wine [ gecko_version=2.47 mono_version=4.7.3 staging_version= ]
+require wine
 
 PLATFORMS="~amd64 ~x86"
-

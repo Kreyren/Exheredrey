@@ -1,0 +1,517 @@
+# Modified by Jacob Hrbek <kreyren@rixotstudio.cz> in 2019 under the terms of GNUv3 (https://www.gnu.org/licenses/gpl-3.0.en.html)
+# Modified by Wulf C. Krueger <philantrop@exherbo.org> in 2009-2018 under the terms of GNUv2 (https://www.gnu.org/licenses/old-licenses/gpl-2.0.en.html)
+# Created by Kylie McClain <somasis@exherbo.org> in 2015 under the terms of GNUv2 (https://www.gnu.org/licenses/old-licenses/gpl-2.0.en.html)
+# Based in part on app-emulation/wine from github.com/bobwya/bobwya which is:
+# 	Copyright 2017-2019 Robert Walker <FIXME_EMAIL> under the terms of GNUv2 (https://www.gnu.org/licenses/old-licenses/gpl-2.0.en.html)
+
+# shellcheck shell=bash # Paludis doesn't expect shebang, Exheres are using arrays which are not supported in POSIX sh
+# shellcheck disable=SC2034 # Appears unused is invalid for paludis variables
+
+: '
+	This is library used for building WINE on paludis-based operating systems
+
+	Features:
+	- Builds on Linux (in progress..)
+
+	TODO:
+	- Implement fetching master version (scm)
+	- Implement auto-bumps
+	- Implement staging
+	- Implement mono
+	- Implement gecko
+	- Implement shellcheck QA adapted for paludis
+	- Implement building of package on multiple platforms for verification (CI)
+	- Deploy binary if all the checks pass (CD)
+	- Build on Linux
+	- Build on MacOS
+	- Build on FreeBSD
+	- Build on Redox (Stubbed, redox not ready for development)
+'
+
+myexparam gecko_version
+myexparam mono_version
+myexparam staging_version=
+
+exparam -v STAGING_PV staging_version
+
+# NOTE: see dlls/appwiz.cpl/addons.c's GECKO_VERSION/MONO_VERSION macros
+exparam -v GECKO_PV gecko_version
+exparam -v MONO_PV mono_version
+
+SUMMARY="Compatibility layer capable of running Windows applications"
+DESCRIPTION="
+	Wine is an implementation of the Windows API on top of X and Unix. It does not require Microsoft Windows, but can use native Windows DLLs if they are available. It provides both a development toolkit for porting Windows source code to Unix as well as a program loader, allowing many unmodified Windows programs to run on x86-based Unixes."
+HOMEPAGE="https://www.winehq.org"
+DOWNLOADS="https://dl.winehq.org/wine/source/4.x/wine-$PV.tar.xz"
+BUGS_TO="exherbo.gitlab+kreyren-exheredrey-779-2e93xao4j6itjj8byb9pqb5vc-issue@gmail.com"
+UPSTREAM_CHANGELOG="https://www.winehq.org/news/ [[ lang = en ]]"
+UPSTREAM_DOCUMENTATION="
+	${HOMEPAGE//www./wiki.}/Main_Page [[ lang = en ]]
+	${HOMEPAGE//www./wiki.}/StartSeite [[ lang = de ]]
+	${HOMEPAGE//www./wiki.}/Main_Page_ko [[ lang = ko ]]
+	${HOMEPAGE//www./wiki.}/Wine_Developer%27s_Guide [[ lang = en ]]"
+LICENCES="
+	LGPL-2.1 [[ note = [ wine ] ]]
+	MPL-2.0  [[ note = [ wine-gecko ] ]]
+	mono? ( LGPL-2 [[ note = [ wine-mono ] ]] )"
+SLOT="0" # Slotting is not needed
+
+declare -A GECKO_NAME
+if ever at_least 5.0-rc1 ; then
+	GECKO_NAME=(
+		[i686]=${PN}-gecko-${GECKO_PV}-x86.msi
+		[x86_64]=${PN}-gecko-${GECKO_PV}-x86_64.msi
+	)
+else
+	GECKO_NAME=(
+		[i686]=${PN}_gecko-${GECKO_PV}-x86.msi
+		[x86_64]=${PN}_gecko-${GECKO_PV}-x86_64.msi
+	)
+fi
+t=$(exhost --target)
+MY_GECKO_NAME=${GECKO_NAME[${t%%-*}]}
+unset t
+MONO_NAME=${PN}-mono-${MONO_PV}.msi
+STAGING_NAME=${PN}-staging
+
+DOWNLOADS="
+	${GECKO_NAME[@]/#/https://dl.winehq.org/wine/wine-gecko/${GECKO_PV}/}
+	${GECKO_NAME[@]/#/mirror://sourceforge/${PN}/}
+	mono? (
+		https://dl.winehq.org/wine/wine-mono/${MONO_PV}/${MONO_NAME}
+		mirror://sourceforge/wine/Wine%20Mono/${MONO_PV}/${MONO_NAME}
+	)
+"
+if [[ -n ${STAGING_PV} ]] && ! ever is_scm; then
+	DOWNLOADS+="
+		staging? ( https://github.com/${STAGING_NAME}/${STAGING_NAME}/archive/v${STAGING_PV}.tar.gz -> ${STAGING_NAME}-${STAGING_PV}.tar.gz )
+	"
+fi
+
+if ever is_scm ; then
+	SCM_REPOSITORY="https://source.winehq.org/git/${PN}.git"
+	SCM_staging_REPOSITORY="https://github.com/${STAGING_NAME}/${STAGING_NAME}.git"
+	require scm-git
+elif [[ $(ever range 2) -eq 0 ]]; then
+	DOWNLOADS+="
+		https://dl.winehq.org/wine/source/$(ever range 1).0/${PNV}.tar.xz
+	"
+elif [[ $(ever range 2) -gt 0 ]]; then
+	DOWNLOADS+="
+		https://dl.winehq.org/wine/source/$(ever range 1).x/${PNV}.tar.xz
+	"
+else
+	DOWNLOADS+="
+		https://dl.winehq.org/wine/source/$(ever range 1-2)/${PNV}.tar.xz
+	"
+fi
+
+require freedesktop-desktop freedesktop-mime
+require autotools [ supported_autoconf=[ 2.5 ] supported_automake=[ none ] ]
+
+export_exlib_phases pkg_pretend src_prepare src_configure src_compile src_install pkg_postinst pkg_postrm
+
+SUMMARY="compatibility layer capable of running Windows applications"
+DESCRIPTION="
+Wine is an implementation of the Windows API on top of X and Unix. It does not
+require Microsoft Windows, but can use native Windows DLLs if they are available.
+It provides both a development toolkit for porting Windows source code to Unix
+as well as a program loader, allowing many unmodified Windows programs to run on
+x86-based Unixes.
+"
+HOMEPAGE="https://www.winehq.org"
+
+REMOTE_IDS="sourceforge:${PN}"
+
+LICENCES="
+	LGPL-2.1 [[ note = [ wine ] ]]
+	MPL-2.0  [[ note = [ wine-gecko ] ]]
+	mono? ( LGPL-2 [[ note = [ wine-mono ] ]] )
+"
+
+if [[ -n ${STAGING_PV} ]]; then
+	LICENCES+="
+		staging? ( LGPL-2.1 [[ note = [ wine-staging ] ]] )
+	"
+fi
+
+MYOPTIONS="
+	alsa
+	camera [[ description = [ Support for using digital cameras in Wine using libgphoto2 ] ]]
+	cups
+	gsm [[ description = [ Support the GSM 06.10 codec for lossy speech compression ] ]]
+	gstreamer [[ description = [ Use GStreamer for codecs support ] ]]
+	isdn [[ description = [ Support for ISDN equipment in Wine using libcapi20 ] ]]
+	kerberos
+	lcms
+	ldap
+	mp3
+	mono [[ description = [ Use wine-mono, a replacement for Microsoft's .NET runtime based on mono ] ]]
+	openal
+	opengl
+	oss
+	pcap [[ description = [ Support for packet capturing ] ]]
+	pulseaudio
+	samba
+	scanner
+	sdl [[ description = [ Support for game controllers via SDL ] ]]
+	tiff
+	vkd3d [[
+		description = [ Support for the Direct3D 12 API ]
+		requires = [ vulkan ]
+	]]
+	vulkan [[ description = [ Support for the Vulkan API ] ]]
+	kerberos? ( ( providers: heimdal krb5 ) [[ number-selected = exactly-one ]] )
+	( providers: eudev systemd ) [[ number-selected = exactly-one ]]
+	( providers: ijg-jpeg jpeg-turbo ) [[ number-selected = exactly-one ]]
+"
+
+if ever at_least 4.15 ; then
+	MYOPTIONS+="
+		backtrace [[ description = [ Generate backtraces using libunwind ] ]]
+		faudio [[ description = [ Enable FAudio (XAudio2 support) with support for the WMA format conversion ] ]]
+	"
+fi
+
+if [[ -n ${STAGING_PV} ]]; then
+	if ! ever at_least 4.15 ; then
+		MYOPTIONS+="
+			ffmpeg [[ requires = [ staging ] description = [ Enable support for the WMA format conversion in XAudio2 utilizing FFmpeg ] ]]
+		"
+	fi
+	MYOPTIONS+="
+		gtk3 [[ requires = [ staging ] description = [ Add an option to use GTK3 for theming ] ]]
+		staging [[ description = [ Add ALL wine-staging patches containing bug fixes and features not yet available in regular wine ] ]]
+		vaapi [[ requires = [ staging ] description = [ Enable hardware accelerated video decode/encode ] ]]
+	"
+fi
+
+DEPENDENCIES="
+	build:
+		sys-devel/bison
+		sys-devel/flex[>=2.6.4] [[ note = [ https://bugs.winehq.org/show_bug.cgi?id=42132 ] ]]
+		sys-devel/gettext
+		virtual/pkg-config
+		x11-proto/xorgproto
+	build+run:
+		dev-libs/glib:2
+		dev-libs/gnutls
+		dev-libs/libxml2:2.0
+		dev-libs/libxslt
+		media-libs/fontconfig
+		media-libs/freetype:2[>=2.0.0]
+		media-libs/libpng:=
+		sys-apps/dbus
+		sys-libs/zlib
+		x11-libs/libICE
+		x11-libs/libSM
+		x11-libs/libX11
+		x11-libs/libXcursor
+		x11-libs/libXcomposite
+		x11-libs/libXext
+		x11-libs/libXfixes
+		x11-libs/libXi
+		x11-libs/libXinerama
+		x11-libs/libXrandr
+		x11-libs/libXrender
+		x11-libs/libXxf86vm
+		alsa? ( sys-sound/alsa-lib )
+		camera? ( media-libs/libgphoto2 )
+		cups? ( net-print/cups )
+		gsm? ( media-libs/gsm )
+		gstreamer? (
+			media-libs/gstreamer:1.0
+			media-plugins/gst-plugins-base:1.0
+		)
+		isdn? ( dev-libs/libcapi20 )
+		kerberos? (
+			providers:heimdal? ( app-crypt/heimdal )
+			providers:krb5? ( app-crypt/krb5 )
+		)
+		lcms? ( media-libs/lcms2 )
+		ldap? ( net-directory/openldap )
+		mp3? ( media-sound/mpg123 )
+		openal? ( media-libs/openal )
+		opengl? (
+			x11-dri/glu
+			x11-dri/mesa[>=9.0]
+		)
+		oss? ( sys-sound/oss )
+		pcap? ( dev-libs/libpcap )
+		providers:eudev? ( sys-apps/eudev )
+		providers:ijg-jpeg? ( media-libs/jpeg:= )
+		providers:jpeg-turbo? ( media-libs/libjpeg-turbo )
+		providers:systemd? ( sys-apps/systemd )
+		pulseaudio? ( media-sound/pulseaudio )
+		samba? ( net-fs/samba[>=3.0.25] )
+		scanner? ( media-gfx/sane-backends )
+		sdl? ( media-libs/SDL:2 )
+		tiff? ( media-libs/tiff )
+		vkd3d? ( app-emulation/vkd3d )
+		vulkan? ( sys-libs/vulkan-loader )
+	suggestion:
+		fonts/corefonts [[ description = [ Many Windows apps need the MS corefonts ] ]]
+"
+
+if ever at_least 4.15 ; then
+	DEPENDENCIES+="
+		build+run:
+			backtrace? ( dev-libs/libunwind )
+			faudio? ( media-libs/faudio )
+	"
+fi
+
+if [[ -n ${STAGING_PV} ]]; then
+	if ! ever at_least 4.15 ; then
+		DEPENDENCIES+="
+			build+run:
+				ffmpeg? ( media/ffmpeg[>=4] )
+		"
+	fi
+	DEPENDENCIES+="
+		build:
+			staging? (
+				dev-lang/perl:=
+				dev-perl/XML-Simple
+			)
+		build+run:
+			gtk3? ( x11-libs/gtk+:3 )
+			staging? ( sys-apps/attr )
+			vaapi? ( x11-libs/libva[X] )
+	"
+fi
+
+# Wine's configure checks for 64bit x86 platforms and tries to add -m32 to CC if --enable-win64 is
+# not given. This check (yes, that means the amd64 stuff) is chosen to be equivalent to wine's check
+# in configure.ac.
+my_win64_enable() {
+	case "${1}" in
+		x86_64*|amd64*)
+			echo "--enable-win64"
+			;;
+		*)
+			echo "--disable-win64"
+			;;
+	esac
+}
+
+ECONF_SOURCE=${WORK}
+WORK_HOST=${WORK}-host
+
+CROSS_COMPILE_TARGETS=(
+	"i686-pc-linux-gnu"
+	"i686-pc-linux-musl"
+	"x86_64-pc-linux-gnu"
+	"x86_64-pc-linux-musl"
+)
+
+DEFAULT_SRC_CONFIGURE_PARAMS=(
+	"--hates=disable-dependency-tracking"
+	"--hates=disable-silent-rules"
+	"--hates=enable-fast-install"
+	"--disable-tests"
+	"--with-curses"
+	"--with-dbus"
+	"--with-fontconfig"
+	"--with-freetype"
+	"--with-gettext"
+	"--with-gnutls"
+	"--with-jpeg"
+	"--with-png"
+	"--with-pthread"
+	"--with-udev"
+	"--with-x"
+	"--with-xcomposite"
+	"--with-xcursor"
+	"--with-xfixes"
+	"--with-xinerama"
+	"--with-xinput"
+	"--with-xinput2"
+	"--with-xml"
+	"--with-xrandr"
+	"--with-xrender"
+	"--with-xshape"
+	"--with-xshm"
+	"--with-xslt"
+	"--with-xxf86vm"
+	"--with-zlib"
+	"--without-coreaudio"
+	"--without-gettextpo"
+	"--without-hal"
+	"--without-opencl"
+
+	"$(my_win64_enable "$(exhost --target)")"
+	"$(exhost --is-native -q || echo --with-wine-tools="$WORK_HOST")"
+)
+
+DEFAULT_SRC_CONFIGURE_OPTION_WITHS=(
+	alsa
+	"camera gphoto"
+	cups
+	gsm
+	gstreamer
+	"isdn capi"
+	"kerberos gssapi"
+	"kerberos krb5"
+	"lcms cms"
+	ldap
+	"mp3 mpg123"
+	openal
+	opengl
+	"opengl glu"
+	"opengl osmesa"
+	oss
+	pcap
+	"pulseaudio pulse"
+	"samba netapi"
+	"scanner sane"
+	sdl
+	tiff
+	vkd3d
+	vulkan
+)
+
+if ever at_least 4.15 ; then
+	DEFAULT_SRC_CONFIGURE_PARAMS+=(
+		--with-inotify
+		--without-mingw
+		--without-v4l2
+	)
+	DEFAULT_SRC_CONFIGURE_OPTION_WITHS+=(
+		'backtrace unwind'
+		faudio
+	)
+else
+	DEFAULT_SRC_CONFIGURE_PARAMS+=(
+		--without-v4l
+	)
+fi
+
+if [[ -n ${STAGING_PV} ]]; then
+	if ! ever at_least 4.15 ; then
+		DEFAULT_SRC_CONFIGURE_OPTION_WITHS+=(
+			ffmpeg
+		)
+	fi
+	DEFAULT_SRC_CONFIGURE_OPTION_WITHS+=(
+		gtk3
+		"staging xattr"
+		"vaapi va"
+	)
+fi
+
+DEFAULT_SRC_COMPILE_PARAMS=(
+	LDFLAGS="$CFLAGS"
+)
+
+wine_pkg_pretend() {
+	if [[ -z ${STAGING_PV} ]] && has_version --root ${CATEGORY}/${PN}[staging]; then
+		ewarn "The staging patch for ${PNV} hasn't been released yet. If you rely on it, don't install ${PNV}."
+	fi
+}
+
+wine_src_prepare() {
+	default
+
+	if [[ -n ${STAGING_PV} ]] && option staging ; then
+		edo ../${STAGING_NAME}-${STAGING_PV}/patches/patchinstall.sh --all --backend=patch DESTDIR="${WORK}"
+	fi
+
+	# Generate `nm` shim so winebuild will use the correct binary path
+	# export PATH="${WORK}/shims:${PATH}"
+	edo mkdir shims
+	edo ln -s "/usr/host/bin/$(exhost --tool-prefix)nm" ./shims/nm
+	edo ln -s "/usr/host/bin/$(exhost --tool-prefix)as" ./shims/as
+	edo ln -s "/usr/host/bin/$(exhost --tool-prefix)ar" ./shims/ar
+	edo ln -s "/usr/host/bin/$(exhost --tool-prefix)ranlib" ./shims/ranlib
+
+	# Don't run update-desktop-database to avoid sandbox violations.
+	edo sed -i -e '/^UPDATE_DESKTOP_DATABASE/s:=.*:= true:' tools/Makefile.in
+
+	# Remove the mimetype from Wine's desktop file to avoid conflicts with Mono
+	# and other stuff that sometimes uses .exe extensions.
+	edo sed -i -e '/^MimeType/d' loader/wine.desktop
+
+	if ! exhost --is-native -q; then
+		# we need winetools built for the native arch and wine's build system doesn't do that
+		edo mkdir "${WORK_HOST}"
+	fi
+
+	case $(exhost --target) in x86_64*)
+		edo sed -i -e "s:wine:&64:g" tools/wineapploader.in
+	esac
+
+	eautoconf
+}
+
+wine_src_configure() {
+	if ! exhost --is-native -q; then
+		edo pushd "${WORK_HOST}"
+
+		local old_cc=${CC} old_cxx=${CXX}
+
+		# TODO: properly handle using the build host's tools
+		CC="$(exhost --build)-cc"
+		CXX="$(exhost --build)-c++"
+
+		# We don't need to enable all host stuff. The tools we're about to build don't depend on
+		# anything (except sfnt2fon, which requires freetype on the host).
+		econf \
+			"${params[@]}" \
+			--host=$(exhost --build) \
+			--hates=disable-dependency-tracking \
+			--hates=disable-silent-rules \
+			--hates=enable-fast-install \
+			--with-freetype \
+		   "$(my_win64_enable "$(exhost --build)")"
+
+		# we need to compile here so the actual target configure script doesn't reject
+		# our tool directory
+		emake tools tools/{sfnt2fon,widl,winebuild,winedump,winegcc,wmc,wrc}
+
+		CC=${old_cc}
+		CXX=${old_cxx}
+
+		edo popd
+	fi
+
+	# NOTE(compnerd) the configure script is broken and checks with_lcms2 for the --with{,out}-cms
+	# option, so specify this in addition to the proper handling of the option
+	# NOTE --with-wine-tools while cross-compiling disables all build rules for the tools and
+	# makes a cross-compiled install different from a native one except if we enable those tools
+	# again
+	enable_tools=yes \
+	with_lcms2=$(option_enable lcms) \
+		default
+}
+
+wine_src_compile() {
+	export PATH="${WORK}/shims:${PATH}"
+
+	emake -C "$WORKBASE/$PNV"
+}
+
+wine_src_install() {
+	default
+
+	# in almost all cases, arch-specific things should not go in /usr/share.
+	# however, this is where wine looks for gecko's msi in, and expects it
+	# to be at if it is installed.
+	insinto /usr/share/wine/gecko
+	doins "${FETCHEDDIR}"/${MY_GECKO_NAME}
+
+	if option mono ; then
+	   insinto /usr/share/wine/mono
+	   doins "${FETCHEDDIR}"/${MONO_NAME}
+	fi
+}
+
+wine_pkg_postinst() {
+	freedesktop-desktop_pkg_postinst
+	freedesktop-mime_pkg_postinst
+}
+
+wine_pkg_postrm() {
+	freedesktop-desktop_pkg_postrm
+	freedesktop-mime_pkg_postrm
+}

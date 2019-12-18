@@ -5,13 +5,10 @@
 # shellcheck disable=SC2034 # Appear unused is invalid since those are recognized by paludis
 
 # see dlls/appwiz.cpl/addons.c # QA: Why phili? you won't tell me okay..
-require wine [ gecko_version=2.47 mono_version=4.9.4 staging_version="$PV" ]
+require wine
+#[ gecko_version=2.47 mono_version=4.9.4 staging_version=$PV ]
 
 PLATFORMS="~amd64 ~x86"
-
-DEFAULT_SRC_PREPARE_PATCHES=(
-	"$FILES/65931.patch"
-)
 
 MYOPTIONS+="
 	winehack-65931 [[ description = [ Proposed winehack for winebug 47820 for Magic The Gathering arena installer that needs powershell.exe ] ]]

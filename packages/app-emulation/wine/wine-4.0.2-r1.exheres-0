@@ -1,8 +1,0 @@
-# Copyright 2009-2018 Wulf C. Krueger <philantrop@exherbo.org>
-# Distributed under the terms of the GNU General Public License v2
-
-# see dlls/appwiz.cpl/addons.c
-require wine [ gecko_version=2.47 mono_version=4.7.5 ]
-
-PLATFORMS="~amd64 ~x86"
-

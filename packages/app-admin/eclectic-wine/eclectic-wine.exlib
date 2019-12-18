@@ -1,0 +1,47 @@
+# Created by Jacob Hrbek <kreyren@rixotstudio.cz> in 2019 under the terms of GNUv3 (https://www.gnu.org/licenses/gpl-3.0.en.html)
+# Based in part on 'eclectic-python' from Exherbo Linux which is distrubuted under GNUv2 (https://www.gnu.org/licenses/old-licenses/gpl-2.0.en.html) by Marc-Antoine Perennou <keruspe@exherbo.org> in 2013
+
+# shellcheck shell=bash # Paludis doesn't expect shebang
+
+# Requires alternatives from arbor (https://gitlab.exherbo.org/exherbo/arbor/blob/master/exlibs/alternatives.exlib)
+require alternatives
+
+# Get exlib phase?
+export_exlib_phases src_install
+
+# ?
+myexparam importance="$PV"
+
+# Metadata
+SUMMARY="Manages wine symlinks"
+HOMEPAGE="https://gitlab.exherbo.org/kreyren/exheredrey"
+LICENCES="GPL-3"
+SLOT="$PV"
+BUGS_TO="exherbo.gitlab+kreyren-exheredrey-779-2e93xao4j6itjj8byb9pqb5vc-issue@gmail.com"
+
+# Helpers
+TARGET_CATEGORY="app-emulation"
+
+# Technical
+## QA: Why?
+WORK="$WORKBASE"
+## QA: Why?
+DEPENDENCIES="
+	run:
+		$TARGET_CATEGORY/wine:*[=$SLOT*]
+"
+
+eclectic-wine_src_install() {
+	target="$(exhost --target)"
+
+	alternatives_for "\
+		wine $SLOT $IMPORTANCE \
+		/usr/$target/bin/2to3 2to3-$SLOT} \
+		/usr/$target/bin/idle idle$SLOT} \
+		/usr/$target/bin/pydoc pydoc$SLOT} \
+		/usr/$target/bin/python python$SLOT} \
+		/usr/$target/bin/python-config python$SLOT}-config \
+		/usr/$target/lib/pkgconfig/python.pc python$SLOT}.pc \
+		/usr/share/man/man1/python.1 python$SLOT}.1 \
+	"
+}
