@@ -5,6 +5,9 @@
 # 	Copyright 2017-2019 Robert Walker <FIXME_EMAIL> under the terms of GNUv2 (https://www.gnu.org/licenses/old-licenses/gpl-2.0.en.html)
 
 # shellcheck shell=bash # Paludis doesn't expect shebang, Exheres are using arrays which are not supported in POSIX sh
+# shellcheck source=/usr/x86_64-pc-linux-gnu/libexec/paludis/ebuild.bash # Used to resolve SC2154 (needs sanity check)
+
+# FIXME: Can this be sourced?
 # shellcheck disable=SC2034 # Appears unused is invalid for paludis variables
 
 : '
@@ -15,10 +18,15 @@
 
 	TODO:
 	- Implement fetching master version (scm)
+	- Implement logic for fetching legacy wine which uses different download uri (https://github.com/Winetricks/winetricks/pull/1348/files)
 	- Implement auto-bumps
 	- Implement staging
 	- Implement mono
+		- Hotfixed - Providing prebuilt version only (FIXME!)
+		- Allow end-user to choose mono version
 	- Implement gecko
+		- Hotfixed - Providing prebuilt version only (FIXME!)
+		- Allow end-user to choose gecko version
 	- Implement shellcheck QA adapted for paludis
 	- Implement building of package on multiple platforms for verification (CI)
 	- Deploy binary if all the checks pass (CD)
@@ -28,34 +36,121 @@
 	- Build on Redox (Stubbed, redox not ready for development)
 '
 
+# NOTE: see dlls/appwiz.cpl/addons.c's GECKO_VERSION/MONO_VERSION macros
+myexparam gecko_version
+	exparam -v GECKO_PV gecko_version
+myexparam mono_version
+	exparam -v MONO_PV mono_version
+
 # Functions #
 
 # Output fixme messages for unimplemented features
 fixme() { printf 'FIXME: %s\n' "$1" ;}
 
 # Output debug messages for easier debugging
-debug() { [ -n "$DEBUG" ] && printf 'DEBUG: %s\n' "$1" ;}
+debug() { [ -n "$DEBUG" ] && printf "DEBUG(${FUNCNAME[1]}): %s\\n" "$1" ;}
 
-DEBUG=y
+DEBUG=y # DO_NOT_MERGE: Remove me for production
+
+# TODO: Update docs for shimming
+bannedrey() {
+	: "
+		Shim banned function
+
+		Wrapper to symlink required commands in case they are banned by distribution
+		- Creates a $SHIMDIR
+		- Symlinks $SHIMPATH/$command in SHIMDIR/$command
+		- Output warning if $command is not longer banned
+
+		This may require exporting $PATH with $SHIMDIR, note that SMIDIR is not recognized outside of this function
+			export PATH="$PATH:$SHIMDIR"
+	"
+	local SHIMDIR="$WORKBASE/shims"
+	# INFO: This is to resolve SC2155 while not exporting SHIMPATH outside of the function
+	local SHIMPATH
+	SHIMPATH="/usr/host/bin/$(exhost --tool-prefix)$command"
+	local BANDIR="/usr/share/exherbo/banned_by_distribution/"
+	local command="$1"
+
+	# Check if command is banned
+	if [ -e "$BANDIR/$command" ]; then
+		ewarn "Command '$command' is banned by distribution, shimming.."
+
+		# Create a SHIMDIR
+		if [ ! -d "$SHIMDIR" ]; then
+			mkdir "$SHIMDIR" || die "Unable to make a new directory in '$SHIMDIR'"
+		elif [ -f "$SHIMDIR" ]; then
+			die "bug: pathname '$SHIMDIR' points to a file where directory is expected, did upstream made a new file that conflicts with exlib logic?"
+		elif [ -d "$SHIMDIR" ]; then
+			true
+		else
+			die "Unexpected happend in ${FUNCNAME[0]} while checking for $SHIMDIR"
+		fi
+
+		# Shim
+		if [ ! -h "$SHIMDIR/$command" ]; then
+			ln -s "$SHIMPATH$command" "$SHIMDIR/$command" || die "Unable to make a symlink from $SHIMPATH$command' in '$SHIMDIR/$command' used for shimming."
+		elif [ -h "$SHIMDIR/$command" ]; then
+			true
+		else
+			die "Unexpected happend in ${FUNCNAME[0]} - Shimming"
+		fi
+
+		# Export PATH
+		case "$PATH" in
+			*:$SHIMDIR) debug "PATH '$PATH' already contains '$SHIMDIR', skipping export" ;;
+			*)
+				export PATH="$SHIMDIR:$PATH"
+				debug "SHIMDIR has been exported in PATH : '$PATH'"
+		esac
+
+		# Self-check
+		"$command" --version 2>/dev/null || die "bug: ${FUNCNAME[0]} logic didn't export shim correctly"
+
+	elif [ ! -e "$BANDIR/$command" ]; then
+		ewarn "bug: Command '$command' is not banned, skipping shimming.."
+	else
+		die "Unexpected in ${FUNCNAME[0]}"
+	fi
+}
 
 # Metadata #
 
 SUMMARY="Compatibility layer capable of running Windows applications"
 DESCRIPTION="
 	Wine is an implementation of the Windows API on top of X and Unix. It does not require Microsoft Windows, but can use native Windows DLLs if they are available. It provides both a development toolkit for porting Windows source code to Unix as well as a program loader, allowing many unmodified Windows programs to run on x86-based Unixes."
-HOMEPAGE="https://www.winehq.org"
-DOWNLOADS="https://dl.winehq.org/wine/source/4.x/wine-$PV.tar.xz"
-BUGS_TO="exherbo.gitlab+kreyren-exheredrey-779-2e93xao4j6itjj8byb9pqb5vc-issue@gmail.com"
-UPSTREAM_CHANGELOG="https://www.winehq.org/news/ [[ lang = en ]]"
+HOMEPAGE="
+	https://www.winehq.org"
+# FIXME: Fix duplicates for gecko targets
+# FIXME: Fix handling for different versions
+DOWNLOADS="
+	https://dl.winehq.org/wine/source/4.x/wine-$PV.tar.xz
+	mono? (
+		https://dl.winehq.org/wine/wine-mono/$MONO_PV/wine-mono-$MONO_PV.msi
+	)
+	gecko? (
+		https://dl.winehq.org/wine/wine-gecko/$GECKO_PV/wine_gecko-$GECKO_PV-x86.msi
+		targets:x86_64-pc-linux-gnu? (
+			https://dl.winehq.org/wine/wine-gecko/$GECKO_PV/wine_gecko-$GECKO_PV-x86_64.msi
+		)
+		targets:x86_64-pc-linux-musl? (
+			https://dl.winehq.org/wine/wine-gecko/$GECKO_PV/wine_gecko-$GECKO_PV-x86_64.msi
+		)
+	)
+	staging? ( LGPL-2.1 [[ note = [ wine-staging ] ]] )"
+BUGS_TO="
+	exherbo.gitlab+kreyren-exheredrey-779-2e93xao4j6itjj8byb9pqb5vc-issue@gmail.com"
+UPSTREAM_CHANGELOG="
+	$HOMEPAGE/news/ [[ lang = en ]]"
 UPSTREAM_DOCUMENTATION="
-	${HOMEPAGE//www./wiki.}/Main_Page [[ lang = en ]]
-	${HOMEPAGE//www./wiki.}/StartSeite [[ lang = de ]]
-	${HOMEPAGE//www./wiki.}/Main_Page_ko [[ lang = ko ]]
-	${HOMEPAGE//www./wiki.}/Wine_Developer%27s_Guide [[ lang = en ]]"
+	${HOMEPAGE//www./wiki.}/Main_Page [[ lang = en description = [ WineHQ Wiki ] ]]
+	${HOMEPAGE//www./wiki.}/StartSeite [[ lang = de description = [ WineHQ Wiki ] ]]
+	${HOMEPAGE//www./wiki.}/Main_Page_ko [[ lang = ko description = [ WineHQ Wiki ] ]]
+	${HOMEPAGE//www./wiki.}/Wine_Developer%27s_Guide [[ lang = en description = [ WineHQ developer guide ] ]]"
 LICENCES="
 	LGPL-2.1 [[ note = [ wine ] ]]
-	MPL-2.0  [[ note = [ wine-gecko ] ]]
-	mono? ( LGPL-2 [[ note = [ wine-mono ] ]] )"
+	MPL-2.0 [[ note = [ wine-gecko ] ]]
+	LGPL-2 [[ note = [ wine-mono ] ]]"
 SLOT="0" # Slotting is not needed
 
 
@@ -222,11 +317,6 @@ myMYOPTIONS=(
 # MYOPTIONS doesnt accept arrays, this is workaround (FIXME?)
 MYOPTIONS="${myMYOPTIONS[*]}"
 
-# !!! Variable DEFAULT_SRC_CONFIGURE_PARAMS must be set to an invariant value in global scope
-## FIXME: Disable this shit in paludis - OR - Make proper implementation
-DEFAULT_SRC_CONFIGURE_PARAMS=""
-unset DEFAULT_SRC_CONFIGURE_PARAMS # Yes, I feel clever :) .. someone tell me why is this a thing
-
 pkg_setup() {
 	ewarn "Not all platforms were tested, report a bug to $BUGS_TO if you encountered an issue"
 	fixme "Only vulkan-loader is currently implemented, fixme!"
@@ -244,109 +334,110 @@ src_unpack() {
 	fi
 }
 
-src_configure() {
-	fixme "Rewrite src_prepare to accept different arguments for configure"
-
+src_prepare() {
 	einfo "Applying configuration"
 
-	# HELPER: Include based on option used
-	wine_include() {
-		local arg="$1"
+	DEFAULT_SRC_CONFIGURE_PARAMS=(
+		"--host=$(exhost --build)"
+	)
 
-		debug "executing: wine_include $arg"
+	wine_args() {
+	: '
+		Helper to assign arguments to generate Makefile based on paludis options
 
-		if option "$arg"; then
-			DEFAULT_SRC_COMPILE_PARAMS+=( "--with-$arg" )
-		elif ! option "$arg"; then
-			DEFAULT_SRC_COMPILE_PARAMS+=( "--without-$arg" )
-		else
-			die "Unexpeceted in src_configure, $arg"
-		fi
+		This helper is tested for app-compat/wine only (19122019)
+
+		Designed to be used in src_prepare()
+
+		Usage:
+		wine_args enable X      Enables option 'X'
+		wine_args disable X     Disables option 'X'
+	'
+	local option="$1"
+	local arg="$2"
+
+	case "$option" in
+		check)
+			if option $arg; then
+				debug "Enabling argument '$arg' which is specified by paludis options"
+				DEFAULT_SRC_CONFIGURE_PARAMS+=( "--with-$arg" )
+			elif ! option $arg; then
+				debug "Disabling argument '$arg' which is not enabled in paludis options"
+				#DEFAULT_SRC_CONFIGURE_PARAMS+=( "--without-$arg" )
+			else
+				die "Unexpected happend in ${FUNCNAME[0]} - enable option"
+			fi ;;
+		disable)
+			fixme "Argument '$arg' is not implemented, forcing to disable"
+			DEFAULT_SRC_CONFIGURE_PARAMS+=( "--without-$arg" ) ;;
+		*) die "bug: Unexpected happend in ${FUNCNAME[0]} using argument: $arg"
+	esac
 	}
 
-	wine_include alsa
-	wine_include dbus
-	wine_include gnutls
-	wine_include gstreamer
-	wine_include hal
-	wine_include jpeg
-	wine_include ldap
-	wine_include openal
-	wine_include opengl
-	wine_include oss
-	wine_include vulkan
-	wine_include tiff
-	wine_include X
-	wine_include xinerama
-	wine_include zlib
-
-	# HELPER: Fixme unimplemented options
-	wine_fixme() {
-		local arg="$1"
-
-		debug "executing: wine_fixme $arg"
-
-		if option "$arg"; then
-			ewarn "Option $arg is not implemented, fixme disabling for now"
-		elif ! option "$arg"; then
-			debug "Option $arg is not used"
-		else
-			die "Unexpeceted in src_configure, $arg"
-		fi
-
-		DEFAULT_SRC_COMPILE_PARAMS+=( "--without-$arg" )
-	}
+	wine_args check alsa
+	wine_args check dbus
+	wine_args check gnutls
+	wine_args check gstreamer
+	wine_args check hal
+	wine_args check jpeg
+	wine_args check ldap
+	wine_args check openal
+	wine_args check opengl
+	wine_args check oss
+	wine_args check vulkan
+	wine_args check tiff
+	wine_args check X
+	wine_args check xinerama
+	wine_args check zlib
 
 	einfo "Excluding unsupported configuration"
 
-	wine_fixme capi
-	wine_fixme cms
-	wine_fixme coreaudio
-	wine_fixme cups
-	wine_fixme curses
-	wine_fixme faudio
-	wine_fixme fontconfig
-	wine_fixme freetype
-	wine_fixme gettext
-	wine_fixme gettextpo
-	wine_fixme gphoto
-	wine_fixme glu
-	wine_fixme gsm
-	wine_fixme gssapi
-	wine_fixme inotify
-	wine_fixme krb5
-	wine_fixme mingw
-	wine_fixme mpg123
-	wine_fixme netapi
-	wine_fixme opencl
-	wine_fixme osmesa
-	wine_fixme pcap
-	wine_fixme png
-	wine_fixme pthread
-	wine_fixme pulse
-	wine_fixme sane
-	wine_fixme sdl
-	wine_fixme udev
-	wine_fixme unwind
-	wine_fixme v4l2
-	wine_fixme vkd3d
-	wine_fixme xcomposite
-	wine_fixme xcursor
-	wine_fixme xfixes
-	wine_fixme xinput
-	wine_fixme xinput2
-	wine_fixme xml
-	wine_fixme xrandr
-	wine_fixme xrender
-	wine_fixme xshape
-	wine_fixme xshm
-	wine_fixme xslt
-	wine_fixme xxf86vm
-	wine_fixme staging
-	wine_fixme mono
-	wine_fixme gecko
-
-	ieinfo "Generating Makefile"
+	wine_args disable capi
+	wine_args disable cms
+	wine_args disable coreaudio
+	wine_args disable cups
+	wine_args disable curses
+	wine_args disable faudio
+	wine_args disable fontconfig
+	wine_args disable freetype
+	wine_args disable gettext
+	wine_args disable gettextpo
+	wine_args disable gphoto
+	wine_args disable glu
+	wine_args disable gsm
+	wine_args disable gssapi
+	wine_args disable inotify
+	wine_args disable krb5
+	wine_args disable mingw
+	wine_args disable mpg123
+	wine_args disable netapi
+	wine_args disable opencl
+	wine_args disable osmesa
+	wine_args disable pcap
+	wine_args disable png
+	wine_args disable pthread
+	wine_args disable pulse
+	wine_args disable sane
+	wine_args disable sdl
+	wine_args disable udev
+	wine_args disable unwind
+	wine_args disable v4l2
+	wine_args disable vkd3d
+	wine_args disable xcomposite
+	wine_args disable xcursor
+	wine_args disable xfixes
+	wine_args disable xinput
+	wine_args disable xinput2
+	wine_args disable xml
+	wine_args disable xrandr
+	wine_args disable xrender
+	wine_args disable xshape
+	wine_args disable xshm
+	wine_args disable xslt
+	wine_args disable xxf86vm
+	# wine_args disable staging
+	# wine_args disable mono
+	# wine_args disable gecko
 
 	# Build for 64-bit if specified
 	## INFO: For wine to build on 64-bit system flag --enable-win64 has to be used
@@ -358,22 +449,36 @@ src_configure() {
 		die "Unimplemented target '$(exhost --target)' has been used, file a compatibility request to $BUGS_TO"
 	fi
 
+	fixme "Implement handling for recommended_tests, currently forced disable"
+		# if option build_options:recommended_tests ; then
+			DEFAULT_SRC_CONFIGURE_PARAMS+=( "--disable-tests" )
+		# 	die ping
+		# fi
+}
+
+src_configure() {
+
+	einfo "Generating Makefile"
+
 	# Action
 	if [ -e "$WORKBASE/$PNV/configure" ]; then
-		# --srcdir="$WORKBASE/$PNV"
-		"$WORKBASE/$PNV/configure" "${DEFAULT_SRC_CONFIGURE_PARAMS[*]}" --disable-tests || die "Configuration of $PNV failed"
+		# DO_NOT_MERGE: remove quiet
+		"$WORKBASE/$PNV/configure" "${DEFAULT_SRC_CONFIGURE_PARAMS[@]}" &>/dev/null || die "Configuration of $PNV failed"
 	elif [ ! -e "$WORKBASE/$PNV/configure" ]; then
-		die "Expected file '$WORKBASE/$PNV/configure' does not exists, dieing.."
+		die "bug: Expected file '$WORKBASE/$PNV/configure' does not exists"
 	else
 		die "Unexpected in src_configure, configure"
 	fi
 }
 
 src_compile() {
-	fixme "Requires to unban 'as' to work, fixme exherbo won't provide instructions"
-	fixme "Requires to unban 'ar' to work, fixme exherbo won't provide instructions"
-	fixme "Requires to unban 'ranlib' to work, fixme exherbo won't provide instructions"
-	emake -C "$WORKBASE/$PNV"
+	bannedrey as
+	bannedrey ar
+	bannedrey ranlib
+
+	cd "$WORKBASE/$PNV"
+
+	emake -C "$WORKBASE/$PNV" --quiet
 
 	if option syswow64; then
 		fixme "Build syswow64"

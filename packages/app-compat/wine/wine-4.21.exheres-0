@@ -4,9 +4,8 @@
 # shellcheck shell=bash # Paludis doesn't expect shebang
 # shellcheck disable=SC2034 # Appear unused is invalid since those are recognized by paludis
 
-# see dlls/appwiz.cpl/addons.c # QA: Why phili? you won't tell me okay..
-require wine
-#[ gecko_version=2.47 mono_version=4.9.4 staging_version=$PV ]
+# see dlls/appwiz.cpl/addons.c
+require wine [ gecko_version=2.47 mono_version=4.9.4 ]
 
 PLATFORMS="~amd64 ~x86"
 
