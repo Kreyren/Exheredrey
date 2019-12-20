@@ -1,0 +1,14 @@
+# Modified by Jacob Hrbek <kreyren@rixotstudio.cz> in 2019 under the terms of GNUv3 (https://www.gnu.org/licenses/gpl-3.0.en.html)
+# Created by Wulf C. Krueger <philantrop@exherbo.org> in 2009-2018 under the terms of GNUv2 (https://www.gnu.org/licenses/old-licenses/gpl-2.0.en.html)
+
+# shellcheck shell=bash # Paludis doesn't expect shebang
+# shellcheck disable=SC2034 # Appear unused is invalid since those are recognized by paludis
+
+# see dlls/appwiz.cpl/addons.c
+require wine [ gecko_version=2.47 mono_version=4.9.4 ]
+
+PLATFORMS="~amd64 ~x86"
+
+MYOPTIONS+="
+	winehack-65931 [[ description = [ Proposed winehack for winebug 47820 for Magic The Gathering arena installer that needs powershell.exe ] ]]
+"
