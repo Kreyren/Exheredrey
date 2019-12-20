@@ -42,17 +42,24 @@ myexparam gecko_version
 myexparam mono_version
 	exparam -v MONO_PV mono_version
 
-# Functions #
-
+## PALUDIS CONTRIB ##
+: '
+	These are expected to be contributed in paludis, currently added for development
+'
 # Output fixme messages for unimplemented features
+# TODO: Implement in paludis
 fixme() { printf 'FIXME: %s\n' "$1" ;}
 
 # Output debug messages for easier debugging
+# TODO: Implement in paludis with integration for CI
 debug() { [ -n "$DEBUG" ] && printf "DEBUG(${FUNCNAME[1]}): %s\\n" "$1" ;}
 
-DEBUG=y # DO_NOT_MERGE: Remove me for production
+# TODO: Implement in paludis to handle from a userland
+#DEBUG=y # DO_NOT_MERGE: Remove me for production
 
+# (Exheredrey) Info to resolve these kinds of conflicts was not provided, this is my solution. Provide required info to resolve if needed.
 # TODO: Update docs for shimming
+# TODO: Implement this in paludis
 bannedrey() {
 	: "
 		Shim banned function
@@ -105,7 +112,7 @@ bannedrey() {
 		esac
 
 		# Self-check
-		"$command" --version 2>/dev/null || die "bug: ${FUNCNAME[0]} logic didn't export shim correctly"
+		"$command" --version &>/dev/null || die "bug: ${FUNCNAME[0]} logic didn't export shim correctly"
 
 	elif [ ! -e "$BANDIR/$command" ]; then
 		ewarn "bug: Command '$command' is not banned, skipping shimming.."
@@ -247,6 +254,7 @@ CROSS_COMPILE_TARGETS="
 	x86_64-pc-linux-gnu
 	x86_64-pc-linux-musl"
 
+# DO_NOT_MERGE: Remove array once options are determined
 # Do not add `+=`, expected to be declared first by design
 myMYOPTIONS=(
 	"alsa"
@@ -334,11 +342,24 @@ src_unpack() {
 	fi
 }
 
-src_prepare() {
+src_configure() {
 	einfo "Applying configuration"
 
-	DEFAULT_SRC_CONFIGURE_PARAMS=(
-		"--host=$(exhost --build)"
+	# (Exheredrey) Curly brackets are apparently needed
+	DEFAULT_SRC_CONFIGURE_PARAMS+=(
+		"--build=$(exhost --build)/"
+		"--host=$(exhost --target)/"
+		"--prefix=/usr/$(exhost --target)/"
+		'--bindir=${prefix}/bin/'
+		'--sbindir=${prefix}/sbin/'
+		'--libdir=${prefix}/lib64/'
+		'--datadir=/usr/share/'
+		'--datarootdir=/usr/share/'
+		"--docdir=/usr/share/doc/$PNVR/" # Expected to be replaced with Package name
+		'--infodir=/usr/share/info/'
+		'--mandir=/usr/share/man/'
+		'--sysconfdir=/etc/'
+		'--localstatedir=/var/lib/'
 	)
 
 	wine_args() {
@@ -449,23 +470,22 @@ src_prepare() {
 		die "Unimplemented target '$(exhost --target)' has been used, file a compatibility request to $BUGS_TO"
 	fi
 
-	fixme "Implement handling for recommended_tests, currently forced disable"
+	#fixme "Implement handling for recommended_tests, currently forced disable"
 		# if option build_options:recommended_tests ; then
-			DEFAULT_SRC_CONFIGURE_PARAMS+=( "--disable-tests" )
+			#DEFAULT_SRC_CONFIGURE_PARAMS+=( "--disable-tests" )
 		# 	die ping
 		# fi
-}
-
-src_configure() {
 
 	einfo "Generating Makefile"
 
 	# Action
-	if [ -e "$WORKBASE/$PNV/configure" ]; then
-		# DO_NOT_MERGE: remove quiet
-		"$WORKBASE/$PNV/configure" "${DEFAULT_SRC_CONFIGURE_PARAMS[@]}" &>/dev/null || die "Configuration of $PNV failed"
+	if [ -e "$WORKBASE/$PNV/configure" ] && [ ! -e "$WORKBASE/$PNV/Makefile" ]; then
+		export FDFLAGS="-Wl,-O2 -Wl, -pthread -lpthread"
+		"$WORKBASE/$PNV/configure" "${DEFAULT_SRC_CONFIGURE_PARAMS[@]}" || die "Configuration of $PNV failed"
 	elif [ ! -e "$WORKBASE/$PNV/configure" ]; then
 		die "bug: Expected file '$WORKBASE/$PNV/configure' does not exists"
+	elif [ ! -e "$WORKBASE/$PNV/Makefile" ]; then
+		ewarn "FIle '$WORKBASE/$PNV/Makefile' is already present, skipping configure"
 	else
 		die "Unexpected in src_configure, configure"
 	fi
@@ -476,9 +496,20 @@ src_compile() {
 	bannedrey ar
 	bannedrey ranlib
 
-	cd "$WORKBASE/$PNV"
+	# (Exheredrey) I don't know whow to make paludis to recognize this so this is hotfix
+	if grep -qF 'output = false' /etc/paludis/output.conf; then
+		DEFAULT_SRC_COMPILE_PARAMS+=(
+			"--quiet"
+		)
+	elif ! grep -qF 'output = false' /etc/paludis/output.conf; then
+		debug "Output is not disabled, skipping quiet"
+	else
+		die "Unexpected in ${FUNCNAME[0]} while checking for quiet"
+	fi
 
-	emake -C "$WORKBASE/$PNV" --quiet
+	emake tools tools/{sfnt2fon,widl,winebuild,winedump,winegcc,wmc,wrc} "${DEFAULT_SRC_COMPILE_PARAMS[@]}"
+
+	emake -C "$WORKBASE/$PNV" "${DEFAULT_SRC_COMPILE_PARAMS[@]}"
 
 	if option syswow64; then
 		fixme "Build syswow64"
