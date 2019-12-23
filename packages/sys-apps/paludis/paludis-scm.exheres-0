@@ -1,0 +1,11 @@
+# Copyright 2011 Bo Ørsted Andresen
+# Distributed under the terms of the GNU General Public License v2
+
+SCM_REPOSITORY="https://git.exherbo.org/git/paludis/paludis.git"
+SCM_BRANCH="cross"
+
+require scm-git paludis
+
+DOWNLOADS=""
+
+PLATFORMS="~amd64 ~arm ~armv7 ~armv8 ~x86"
