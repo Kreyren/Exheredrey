@@ -1,0 +1,28 @@
+From f5eff246e81374b01abe0af09fc3a46f75273a4b Mon Sep 17 00:00:00 2001
+From: Marvin Schmidt <marv@exherbo.org>
+Date: Sun, 25 Aug 2019 21:15:08 +0200
+Subject: [PATCH] [Driver] Set correct include path for Exherbo
+
+---
+ clang/lib/Driver/ToolChains/Linux.cpp | 5 +++++
+ 1 file changed, 5 insertions(+)
+
+diff --git a/clang/lib/Driver/ToolChains/Linux.cpp b/clang/lib/Driver/ToolChains/Linux.cpp
+index dfdfb18319a..431677fd9f8 100644
+--- a/clang/lib/Driver/ToolChains/Linux.cpp
++++ b/clang/lib/Driver/ToolChains/Linux.cpp
+@@ -852,6 +852,11 @@ void Linux::AddClangSystemIncludeArgs(const ArgList &DriverArgs,
+     }
+   }
+ 
++  // Exherbo multiarch support
++  const std::string IncludeDir = "/usr/" + getTriple().str() + "/include";
++  if (D.getVFS().exists(IncludeDir))
++    addExternCSystemInclude(DriverArgs, CC1Args, SysRoot + IncludeDir);
++
+   if (getTriple().getOS() == llvm::Triple::RTEMS)
+     return;
+ 
+-- 
+2.23.0
+

@@ -1,0 +1,333 @@
+Upstream: Yes
+Reason: Fix compiler crash while building chromium-80:
+
+clang-9: /usr/x86_64-pc-linux-gnu/lib/llvm/9/include/llvm/IR/IRBuilder.h:2573: llvm::CallInst* llvm::IRBuilder<T, Inserter>::CreateAlignmentAssumption(const llvm::DataLayout&, llvm::Value*, unsigned int, llvm::Value*, llvm::Value**) [with T = llvm::ConstantFolder; Inserter = clang::CodeGen::CGBuilderInserter]: Assertion `Alignment != 0 && "Invalid Alignment"' failed.                                                     Stack dump:                                                                                                                                                                                                        0.      Program arguments: /usr/x86_64-pc-linux-gnu/lib/llvm/9/bin/clang-9 -cc1 -triple x86_64-pc-linux-gnu -emit-obj -disable-free -main-file-name mark-compact.cc -mrelocation-model pic -pic-level 2 -mthread-model posix -fmerge-all-constants -mdisable-fp-elim -relaxed-aliasing -fmath-errno -masm-verbose -mconstructor-aliases -munwind-tables -fuse-init-array -target-cpu haswell -dwarf-column-info -debugger-tuning=gdb -momit-leaf-frame-pointer -ffunction-sections -fdata-sections -coverage-notes-file /var/tmp/paludis/build/net-www-chromium-beta-80.0.3987.16/work/chromium-80.0.3987.16/out/Release/obj/v8/v8_base_without_compiler/
+mark-compact.gcno -resource-dir /usr/x86_64-pc-linux-gnu/lib/llvm/9/lib/clang/9.0.1 -dependency-file obj/v8/v8_base_without_compiler/mark-compact.o.d -MT obj/v8/v8_base_without_compiler/mark-compact.o -D USE_UDE
+V -D USE_AURA=1 -D USE_GLIB=1 -D USE_NSS_CERTS=1 -D USE_X11=1 -D _FILE_OFFSET_BITS=64 -D _LARGEFILE_SOURCE -D _LARGEFILE64_SOURCE -D _GNU_SOURCE -D __STDC_CONSTANT_MACROS -D __STDC_FORMAT_MACROS -D _FORTIFY_SOUR
+CE=2 -D NDEBUG -D NVALGRIND -D DYNAMIC_ANNOTATIONS_ENABLED=0 -D V8_TYPED_ARRAY_MAX_SIZE_IN_HEAP=64 -D ENABLE_MINOR_MC -D V8_INTL_SUPPORT -D V8_USE_EXTERNAL_STARTUP_DATA -D V8_CONCURRENT_MARKING -D V8_ENABLE_LAZY
+_SOURCE_POSITIONS -D V8_EMBEDDED_BUILTINS -D V8_WIN64_UNWINDING_INFO -D V8_ENABLE_REGEXP_INTERPRETER_THREADED_DISPATCH -D V8_COMPRESS_POINTERS -D V8_31BIT_SMIS_ON_64BIT_ARCH -D V8_DEPRECATION_WARNINGS -D V8_TARG
+ET_ARCH_X64 -D V8_HAVE_TARGET_OS -D V8_TARGET_OS_LINUX -D DISABLE_UNTRUSTED_CODE_MITIGATIONS -D V8_COMPRESS_POINTERS -D V8_31BIT_SMIS_ON_64BIT_ARCH -D V8_DEPRECATION_WARNINGS -D USING_SYSTEM_ICU=1 -D ICU_UTIL_DA
+TA_IMPL=ICU_UTIL_DATA_STATIC -D UCHAR_TYPE=uint16_t -D U_IMPORT=U_EXPORT -D V8_COMPRESS_POINTERS -D V8_31BIT_SMIS_ON_64BIT_ARCH -D V8_DEPRECATION_WARNINGS -D USE_SYSTEM_ZLIB=1 -I ../.. -I gen -I ../../v8 -I gen/
+v8 -I gen/shim_headers/icui18n_shim -I gen/shim_headers/icuuc_shim -I gen/shim_headers/zlib_shim -I ../../v8/include -D __DATE__= -D __TIME__= -D __TIMESTAMP__= -internal-isystem /usr/bin/../lib64/gcc/x86_64-pc-
+linux-gnu/9.2.0/../../../../../x86_64-pc-linux-gnu/include/c++/9.2.0 -internal-isystem /usr/bin/../lib64/gcc/x86_64-pc-linux-gnu/9.2.0/../../../../../x86_64-pc-linux-gnu/include/c++/9.2.0/x86_64-pc-linux-gnu -in
+ternal-isystem /usr/bin/../lib64/gcc/x86_64-pc-linux-gnu/9.2.0/../../../../../x86_64-pc-linux-gnu/include/c++/9.2.0/backward -internal-isystem /usr/local/include -internal-isystem /usr/x86_64-pc-linux-gnu/lib/ll
+vm/9/lib/clang/9.0.1/include -internal-externc-isystem /usr/x86_64-pc-linux-gnu/include -internal-externc-isystem /include -internal-externc-isystem /usr/include -O2 -Wno-builtin-macro-redefined -Wall -Wextra -W
+implicit-fallthrough -Wthread-safety -Wextra-semi -Wno-missing-field-initializers -Wno-unused-parameter -Wno-c++11-narrowing -Wno-unneeded-internal-declaration -Wno-undefined-var-template -Wno-ignored-pragma-opt
+imize -Wno-implicit-int-float-conversion -Wno-final-dtor-non-final-class -Wno-bitwise-conditional-parentheses -Wno-builtin-assume-aligned-alignment -Wno-deprecated-copy -Wheader-hygiene -Wstring-conversion -Wtau
+tological-overlap-compare -Wmissing-field-initializers -Wunreachable-code -Wshorten-64-to-32 -Wexit-time-destructors -std=c++14 -fdeprecated-macro -fdebug-compilation-dir /var/tmp/paludis/build/net-www-chromium-
+beta-80.0.3987.16/work/chromium-80.0.3987.16/out/Release -ferror-limit 19 -fmessage-length 0 -fvisibility hidden -fvisibility-inlines-hidden -pthread -stack-protector 1 -stack-protector-buffer-size 4 -ftrivial-a
+uto-var-init=pattern -fno-rtti -fgnuc-version=4.2.1 -fobjc-runtime=gcc -Qn -fdiagnostics-show-option -fcolor-diagnostics -vectorize-loops -vectorize-slp -mllvm -instcombine-lower-dbg-declare=0 -faddrsig -o obj/v
+8/v8_base_without_compiler/mark-compact.o -x c++ ../../v8/src/heap/mark-compact.cc 
+1.      <eof> parser at end of file
+2.      Per-file LLVM IR generation
+3.      ../../v8/src/common/ptr-compr-inl.h:30:19: Generating code for declaration 'v8::internal::GetIsolateRoot'
+ #0 0x00007fb573fa77aa llvm::sys::PrintStackTrace(llvm::raw_ostream&) (/usr/x86_64-pc-linux-gnu/lib/llvm/9/bin/../lib/libLLVM-9.so+0x107d7aa)
+ #1 0x00007fb573fa5a84 llvm::sys::RunSignalHandlers() (/usr/x86_64-pc-linux-gnu/lib/llvm/9/bin/../lib/libLLVM-9.so+0x107ba84)
+ #2 0x00007fb573fa5be5 (/usr/x86_64-pc-linux-gnu/lib/llvm/9/bin/../lib/libLLVM-9.so+0x107bbe5)
+ #3 0x00007fb572b8c130 (/usr/x86_64-pc-linux-gnu/lib/libc.so.6+0x3c130)
+ #4 0x00007fb572b8c0ae raise /var/tmp/paludis/build/sys-libs-glibc-2.30/work/glibc-2.30/signal/../sysdeps/unix/sysv/linux/raise.c:51:1
+ #5 0x00007fb572b7589b abort /var/tmp/paludis/build/sys-libs-glibc-2.30/work/glibc-2.30/stdlib/abort.c:81:7
+ #6 0x00007fb572b75764 get_sysdep_segment_value /var/tmp/paludis/build/sys-libs-glibc-2.30/work/glibc-2.30/intl/loadmsgcat.c:509:8
+ #7 0x00007fb572b75764 _nl_load_domain /var/tmp/paludis/build/sys-libs-glibc-2.30/work/glibc-2.30/intl/loadmsgcat.c:970:34
+ #8 0x00007fb572b843c7 (/usr/x86_64-pc-linux-gnu/lib/libc.so.6+0x343c7)
+ #9 0x000055c78d22ab43 clang::CodeGen::CodeGenFunction::EmitAlignmentAssumption(llvm::Value*, clang::QualType, clang::SourceLocation, clang::SourceLocation, unsigned int, llvm::Value*) (/usr/x86_64-pc-linux-gnu/
+lib/llvm/9/bin/clang-9+0x8e7b43)
+#10 0x000055c78d22abcb clang::CodeGen::CodeGenFunction::EmitAlignmentAssumption(llvm::Value*, clang::Expr const*, clang::SourceLocation, unsigned int, llvm::Value*) (/usr/x86_64-pc-linux-gnu/lib/llvm/9/bin/clang
+-9+0x8e7bcb)
+#11 0x000055c78d38c98c clang::CodeGen::CodeGenFunction::EmitBuiltinExpr(clang::GlobalDecl, unsigned int, clang::CallExpr const*, clang::CodeGen::ReturnValueSlot) (/usr/x86_64-pc-linux-gnu/lib/llvm/9/bin/clang-9+
+0xa4998c)
+#12 0x000055c78d426d10 clang::CodeGen::CodeGenFunction::EmitCallExpr(clang::CallExpr const*, clang::CodeGen::ReturnValueSlot) (/usr/x86_64-pc-linux-gnu/lib/llvm/9/bin/clang-9+0xae3d10)
+#13 0x000055c78d45d72c (/usr/x86_64-pc-linux-gnu/lib/llvm/9/bin/clang-9+0xb1a72c)
+#14 0x000055c78d45b23b (/usr/x86_64-pc-linux-gnu/lib/llvm/9/bin/clang-9+0xb1823b)
+#15 0x000055c78d462f45 (/usr/x86_64-pc-linux-gnu/lib/llvm/9/bin/clang-9+0xb1ff45)
+#16 0x000055c78d45b155 (/usr/x86_64-pc-linux-gnu/lib/llvm/9/bin/clang-9+0xb18155)
+
+
+
+From bb282f47511e83fdb6761a6bda185e2062d7a099 Mon Sep 17 00:00:00 2001
+From: Erich Keane <erich.keane@intel.com>
+Date: Fri, 11 Oct 2019 14:59:44 +0000
+Subject: [PATCH] Reland r374450 with Richard Smith's comments and test fixed.
+
+The behavior from the original patch has changed, since we're no longer
+allowing LLVM to just ignore the alignment.  Instead, we're just
+assuming the maximum possible alignment.
+
+Differential Revision: https://reviews.llvm.org/D68824
+
+git-svn-id: https://llvm.org/svn/llvm-project/cfe/trunk@374562 91177308-0d34-0410-b5e6-96231b3b80d8
+---
+ include/clang/Basic/DiagnosticSemaKinds.td      |  4 ++++
+ lib/CodeGen/CGBuiltin.cpp                       |  6 ++++--
+ lib/CodeGen/CGCall.cpp                          |  2 +-
+ lib/CodeGen/CGExprScalar.cpp                    |  3 +--
+ lib/CodeGen/CGStmtOpenMP.cpp                    | 11 ++++++-----
+ lib/CodeGen/CodeGenFunction.cpp                 | 17 +----------------
+ lib/CodeGen/CodeGenFunction.h                   |  7 +------
+ lib/Sema/SemaChecking.cpp                       |  6 ++++++
+ test/CodeGen/builtin-assume-aligned.c           |  9 +++++++++
+ ...tin_assume_aligned-three-params-variable.cpp |  6 +++---
+ ...tion-builtin_assume_aligned-three-params.cpp |  6 +++---
+ ...mption-builtin_assume_aligned-two-params.cpp |  6 +++---
+ test/Sema/builtin-assume-aligned.c              |  4 ++++
+ 13 files changed, 46 insertions(+), 41 deletions(-)
+
+diff --git a/clang/include/clang/Basic/DiagnosticSemaKinds.td b/clang/include/clang/Basic/DiagnosticSemaKinds.td
+index bcd059be9113..47a1deef98a7 100644
+--- a/clang/include/clang/Basic/DiagnosticSemaKinds.td
++++ b/clang/include/clang/Basic/DiagnosticSemaKinds.td
+@@ -2853,6 +2853,10 @@ def err_alignment_dependent_typedef_name : Error<
+ 
+ def err_attribute_aligned_too_great : Error<
+   "requested alignment must be %0 bytes or smaller">;
++def warn_assume_aligned_too_great
++    : Warning<"requested alignment must be %0 bytes or smaller; maximum "
++              "alignment assumed">,
++      InGroup<DiagGroup<"builtin-assume-aligned-alignment">>;
+ def warn_redeclaration_without_attribute_prev_attribute_ignored : Warning<
+   "%q0 redeclared without %1 attribute: previous %1 ignored">,
+   InGroup<MicrosoftInconsistentDllImport>;
+diff --git a/clang/lib/CodeGen/CGBuiltin.cpp b/clang/lib/CodeGen/CGBuiltin.cpp
+index 0562a623ae2b..ddff595987bc 100644
+--- a/clang/lib/CodeGen/CGBuiltin.cpp
++++ b/clang/lib/CodeGen/CGBuiltin.cpp
+@@ -2048,11 +2048,13 @@ RValue CodeGenFunction::EmitBuiltinExpr(const GlobalDecl GD, unsigned BuiltinID,
+ 
+     Value *AlignmentValue = EmitScalarExpr(E->getArg(1));
+     ConstantInt *AlignmentCI = cast<ConstantInt>(AlignmentValue);
+-    unsigned Alignment = (unsigned)AlignmentCI->getZExtValue();
++    if (AlignmentCI->getValue().ugt(llvm::Value::MaximumAlignment))
++      AlignmentCI = ConstantInt::get(AlignmentCI->getType(),
++                                     llvm::Value::MaximumAlignment);
+ 
+     EmitAlignmentAssumption(PtrValue, Ptr,
+                             /*The expr loc is sufficient.*/ SourceLocation(),
+-                            Alignment, OffsetValue);
++                            AlignmentCI, OffsetValue);
+     return RValue::get(PtrValue);
+   }
+   case Builtin::BI__assume:
+diff --git a/clang/lib/CodeGen/CGCall.cpp b/clang/lib/CodeGen/CGCall.cpp
+index 682a7ccb493f..2ec9e91e3154 100644
+--- a/clang/lib/CodeGen/CGCall.cpp
++++ b/clang/lib/CodeGen/CGCall.cpp
+@@ -4569,7 +4569,7 @@ RValue CodeGenFunction::EmitCall(const CGFunctionInfo &CallInfo,
+       llvm::Value *Alignment = EmitScalarExpr(AA->getAlignment());
+       llvm::ConstantInt *AlignmentCI = cast<llvm::ConstantInt>(Alignment);
+       EmitAlignmentAssumption(Ret.getScalarVal(), RetTy, Loc, AA->getLocation(),
+-                              AlignmentCI->getZExtValue(), OffsetValue);
++                              AlignmentCI, OffsetValue);
+     } else if (const auto *AA = TargetDecl->getAttr<AllocAlignAttr>()) {
+       llvm::Value *AlignmentVal = CallArgs[AA->getParamIndex().getLLVMIndex()]
+                                       .getRValue(*this)
+diff --git a/clang/lib/CodeGen/CGExprScalar.cpp b/clang/lib/CodeGen/CGExprScalar.cpp
+index 0b9271b1d31f..c7f279d28e83 100644
+--- a/clang/lib/CodeGen/CGExprScalar.cpp
++++ b/clang/lib/CodeGen/CGExprScalar.cpp
+@@ -294,8 +294,7 @@ class ScalarExprEmitter
+ 
+     Value *AlignmentValue = CGF.EmitScalarExpr(AVAttr->getAlignment());
+     llvm::ConstantInt *AlignmentCI = cast<llvm::ConstantInt>(AlignmentValue);
+-    CGF.EmitAlignmentAssumption(V, E, AVAttr->getLocation(),
+-                                AlignmentCI->getZExtValue());
++    CGF.EmitAlignmentAssumption(V, E, AVAttr->getLocation(), AlignmentCI);
+   }
+ 
+   /// EmitLoadOfLValue - Given an expression with complex type that represents a
+diff --git a/clang/lib/CodeGen/CGStmtOpenMP.cpp b/clang/lib/CodeGen/CGStmtOpenMP.cpp
+index e50cdb1b678f..2a4e89b9e2bb 100644
+--- a/clang/lib/CodeGen/CGStmtOpenMP.cpp
++++ b/clang/lib/CodeGen/CGStmtOpenMP.cpp
+@@ -1519,14 +1519,14 @@ static void emitAlignedClause(CodeGenFunction &CGF,
+   if (!CGF.HaveInsertPoint())
+     return;
+   for (const auto *Clause : D.getClausesOfKind<OMPAlignedClause>()) {
+-    unsigned ClauseAlignment = 0;
++    llvm::APInt ClauseAlignment(64, 0);
+     if (const Expr *AlignmentExpr = Clause->getAlignment()) {
+       auto *AlignmentCI =
+           cast<llvm::ConstantInt>(CGF.EmitScalarExpr(AlignmentExpr));
+-      ClauseAlignment = static_cast<unsigned>(AlignmentCI->getZExtValue());
++      ClauseAlignment = AlignmentCI->getValue();
+     }
+     for (const Expr *E : Clause->varlists()) {
+-      unsigned Alignment = ClauseAlignment;
++      llvm::APInt Alignment(ClauseAlignment);
+       if (Alignment == 0) {
+         // OpenMP [2.8.1, Description]
+         // If no optional parameter is specified, implementation-defined default
+@@ -1537,12 +1537,13 @@ static void emitAlignedClause(CodeGenFunction &CGF,
+                     E->getType()->getPointeeType()))
+                 .getQuantity();
+       }
+-      assert((Alignment == 0 || llvm::isPowerOf2_32(Alignment)) &&
++      assert((Alignment == 0 || Alignment.isPowerOf2()) &&
+              "alignment is not power of 2");
+       if (Alignment != 0) {
+         llvm::Value *PtrValue = CGF.EmitScalarExpr(E);
+         CGF.EmitAlignmentAssumption(
+-            PtrValue, E, /*No second loc needed*/ SourceLocation(), Alignment);
++            PtrValue, E, /*No second loc needed*/ SourceLocation(),
++            llvm::ConstantInt::get(CGF.getLLVMContext(), Alignment));
+       }
+     }
+   }
+diff --git a/clang/lib/CodeGen/CodeGenFunction.cpp b/clang/lib/CodeGen/CodeGenFunction.cpp
+index 41b7f2f4b1be..3f9a52ab7638 100644
+--- a/clang/lib/CodeGen/CodeGenFunction.cpp
++++ b/clang/lib/CodeGen/CodeGenFunction.cpp
+@@ -2056,25 +2056,10 @@ void CodeGenFunction::EmitAlignmentAssumption(llvm::Value *PtrValue,
+   }
+ }
+ 
+-void CodeGenFunction::EmitAlignmentAssumption(llvm::Value *PtrValue,
+-                                              QualType Ty, SourceLocation Loc,
+-                                              SourceLocation AssumptionLoc,
+-                                              unsigned Alignment,
+-                                              llvm::Value *OffsetValue) {
+-  llvm::Value *TheCheck;
+-  llvm::Instruction *Assumption = Builder.CreateAlignmentAssumption(
+-      CGM.getDataLayout(), PtrValue, Alignment, OffsetValue, &TheCheck);
+-  if (SanOpts.has(SanitizerKind::Alignment)) {
+-    llvm::Value *AlignmentVal = llvm::ConstantInt::get(IntPtrTy, Alignment);
+-    EmitAlignmentAssumptionCheck(PtrValue, Ty, Loc, AssumptionLoc, AlignmentVal,
+-                                 OffsetValue, TheCheck, Assumption);
+-  }
+-}
+-
+ void CodeGenFunction::EmitAlignmentAssumption(llvm::Value *PtrValue,
+                                               const Expr *E,
+                                               SourceLocation AssumptionLoc,
+-                                              unsigned Alignment,
++                                              llvm::Value *Alignment,
+                                               llvm::Value *OffsetValue) {
+   if (auto *CE = dyn_cast<CastExpr>(E))
+     E = CE->getSubExprAsWritten();
+diff --git a/clang/lib/CodeGen/CodeGenFunction.h b/clang/lib/CodeGen/CodeGenFunction.h
+index ea78309a0697..bb4fed808373 100644
+--- a/clang/lib/CodeGen/CodeGenFunction.h
++++ b/clang/lib/CodeGen/CodeGenFunction.h
+@@ -2829,13 +2829,8 @@ class CodeGenFunction : public CodeGenTypeCache {
+                                llvm::Value *Alignment,
+                                llvm::Value *OffsetValue = nullptr);
+ 
+-  void EmitAlignmentAssumption(llvm::Value *PtrValue, QualType Ty,
+-                               SourceLocation Loc, SourceLocation AssumptionLoc,
+-                               unsigned Alignment,
+-                               llvm::Value *OffsetValue = nullptr);
+-
+   void EmitAlignmentAssumption(llvm::Value *PtrValue, const Expr *E,
+-                               SourceLocation AssumptionLoc, unsigned Alignment,
++                               SourceLocation AssumptionLoc, llvm::Value *Alignment,
+                                llvm::Value *OffsetValue = nullptr);
+ 
+   //===--------------------------------------------------------------------===//
+diff --git a/clang/lib/Sema/SemaChecking.cpp b/clang/lib/Sema/SemaChecking.cpp
+index 07d3648dc9ac..dca81d1d275f 100644
+--- a/clang/lib/Sema/SemaChecking.cpp
++++ b/clang/lib/Sema/SemaChecking.cpp
+@@ -6063,6 +6063,12 @@ bool Sema::SemaBuiltinAssumeAligned(CallExpr *TheCall) {
+     if (!Result.isPowerOf2())
+       return Diag(TheCall->getBeginLoc(), diag::err_alignment_not_power_of_two)
+              << Arg->getSourceRange();
++
++    // Alignment calculations can wrap around if it's greater than 2**29.
++    unsigned MaximumAlignment = 536870912;
++    if (Result > MaximumAlignment)
++      Diag(TheCall->getBeginLoc(), diag::warn_assume_aligned_too_great)
++          << Arg->getSourceRange() << MaximumAlignment;
+   }
+ 
+   if (NumArgs > 2) {
+diff --git a/clang/test/CodeGen/builtin-assume-aligned.c b/clang/test/CodeGen/builtin-assume-aligned.c
+index 1d807a40cad4..f6a89a20ecfb 100644
+--- a/clang/test/CodeGen/builtin-assume-aligned.c
++++ b/clang/test/CodeGen/builtin-assume-aligned.c
+@@ -65,3 +65,12 @@ int test6() {
+ // CHECK: call void @llvm.assume(i1 [[MASKCOND6]])
+ }
+ 
++// CHECK-LABEL: @pr43638
++int pr43638(int *a) {
++  a = __builtin_assume_aligned(a, 4294967296);
++return a[0];
++// CHECK: [[PTRINT7:%.+]] = ptrtoint
++// CHECK: [[MASKEDPTR7:%.+]] = and i64 [[PTRINT7]], 536870911
++// CHECK: [[MASKCOND7:%.+]] = icmp eq i64 [[MASKEDPTR7]], 0
++// CHECK: call void @llvm.assume(i1 [[MASKCOND7]])
++}
+diff --git a/clang/test/CodeGen/catch-alignment-assumption-builtin_assume_aligned-three-params-variable.cpp b/clang/test/CodeGen/catch-alignment-assumption-builtin_assume_aligned-three-params-variable.cpp
+index 4384b9ce7200..4306e322f5fb 100644
+--- a/clang/test/CodeGen/catch-alignment-assumption-builtin_assume_aligned-three-params-variable.cpp
++++ b/clang/test/CodeGen/catch-alignment-assumption-builtin_assume_aligned-three-params-variable.cpp
+@@ -18,13 +18,13 @@ void *caller(char **x, unsigned long offset) {
+   // CHECK-NEXT:                        %[[OFFSET_RELOADED:.*]] = load i64, i64* %[[OFFSET_ADDR]], align 8
+   // CHECK-NEXT:                        %[[PTRINT:.*]] = ptrtoint i8* %[[BITCAST]] to i64
+   // CHECK-NEXT:                        %[[OFFSETPTR:.*]] = sub i64 %[[PTRINT]], %[[OFFSET_RELOADED]]
+-  // CHECK-NEXT:                        %[[MASKEDPTR:.*]] = and i64 %[[OFFSETPTR]], 2147483647
++  // CHECK-NEXT:                        %[[MASKEDPTR:.*]] = and i64 %[[OFFSETPTR]], 536870911
+   // CHECK-NEXT:                        %[[MASKCOND:.*]] = icmp eq i64 %[[MASKEDPTR]], 0
+   // CHECK-SANITIZE-NEXT:               %[[PTRINT_DUP:.*]] = ptrtoint i8* %[[BITCAST]] to i64, !nosanitize
+   // CHECK-SANITIZE-NEXT:               br i1 %[[MASKCOND]], label %[[CONT:.*]], label %[[HANDLER_ALIGNMENT_ASSUMPTION:[^,]+]],{{.*}} !nosanitize
+   // CHECK-SANITIZE:                  [[HANDLER_ALIGNMENT_ASSUMPTION]]:
+-  // CHECK-SANITIZE-NORECOVER-NEXT:     call void @__ubsan_handle_alignment_assumption_abort(i8* bitcast ({ {{{.*}}}, {{{.*}}}, {{{.*}}}* }* @[[LINE_100_ALIGNMENT_ASSUMPTION]] to i8*), i64 %[[PTRINT_DUP]], i64 2147483648, i64 %[[OFFSET_RELOADED]]){{.*}}, !nosanitize
+-  // CHECK-SANITIZE-RECOVER-NEXT:       call void @__ubsan_handle_alignment_assumption(i8* bitcast ({ {{{.*}}}, {{{.*}}}, {{{.*}}}* }* @[[LINE_100_ALIGNMENT_ASSUMPTION]] to i8*), i64 %[[PTRINT_DUP]], i64 2147483648, i64 %[[OFFSET_RELOADED]]){{.*}}, !nosanitize
++  // CHECK-SANITIZE-NORECOVER-NEXT:     call void @__ubsan_handle_alignment_assumption_abort(i8* bitcast ({ {{{.*}}}, {{{.*}}}, {{{.*}}}* }* @[[LINE_100_ALIGNMENT_ASSUMPTION]] to i8*), i64 %[[PTRINT_DUP]], i64 536870912, i64 %[[OFFSET_RELOADED]]){{.*}}, !nosanitize
++  // CHECK-SANITIZE-RECOVER-NEXT:       call void @__ubsan_handle_alignment_assumption(i8* bitcast ({ {{{.*}}}, {{{.*}}}, {{{.*}}}* }* @[[LINE_100_ALIGNMENT_ASSUMPTION]] to i8*), i64 %[[PTRINT_DUP]], i64 536870912, i64 %[[OFFSET_RELOADED]]){{.*}}, !nosanitize
+   // CHECK-SANITIZE-TRAP-NEXT:          call void @llvm.trap(){{.*}}, !nosanitize
+   // CHECK-SANITIZE-UNREACHABLE-NEXT:   unreachable, !nosanitize
+   // CHECK-SANITIZE:                  [[CONT]]:
+diff --git a/clang/test/CodeGen/catch-alignment-assumption-builtin_assume_aligned-three-params.cpp b/clang/test/CodeGen/catch-alignment-assumption-builtin_assume_aligned-three-params.cpp
+index 18a573429d9f..27f53e92bed8 100644
+--- a/clang/test/CodeGen/catch-alignment-assumption-builtin_assume_aligned-three-params.cpp
++++ b/clang/test/CodeGen/catch-alignment-assumption-builtin_assume_aligned-three-params.cpp
+@@ -15,13 +15,13 @@ void *caller(char **x) {
+   // CHECK-NEXT:                        %[[BITCAST:.*]] = bitcast i8** %[[X_RELOADED]] to i8*
+   // CHECK-NEXT:                        %[[PTRINT:.*]] = ptrtoint i8* %[[BITCAST]] to i64
+   // CHECK-NEXT:                        %[[OFFSETPTR:.*]] = sub i64 %[[PTRINT]], 42
+-  // CHECK-NEXT:                        %[[MASKEDPTR:.*]] = and i64 %[[OFFSETPTR]], 2147483647
++  // CHECK-NEXT:                        %[[MASKEDPTR:.*]] = and i64 %[[OFFSETPTR]], 536870911
+   // CHECK-NEXT:                        %[[MASKCOND:.*]] = icmp eq i64 %[[MASKEDPTR]], 0
+   // CHECK-SANITIZE-NEXT:               %[[PTRINT_DUP:.*]] = ptrtoint i8* %[[BITCAST]] to i64, !nosanitize
+   // CHECK-SANITIZE-NEXT:               br i1 %[[MASKCOND]], label %[[CONT:.*]], label %[[HANDLER_ALIGNMENT_ASSUMPTION:[^,]+]],{{.*}} !nosanitize
+   // CHECK-SANITIZE:                  [[HANDLER_ALIGNMENT_ASSUMPTION]]:
+-  // CHECK-SANITIZE-NORECOVER-NEXT:     call void @__ubsan_handle_alignment_assumption_abort(i8* bitcast ({ {{{.*}}}, {{{.*}}}, {{{.*}}}* }* @[[LINE_100_ALIGNMENT_ASSUMPTION]] to i8*), i64 %[[PTRINT_DUP]], i64 2147483648, i64 42){{.*}}, !nosanitize
+-  // CHECK-SANITIZE-RECOVER-NEXT:       call void @__ubsan_handle_alignment_assumption(i8* bitcast ({ {{{.*}}}, {{{.*}}}, {{{.*}}}* }* @[[LINE_100_ALIGNMENT_ASSUMPTION]] to i8*), i64 %[[PTRINT_DUP]], i64 2147483648, i64 42){{.*}}, !nosanitize
++  // CHECK-SANITIZE-NORECOVER-NEXT:     call void @__ubsan_handle_alignment_assumption_abort(i8* bitcast ({ {{{.*}}}, {{{.*}}}, {{{.*}}}* }* @[[LINE_100_ALIGNMENT_ASSUMPTION]] to i8*), i64 %[[PTRINT_DUP]], i64 536870912, i64 42){{.*}}, !nosanitize
++  // CHECK-SANITIZE-RECOVER-NEXT:       call void @__ubsan_handle_alignment_assumption(i8* bitcast ({ {{{.*}}}, {{{.*}}}, {{{.*}}}* }* @[[LINE_100_ALIGNMENT_ASSUMPTION]] to i8*), i64 %[[PTRINT_DUP]], i64 536870912, i64 42){{.*}}, !nosanitize
+   // CHECK-SANITIZE-TRAP-NEXT:          call void @llvm.trap(){{.*}}, !nosanitize
+   // CHECK-SANITIZE-UNREACHABLE-NEXT:   unreachable, !nosanitize
+   // CHECK-SANITIZE:                  [[CONT]]:
+diff --git a/clang/test/CodeGen/catch-alignment-assumption-builtin_assume_aligned-two-params.cpp b/clang/test/CodeGen/catch-alignment-assumption-builtin_assume_aligned-two-params.cpp
+index fe4384752ceb..5412270f3761 100644
+--- a/clang/test/CodeGen/catch-alignment-assumption-builtin_assume_aligned-two-params.cpp
++++ b/clang/test/CodeGen/catch-alignment-assumption-builtin_assume_aligned-two-params.cpp
+@@ -14,13 +14,13 @@ void *caller(char **x) {
+   // CHECK-NEXT:                        %[[X_RELOADED:.*]] = load i8**, i8*** %[[X_ADDR]], align 8
+   // CHECK-NEXT:                        %[[BITCAST:.*]] = bitcast i8** %[[X_RELOADED]] to i8*
+   // CHECK-NEXT:                        %[[PTRINT:.*]] = ptrtoint i8* %[[BITCAST]] to i64
+-  // CHECK-NEXT:                        %[[MASKEDPTR:.*]] = and i64 %[[PTRINT]], 2147483647
++  // CHECK-NEXT:                        %[[MASKEDPTR:.*]] = and i64 %[[PTRINT]], 536870911
+   // CHECK-NEXT:                        %[[MASKCOND:.*]] = icmp eq i64 %[[MASKEDPTR]], 0
+   // CHECK-SANITIZE-NEXT:               %[[PTRINT_DUP:.*]] = ptrtoint i8* %[[BITCAST]] to i64, !nosanitize
+   // CHECK-SANITIZE-NEXT:               br i1 %[[MASKCOND]], label %[[CONT:.*]], label %[[HANDLER_ALIGNMENT_ASSUMPTION:[^,]+]],{{.*}} !nosanitize
+   // CHECK-SANITIZE:                  [[HANDLER_ALIGNMENT_ASSUMPTION]]:
+-  // CHECK-SANITIZE-NORECOVER-NEXT:     call void @__ubsan_handle_alignment_assumption_abort(i8* bitcast ({ {{{.*}}}, {{{.*}}}, {{{.*}}}* }* @[[LINE_100_ALIGNMENT_ASSUMPTION]] to i8*), i64 %[[PTRINT_DUP]], i64 2147483648, i64 0){{.*}}, !nosanitize
+-  // CHECK-SANITIZE-RECOVER-NEXT:       call void @__ubsan_handle_alignment_assumption(i8* bitcast ({ {{{.*}}}, {{{.*}}}, {{{.*}}}* }* @[[LINE_100_ALIGNMENT_ASSUMPTION]] to i8*), i64 %[[PTRINT_DUP]], i64 2147483648, i64 0){{.*}}, !nosanitize
++  // CHECK-SANITIZE-NORECOVER-NEXT:     call void @__ubsan_handle_alignment_assumption_abort(i8* bitcast ({ {{{.*}}}, {{{.*}}}, {{{.*}}}* }* @[[LINE_100_ALIGNMENT_ASSUMPTION]] to i8*), i64 %[[PTRINT_DUP]], i64 536870912, i64 0){{.*}}, !nosanitize
++  // CHECK-SANITIZE-RECOVER-NEXT:       call void @__ubsan_handle_alignment_assumption(i8* bitcast ({ {{{.*}}}, {{{.*}}}, {{{.*}}}* }* @[[LINE_100_ALIGNMENT_ASSUMPTION]] to i8*), i64 %[[PTRINT_DUP]], i64 536870912, i64 0){{.*}}, !nosanitize
+   // CHECK-SANITIZE-TRAP-NEXT:          call void @llvm.trap(){{.*}}, !nosanitize
+   // CHECK-SANITIZE-UNREACHABLE-NEXT:   unreachable, !nosanitize
+   // CHECK-SANITIZE:                  [[CONT]]:
+diff --git a/clang/test/Sema/builtin-assume-aligned.c b/clang/test/Sema/builtin-assume-aligned.c
+index 057a500b321a..9411cb4e6389 100644
+--- a/clang/test/Sema/builtin-assume-aligned.c
++++ b/clang/test/Sema/builtin-assume-aligned.c
+@@ -58,3 +58,7 @@ void *test_no_fn_proto() __attribute__((assume_aligned)); // expected-error {{'a
+ void *test_no_fn_proto() __attribute__((assume_aligned())); // expected-error {{'assume_aligned' attribute takes at least 1 argument}}
+ void *test_no_fn_proto() __attribute__((assume_aligned(32, 45, 37))); // expected-error {{'assume_aligned' attribute takes no more than 2 arguments}}
+ 
++int pr43638(int *a) {
++  a = __builtin_assume_aligned(a, 4294967296); // expected-warning {{requested alignment must be 536870912 bytes or smaller; maximum alignment assumed}}
++return a[0];
++}

@@ -1,0 +1,25 @@
+Upstream: yes
+From d21664cce1db8debe2528f36b1fbd2b8af9c9401 Mon Sep 17 00:00:00 2001
+From: serge-sans-paille <sguelton@redhat.com>
+Date: Wed, 12 Feb 2020 08:57:19 +0100
+Subject: [PATCH] Fix integration of pass plugins with llvm dylib
+
+Call llvm_process_pass_plugin from clang when in standalone mode.
+
+Differential Revision: https://reviews.llvm.org/D74464
+---
+ clang/CMakeLists.txt | 1 +
+ 2 files changed, 2 insertions(+), 2 deletions(-)
+
+diff --git a/clang/CMakeLists.txt b/clang/CMakeLists.txt
+index 781c3eb7f2f2..dc1413f4b597 100644
+--- a/clang/CMakeLists.txt
++++ b/clang/CMakeLists.txt
+@@ -864,6 +864,7 @@ add_subdirectory(utils/hmaptool)
+ 
+ if(CLANG_BUILT_STANDALONE)
+   llvm_distribution_add_targets()
++  process_llvm_pass_plugins()
+ endif()
+ 
+ configure_file(

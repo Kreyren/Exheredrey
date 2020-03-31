@@ -1,0 +1,12 @@
+diff --git a/clang/CMakeLists.txt b/clang/CMakeLists.txt
+--- a/clang/CMakeLists.txt
++++ b/clang/CMakeLists.txt
+@@ -864,7 +864,7 @@
+ 
+ if(CLANG_BUILT_STANDALONE)
+   llvm_distribution_add_targets()
+-  process_llvm_pass_plugins()
++  process_llvm_pass_plugins(NO_GEN)
+ endif()
+ 
+ configure_file(

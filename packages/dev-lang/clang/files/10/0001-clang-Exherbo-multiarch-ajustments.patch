@@ -1,0 +1,112 @@
+From 91f8670cedda7a7df0a2f7b90f30501ab8c5ff06 Mon Sep 17 00:00:00 2001
+From: Marc-Antoine Perennou <Marc-Antoine@Perennou.com>
+Date: Fri, 15 Nov 2019 14:18:30 +0100
+Subject: [PATCH 1/3] clang: Exherbo multiarch ajustments
+
+Exherbo multiarch layout being somewhat specific,
+some adjustments need to be made wrt the lookup
+paths
+
+Signed-off-by: Marc-Antoine Perennou <Marc-Antoine@Perennou.com>
+---
+ clang/lib/Driver/ToolChains/Linux.cpp | 66 +++++++++++++++++++++++++--
+ 1 file changed, 63 insertions(+), 3 deletions(-)
+
+diff --git a/clang/lib/Driver/ToolChains/Linux.cpp b/clang/lib/Driver/ToolChains/Linux.cpp
+index bff1ab1009b..a3177988ff3 100644
+--- a/clang/lib/Driver/ToolChains/Linux.cpp
++++ b/clang/lib/Driver/ToolChains/Linux.cpp
+@@ -350,8 +350,20 @@ Linux::Linux(const Driver &D, const llvm::Triple &Triple, const ArgList &Args)
+     //
+     // Note that this matches the GCC behavior. See the below comment for where
+     // Clang diverges from GCC's behavior.
+-    addPathIfExists(D, LibPath + "/../" + GCCTriple.str() + "/lib/../" +
+-                           OSLibDir + SelectedMultilib.osSuffix(),
++    //
++    // On Exherbo, the GCC installation will reside in e.g.
++    //   /usr/x86_64-pc-linux-gnu/lib/gcc/armv7-unknown-linux-gnueabihf/9.2.0
++    // while the matching lib path is
++    //   /usr/armv7-unknown-linux-gnueabihf/lib
++    if (Distro == Distro::Exherbo)
++      addPathIfExists(D,
++                      LibPath + "/../../" + GCCTriple.str() + "/lib/../" +
++                          OSLibDir + SelectedMultilib.osSuffix(),
++                      Paths);
++
++    addPathIfExists(D,
++                    LibPath + "/../" + GCCTriple.str() + "/lib/../" + OSLibDir +
++                        SelectedMultilib.osSuffix(),
+                     Paths);
+ 
+     // If the GCC installation we found is inside of the sysroot, we want to
+@@ -841,9 +853,33 @@ void Linux::AddClangSystemIncludeArgs(const ArgList &DriverArgs,
+       std::string("/usr/include/") +
+       getMultiarchTriple(D, getTriple(), SysRoot);
+   const StringRef AndroidMultiarchIncludeDirs[] = {AndroidMultiarchIncludeDir};
+-  if (getTriple().isAndroid())
++  const llvm::Triple &Triple = getTriple();
++  if (Triple.isAndroid())
+     MultiarchIncludeDirs = AndroidMultiarchIncludeDirs;
+ 
++  // Exherbo's multiarch layout is /usr/<triple>/include and not
++  // /usr/include/<triple>
++  const Distro Distro(D.getVFS(), Triple);
++  const StringRef ExherboMultiarchIncludeDirs[] = {"/usr/" + Triple.str() +
++                                                   "/include"};
++  const StringRef ExherboI686MuslMultiarchIncludeDirs[] = {
++      "/usr/i686-pc-linux-musl/include"};
++  const StringRef ExherboI686MultiarchIncludeDirs[] = {
++      "/usr/i686-pc-linux-gnu/include"};
++  if (Distro == Distro::Exherbo) {
++    switch (Triple.getArch()) {
++    case llvm::Triple::x86:
++      if (Triple.isMusl())
++        MultiarchIncludeDirs = ExherboI686MuslMultiarchIncludeDirs;
++      else
++        MultiarchIncludeDirs = ExherboI686MultiarchIncludeDirs;
++      break;
++    default:
++      MultiarchIncludeDirs = ExherboMultiarchIncludeDirs;
++      break;
++    }
++  }
++
+   for (StringRef Dir : MultiarchIncludeDirs) {
+     if (D.getVFS().exists(SysRoot + Dir)) {
+       addExternCSystemInclude(DriverArgs, CC1Args, SysRoot + Dir);
+@@ -878,8 +914,32 @@ void Linux::addLibStdCxxIncludePaths(const llvm::opt::ArgList &DriverArgs,
+ 
+   StringRef LibDir = GCCInstallation.getParentLibPath();
+   StringRef TripleStr = GCCInstallation.getTriple().str();
++  const Driver &D = getDriver();
+   const Multilib &Multilib = GCCInstallation.getMultilib();
++  const std::string GCCMultiarchTriple =
++      getMultiarchTriple(D, GCCInstallation.getTriple(), D.SysRoot);
++  const llvm::Triple &Triple = getTriple();
++  const std::string TargetMultiarchTriple =
++      getMultiarchTriple(D, Triple, D.SysRoot);
+   const GCCVersion &Version = GCCInstallation.getVersion();
++  const Distro Distro(D.getVFS(), Triple);
++
++  // On Exherbo the consecutive addLibStdCXXIncludePaths call would evaluate to:
++  //   LibDir = /usr/lib/gcc/<triple>/9.2.0/../../..
++  //          = /usr/lib/
++  //   LibDir + "/../include" = /usr/include
++  // addLibStdCXXIncludePaths would then check if "/usr/include/c++/<version>"
++  // exists, and add that as include path when what we want is
++  // "/usr/<triple>/include/c++/<version>"
++  // Note that "/../../" is needed and not just "/../" as /usr/include points to
++  // /usr/host/include
++  if (Distro == Distro::Exherbo)
++    if (addLibStdCXXIncludePaths(LibDir.str() + "/../../" + TripleStr +
++                                     "/include",
++                                 "/c++/" + Version.Text, TripleStr,
++                                 GCCMultiarchTriple, TargetMultiarchTriple,
++                                 Multilib.includeSuffix(), DriverArgs, CC1Args))
++      return;
+ 
+   const std::string LibStdCXXIncludePathCandidates[] = {
+       // Android standalone toolchain has C++ headers in yet another place.
+-- 
+2.25.1
+

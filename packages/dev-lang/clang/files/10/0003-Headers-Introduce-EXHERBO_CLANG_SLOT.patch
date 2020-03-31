@@ -1,0 +1,47 @@
+From f814836ca625c93bf64c9b5ef24fbfd8ce5733bd Mon Sep 17 00:00:00 2001
+From: Marvin Schmidt <marv@exherbo.org>
+Date: Sat, 14 Mar 2020 05:11:11 +0100
+Subject: [PATCH 3/3] Headers: Introduce EXHERBO_CLANG_SLOT
+
+This let's us control the installation path of the builtin headers,
+which is necessary when changing clang's resource directory via
+CLANG_RESOURCE_DIR to get lookup path and install path to line up.
+Otherwise clang would look in e.g.
+
+  /usr/x86_64-pc-linux-gnu/lib/clang/${SLOT}/include
+
+when CLANG_RESOURCE_DIR is set to `..lib/clang/${SLOT}` while the
+headers are actually installed in
+
+  /usr/x86_64-pc-linux-gnu/lib/clang/${CLANG_VERSION}/include
+
+where ${CLANG_VERSION} is the full version, e.g. 10.0.0
+---
+ clang/lib/Headers/CMakeLists.txt | 4 ++--
+ 1 file changed, 2 insertions(+), 2 deletions(-)
+
+diff --git a/clang/lib/Headers/CMakeLists.txt b/clang/lib/Headers/CMakeLists.txt
+index 85c3124234a..41e22f1484c 100644
+--- a/clang/lib/Headers/CMakeLists.txt
++++ b/clang/lib/Headers/CMakeLists.txt
+@@ -146,7 +146,7 @@ set(openmp_wrapper_files
+   openmp_wrappers/__clang_openmp_math_declares.h
+ )
+ 
+-set(output_dir ${LLVM_LIBRARY_OUTPUT_INTDIR}/clang/${CLANG_VERSION}/include)
++set(output_dir ${LLVM_LIBRARY_OUTPUT_INTDIR}/clang/@EXHERBO_CLANG_SLOT@/include)
+ set(out_files)
+ set(generated_files)
+ 
+@@ -191,7 +191,7 @@ set_target_properties(clang-resource-headers PROPERTIES
+   FOLDER "Misc"
+   RUNTIME_OUTPUT_DIRECTORY "${output_dir}")
+ 
+-set(header_install_dir lib${LLVM_LIBDIR_SUFFIX}/clang/${CLANG_VERSION}/include)
++set(header_install_dir lib${LLVM_LIBDIR_SUFFIX}/clang/@EXHERBO_CLANG_SLOT@/include)
+ 
+ install(
+   FILES ${files} ${generated_files}
+-- 
+2.25.1
+

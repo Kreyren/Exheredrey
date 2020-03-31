@@ -1,0 +1,91 @@
+From 2d90a544c95cfafed9d1df65388a4a5d8f269288 Mon Sep 17 00:00:00 2001
+From: Marvin Schmidt <marv@exherbo.org>
+Date: Sat, 14 Mar 2020 05:14:45 +0100
+Subject: [PATCH 2/3] tests: Mark tests that are expected to fail on Exherbo
+
+---
+ clang/test/Driver/android-ndk-standalone.cpp | 2 ++
+ clang/test/Driver/arm-multilibs.c            | 2 ++
+ clang/test/Driver/dyld-prefix.c              | 2 ++
+ clang/test/Driver/linux-header-search.cpp    | 2 ++
+ clang/test/Driver/linux-ld.c                 | 2 ++
+ clang/test/Driver/mips-cs.cpp                | 1 +
+ clang/test/lit.cfg.py                        | 3 +++
+ 7 files changed, 14 insertions(+)
+
+diff --git a/clang/test/Driver/android-ndk-standalone.cpp b/clang/test/Driver/android-ndk-standalone.cpp
+index c4d93993478..d1896d590b5 100644
+--- a/clang/test/Driver/android-ndk-standalone.cpp
++++ b/clang/test/Driver/android-ndk-standalone.cpp
+@@ -1,3 +1,5 @@
++// XFAIL: exherbo
++
+ // Test header and library paths when Clang is used with Android standalone
+ // toolchain.
+ //
+diff --git a/clang/test/Driver/arm-multilibs.c b/clang/test/Driver/arm-multilibs.c
+index bd9c80e8b16..1de8739e7e9 100644
+--- a/clang/test/Driver/arm-multilibs.c
++++ b/clang/test/Driver/arm-multilibs.c
+@@ -1,3 +1,5 @@
++// XFAIL: exherbo
++
+ // RUN: %clang -target armv7-linux-gnueabi --sysroot=%S/Inputs/multilib_arm_linux_tree -### -c %s -o /dev/null 2>&1 | FileCheck -check-prefix CHECK-ARM %s
+ // RUN: %clang -target thumbv7-linux-gnueabi --sysroot=%S/Inputs/multilib_arm_linux_tree -### -c %s -o /dev/null 2>&1 | FileCheck -check-prefix CHECK-ARM %s
+ 
+diff --git a/clang/test/Driver/dyld-prefix.c b/clang/test/Driver/dyld-prefix.c
+index 5a79874b567..f20824ae18a 100644
+--- a/clang/test/Driver/dyld-prefix.c
++++ b/clang/test/Driver/dyld-prefix.c
+@@ -1,3 +1,5 @@
++// XFAIL: exherbo
++
+ // RUN: touch %t.o
+ 
+ // RUN: %clang -target i386-unknown-linux --dyld-prefix /foo -### %t.o 2>&1 | FileCheck --check-prefix=CHECK-32 %s
+diff --git a/clang/test/Driver/linux-header-search.cpp b/clang/test/Driver/linux-header-search.cpp
+index 03502423c15..f70ad00d03e 100644
+--- a/clang/test/Driver/linux-header-search.cpp
++++ b/clang/test/Driver/linux-header-search.cpp
+@@ -1,3 +1,5 @@
++// XFAIL: exherbo
++
+ // General tests that the header search paths detected by the driver and passed
+ // to CC1 are sane.
+ //
+diff --git a/clang/test/Driver/linux-ld.c b/clang/test/Driver/linux-ld.c
+index 51227550b52..9026a582dee 100644
+--- a/clang/test/Driver/linux-ld.c
++++ b/clang/test/Driver/linux-ld.c
+@@ -1,3 +1,5 @@
++// XFAIL: exherbo
++
+ // General tests that ld invocations on Linux targets sane. Note that we use
+ // sysroot to make these tests independent of the host system.
+ //
+diff --git a/clang/test/Driver/mips-cs.cpp b/clang/test/Driver/mips-cs.cpp
+index 6ef4c5d4350..7b2e89919f1 100644
+--- a/clang/test/Driver/mips-cs.cpp
++++ b/clang/test/Driver/mips-cs.cpp
+@@ -1,4 +1,5 @@
+ // REQUIRES: mips-registered-target
++// XFAIL: exherbo
+ //
+ // Check frontend and linker invocations on Mentor Graphics MIPS toolchain.
+ //
+diff --git a/clang/test/lit.cfg.py b/clang/test/lit.cfg.py
+index da1b06fb5d5..a23399ebb36 100644
+--- a/clang/test/lit.cfg.py
++++ b/clang/test/lit.cfg.py
+@@ -191,5 +191,8 @@ if macOSSDKVersion is not None:
+ if os.path.exists('/etc/gentoo-release'):
+     config.available_features.add('gentoo')
+ 
++if os.path.exists('/etc/exherbo-release'):
++    config.available_features.add('exherbo')
++
+ if config.enable_shared:
+     config.available_features.add("enable_shared")
+-- 
+2.25.1
+

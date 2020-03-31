@@ -1,0 +1,27 @@
+From f95b027a455fa136d0f9eb3f9e06d84bd9ebebb4 Mon Sep 17 00:00:00 2001
+From: Marvin Schmidt <marv@exherbo.org>
+Date: Sun, 15 Mar 2020 14:46:03 +0100
+Subject: [PATCH] Correctly link against LLVMTestingSupport
+
+---
+ clang/unittests/AST/CMakeLists.txt | 6 +++++-
+ 1 file changed, 5 insertions(+), 1 deletion(-)
+
+diff --git a/clang/unittests/AST/CMakeLists.txt b/clang/unittests/AST/CMakeLists.txt
+index b738ce08d06..cb24d5be79d 100644
+--- a/clang/unittests/AST/CMakeLists.txt
++++ b/clang/unittests/AST/CMakeLists.txt
+@@ -42,5 +42,9 @@ clang_target_link_libraries(ASTTests
+   clangFrontend
+   clangSerialization
+   clangTooling
+-  LLVMTestingSupport
+   )
++
++target_link_libraries(ASTTests
++  PRIVATE
++  LLVMTestingSupport
++)
+-- 
+2.25.1
+
