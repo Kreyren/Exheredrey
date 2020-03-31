@@ -161,9 +161,14 @@ clang_src_prepare() {
 	edo rm test/Headers/{arm-fp16-header.c,arm-neon-header.c}
 
 	# Fails because we explicitely specify the default unwindlib
-	if [ -f test/Driver/compiler-rt-unwind.c ]; then
-		edo rm test/Driver/compiler-rt-unwind.c
-		fi
+	# Kreyren: This may not be present on 8.0.1-r3, See https://gitlab.exherbo.org/exherbo/arbor/-/merge_requests/1211
+	if [ -f "$(pwd)/test/Driver/compiler-rt-unwind.c" ]; then
+		rm "$(pwd)/test/Driver/compiler-rt-unwind.c" || die 1 "Unable to remove file test/Driver/compiler-rt-unwind.c"
+	elif [ ! -f "$(pwd)/test/Driver/compiler-rt-unwind.c" ]; then
+		ewarn "File $(pwd)/test/Driver/compiler-rt-unwind.c does not exist on this version, no need to remove it"
+	else
+		die 256 "Unexpected happend while processing '$(pwd)/test/Driver/compiler-rt-unwind.c'"
+	fi
 
 	# The build system doesn't pick up that LLVM has zlib support when doing a standalone build
 	edo rm test/Driver/nozlibcompress.c
