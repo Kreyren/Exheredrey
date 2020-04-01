@@ -1,0 +1,21 @@
+# Copyright 2013-2017 Marc-Antoine Perennou <Marc-Antoine@Perennou.com>
+# Copyright 2020 Jacob Hrbek <kreyren@rixotstudio.cz>
+# Distributed under the terms of the GNU General Public License v2
+
+# shellcheck shell=bash # Paludis does not expect shebang
+
+# Get these from src/stage0.txt
+require rust-build [ date=2020-02-27 rustc_required=1.41.1 bootstrap_cargo=0.42.0 llvm_slot=9 importance=1000 ]
+
+# shellcheck disable=SC2034 # Metadata for paludis
+PLATFORMS="~amd64"
+# shellcheck disable=SC2034 # Metadata for paludis
+SLOT="stable"
+
+# shellcheck disable=SC2034 # Metadata for paludis
+DOWNLOADS="https://static.rust-lang.org/dist/${MY_PNV}.tar.xz"
+
+# shellcheck disable=SC2034 # Metadata for paludis
+DEFAULT_SRC_PREPARE_PATCHES=(
+	"${FILES}"/rust-1.27.0-musl-don-t-default-to-static-linking.patch
+)

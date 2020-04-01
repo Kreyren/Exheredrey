@@ -1,0 +1,68 @@
+# Copyright 2013-2017 Marc-Antoine Perennou <Marc-Antoine@Perennou.com>
+# Copyright 2020 Jacob Hrbek <kreyren@rixotstudio.cz>
+# Distributed under the terms of the GNU General Public License v2
+
+# shellcheck shell=bash # Paludis does not expect shebang
+
+# shellcheck disable=SC2034 # Metadata for paludis
+SCM_SECONDARY_REPOSITORIES="
+	book
+	cargo
+	clippy
+	edition_guide
+	embedded_book
+	llvm_project
+	miri
+	nomicon
+	reference
+	rls
+	rustfmt
+	rust_by_example
+	rust_installer
+	rustc_guide
+	stdarch
+"
+SCM_book_REPOSITORY="https://github.com/rust-lang/book.git"
+SCM_cargo_REPOSITORY="https://github.com/rust-lang/cargo.git"
+SCM_clippy_REPOSITORY="https://github.com/rust-lang/rust-clippy.git"
+SCM_edition_guide_REPOSITORY="https://github.com/rust-lang/edition-guide"
+SCM_embedded_book_REPOSITORY="https://github.com/rust-embedded/book.git"
+SCM_llvm_project_REPOSITORY="https://github.com/rust-lang/llvm-project.git"
+SCM_miri_REPOSITORY="https://github.com/rust-lang/miri.git"
+SCM_nomicon_REPOSITORY="https://github.com/rust-lang/nomicon.git"
+SCM_reference_REPOSITORY="https://github.com/rust-lang/reference.git"
+SCM_rls_REPOSITORY="https://github.com/rust-lang/rls.git"
+SCM_rustfmt_REPOSITORY="https://github.com/rust-lang/rustfmt.git"
+SCM_rust_by_example_REPOSITORY="https://github.com/rust-lang/rust-by-example.git"
+SCM_rust_installer_REPOSITORY="https://github.com/rust-lang/rust-installer.git"
+SCM_rustc_guide_REPOSITORY="https://github.com/rust-lang/rustc-guide.git"
+SCM_stdarch_REPOSITORY="https://github.com/rust-lang/stdarch.git"
+SCM_EXTERNAL_REFS="
+	src/doc/book:book
+	src/doc/edition-guide:edition_guide
+	src/doc/embedded-book:embedded_book
+	src/doc/rustc-guide:rustc_guide
+	src/tools/cargo:cargo
+	src/tools/clippy:clippy
+	src/llvm-project:llvm_project
+	src/tools/miri:miri
+	src/doc/nomicon:nomicon
+	src/doc/reference:reference
+	src/doc/rust-by-example:rust_by_example
+	src/tools/rls:rls
+	src/tools/rustfmt:rustfmt
+	src/tools/rust-installer:rust_installer
+	src/stdarch:stdarch
+"
+
+require github [ user=rust-lang ]
+
+# Get these from src/stage0.txt
+require rust-build [ date=2020-03-12 rustc_required=1.43.0 bootstrap_rustc=beta bootstrap_rustfmt=nightly rustfmt_date=2020-01-31 llvm_slot=10 importance=100 ]
+
+PLATFORMS="~amd64"
+SLOT="nightly"
+
+DEFAULT_SRC_PREPARE_PATCHES=(
+	"${FILES}"/rust-1.27.0-musl-don-t-default-to-static-linking.patch
+)

@@ -1,0 +1,30 @@
+Upstream: no
+Reason: Upstream's musl targets default to crt-static for historical
+        reasons, but we want to use shared libraries in system packages
+        by default.
+
+From fdce04df0c0b1029fe1665ea37cdb4817fc4f711 Mon Sep 17 00:00:00 2001
+From: Johannes Nixdorf <mixi@exherbo.org>
+Date: Fri, 22 Jun 2018 18:42:20 +0200
+Subject: [PATCH] musl: don't default to static linking
+
+---
+ src/librustc_target/spec/linux_musl_base.rs | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/src/librustc_target/spec/linux_musl_base.rs b/src/librustc_target/spec/linux_musl_base.rs
+index 4594d450c1..332aaa4606 100644
+--- a/src/librustc_target/spec/linux_musl_base.rs
++++ b/src/librustc_target/spec/linux_musl_base.rs
+@@ -63,7 +63,7 @@ pub fn opts() -> TargetOptions {
+     base.post_link_objects_crt.push("crtn.o".to_string());
+ 
+     // These targets statically link libc by default
+-    base.crt_static_default = true;
++    base.crt_static_default = false;
+     // These targets allow the user to choose between static and dynamic linking.
+     base.crt_static_respected = true;
+ 
+-- 
+2.17.1
+

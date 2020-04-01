@@ -1,0 +1,488 @@
+# Copyright 2013-2017 Marc-Antoine Perennou <Marc-Antoine@Perennou.com>
+# Copyright 2020 Jacob Hrbek <kreyren@rixotstudio.cz>
+# Distributed under the terms of the GNU General Public License v2
+
+# shellcheck shell=bash # Required to set since paludis does not expect shebang
+
+# Get these from src/stage0.txt
+myexparam date=
+exparam -v RUST_DATE date
+myexparam rustc_required=
+exparam -v RUSTC_REQUIRED rustc_required
+myexparam bootstrap_rustc=${RUSTC_REQUIRED}
+exparam -v BOOTSTRAP_RUSTC bootstrap_rustc
+myexparam bootstrap_cargo=${BOOTSTRAP_RUSTC}
+exparam -v BOOTSTRAP_CARGO bootstrap_cargo
+if ever at_least scm; then
+	myexparam bootstrap_rustfmt
+	exparam -v BOOTSTRAP_RUSTFMT bootstrap_rustfmt
+	myexparam rustfmt_date=${RUST_DATE}
+	exparam -v RUSTFMT_DATE rustfmt_date
+fi
+myexparam llvm_slot=
+exparam -v LLVM_SLOT llvm_slot
+myexparam importance=
+exparam -v IMPORTANCE importance
+myexparam -b dev=false
+
+require bash-completion flag-o-matic cargo alternatives toolchain-funcs
+
+export_exlib_phases src_fetch_extra src_unpack src_prepare src_configure src_compile src_install
+
+CROSS_COMPILE_TARGETS=(
+	"i686-pc-linux-gnu"
+	"i686-pc-linux-musl"
+	"x86_64-pc-linux-gnu"
+	"x86_64-pc-linux-musl"
+)
+
+RUST_HOST="$(exhost --build)"
+RUST_HOST="${RUST_HOST/pc/unknown}"
+
+if ever is_scm; then
+	MY_PNV="${PNV}"
+else
+	MY_PNV="${PN}c-${PV}-src"
+fi
+
+RUSTC_SNAPSHOT="${PN}c-${BOOTSTRAP_RUSTC}-${RUST_HOST}"
+STD_SNAPSHOT="${PN}-std-${BOOTSTRAP_RUSTC}-${RUST_HOST}"
+CARGO_SNAPSHOT="cargo-${BOOTSTRAP_CARGO}-${RUST_HOST}"
+if ever at_least scm; then
+	RUSTFMT_SNAPSHOT="rustfmt-${BOOTSTRAP_RUSTFMT}-${RUST_HOST}"
+fi
+
+BOOTSTRAP_SNAPSHOTS=(
+	"${RUSTC_SNAPSHOT}"
+	"${STD_SNAPSHOT}"
+	"${CARGO_SNAPSHOT}"
+)
+
+# shellcheck disable=SC2034 # Metadata for paludis
+SUMMARY="A safe, concurrent, practical language"
+# shellcheck disable=SC2034 # Metadata for paludis
+DESCRIPTION="
+Rust is a curly-brace, block-structured expression language. It visually resembles the C language
+family, but differs significantly in syntactic and semantic details. Its design is oriented toward
+concerns of \"programming in the large\", that is, of creating and maintaining boundaries – both
+abstract and operational – that preserve large-system integrity, availability and concurrency.
+"
+# shellcheck disable=SC2034 # Metadata for paludis
+HOMEPAGE="https://www.rust-lang.org/"
+# shellcheck disable=SC2034 # Metadata for paludis
+LICENCES="MIT Apache-2.0"
+# shellcheck disable=SC2034 # Metadata for paludis
+# shellcheck disable=SC2124 # FIXME-QA: Used in an array?
+MYOPTIONS="
+	disable-sanitizers [[ description = [ disable the sanitizers in case they fail to build ] ]]
+	doc
+	force-bootstrap [[ description = [ force boostrapping of rust in case autobootstrap doesn't work ] ]]
+	internal-llvm [[ description = [ statically link to the internal llvm instead of the system one ] ]]
+	( targets: ${CROSS_COMPILE_TARGETS[@]} ) [[ number-selected = at-least-one ]]
+	( providers: libressl openssl ) [[ number-selected = exactly-one ]]
+	( providers: libc++ libstdc++ ) [[ number-selected = exactly-one ]]
+	( libc: musl )
+"
+
+# shellcheck disable=SC2034 # Metadata for paludis
+DEPENDENCIES="
+	build:
+		dev-lang/python:*
+		sys-devel/cmake [[ description = [ for sanitizers (and llvm) ] ]]
+		sys-devel/make[>=3.82]
+		sys-devel/ninja [[ description = [ for sanitizers (and llvm) ] ]]
+	build+run:
+		!internal-llvm? ( dev-lang/llvm:${LLVM_SLOT} )
+		providers:libc++? ( sys-libs/libc++ )
+		providers:libressl? ( dev-libs/libressl:= )
+		providers:libstdc++? ( sys-libs/libstdc++:* )
+		providers:openssl? ( dev-libs/openssl )
+"
+
+WORK="${WORKBASE}/${MY_PNV}"
+
+# Tests need gdb which does not work under sydbox
+# shellcheck disable=SC2034 # Metadata for paludis
+RESTRICT="test"
+
+# How to generate patches for new libressl versions:
+# $ cargo update -p openssl-sys && cargo update -p openssl
+
+rust-build_get_bootstrap_slot() {
+	local candidates=()
+	local s
+
+	if ever is_scm; then
+		# don't fail if repo has never been cloned or we are installing from pbin
+		_rev="$(nonfatal scm_call revision)"
+			local _rev
+		if [[ -n ${_rev} ]] && [[ -x /usr/host/bin/rustc-${SLOT}-${_rev} ]]; then
+			echo ${SLOT}
+			return
+		fi
+	fi
+
+	[[ ${SLOT} == beta ]]	&& candidates+=(beta)
+	[[ ${SLOT} == nightly ]] || candidates+=(stable)
+
+	for s in "${candidates[@]}"; do
+		if has_version "dev-lang/rust:${s}[>=${RUSTC_REQUIRED}]"; then
+			echo ${s}
+			return
+		fi
+	done
+}
+
+rust-build_has_build_deps() {
+	s=$(rust-build_get_bootstrap_slot)
+	local s
+
+	! option force-bootstrap && [[ -n ${s} ]]
+}
+
+rust-build_src_fetch_extra() {
+	if ever is_scm; then
+		scm_src_fetch_extra
+	else
+		default
+	fi
+
+	if ! rust-build_has_build_deps; then
+		local static_host="https://static.rust-lang.org"
+		local old_path="${PATH}"
+		local snap
+		for path in "${PALUDIS_FETCHERS_DIRS[@]}";do
+			export PATH="${PATH}:${path}"
+		done
+		exparam -b dev && static_host="https://dev-static.rust-lang.org"
+
+		for snap in "${BOOTSTRAP_SNAPSHOTS[@]}"; do
+			if [[ ! -f "${FETCHEDDIR}/${snap}-${RUST_DATE}.tar.xz" ]]; then
+				dohttps "${static_host}/dist/${RUST_DATE}/${snap}.tar.xz" "${FETCHEDDIR}/${snap}-${RUST_DATE}.tar.xz"
+			fi
+		done
+
+		if ever at_least scm; then
+			if [[ ! -f "${FETCHEDDIR}/${RUSTFMT_SNAPSHOT}-${RUSTFMT_DATE}.tar.xz" ]]; then
+				dohttps "${static_host}/dist/${RUSTFMT_DATE}/${RUSTFMT_SNAPSHOT}.tar.xz" "${FETCHEDDIR}/${RUSTFMT_SNAPSHOT}-${RUSTFMT_DATE}.tar.xz"
+			fi
+		fi
+
+		export PATH="${old_path}"
+	fi
+}
+
+rust-build_src_unpack() {
+	local snap
+	local bootstrap_rust_libdir
+
+	if ! rust-build_has_build_deps; then
+		for snap in "${BOOTSTRAP_SNAPSHOTS[@]}"; do
+			unpack ${snap}-${RUST_DATE}.tar.xz
+		done
+		export RUSTC="${WORKBASE}"/${RUSTC_SNAPSHOT}/rustc/bin/rustc
+		export CARGO="${WORKBASE}"/${CARGO_SNAPSHOT}/cargo/bin/cargo
+		if ever at_least scm; then
+			unpack ${RUSTFMT_SNAPSHOT}-${RUSTFMT_DATE}.tar.xz
+			export RUSTFMT="${WORKBASE}"/${RUSTFMT_SNAPSHOT}/rustfmt-preview/bin/rustfmt
+		fi
+		bootstrap_rust_libdir="${WORKBASE}"/${RUSTC_SNAPSHOT}/rustc/lib
+	fi
+
+	if ever is_scm; then
+		scm_src_unpack
+	else
+		default
+	fi
+
+	edo cd "${WORK}"/src
+	# We need to define RUSTC_BOOTSTRAP as rustc can use unstable cargo features
+	RUSTC_BOOTSTRAP=1 LD_LIBRARY_PATH="${bootstrap_rust_libdir}" ecargo_fetch
+}
+
+rust-build_src_prepare() {
+	local stamp
+
+	if ! rust-build_has_build_deps; then
+		edo mkdir -p build/${RUST_HOST}
+		edo ln -s "${WORKBASE}"/${RUSTC_SNAPSHOT}/rustc build/${RUST_HOST}/stage0
+		edo ln -s "${WORKBASE}"/${STD_SNAPSHOT}/rust-std-${RUST_HOST}/lib/rustlib/${RUST_HOST}/lib/* build/${RUST_HOST}/stage0/lib/rustlib/${RUST_HOST}/lib/
+		for stamp in rustc cargo; do
+			echo -n "${RUST_DATE}" > build/${RUST_HOST}/stage0/.${stamp}-stamp
+		done
+		if ever at_least scm; then
+			echo -n "${RUST_DATE}${BOOTSTRAP_RUSTFMT}-${RUSTFMT_DATE}" > build/${RUST_HOST}/stage0/.rustfmt-stamp
+		fi
+	fi
+
+	# We fill config.toml with all the recent config keys, so don't fail o them on older versions
+	edo sed -e 's/deny_unknown_fields,//' -i src/bootstrap/config.rs
+
+	default
+}
+
+rust-build_rust_targets() {
+	local target
+	local rust_targets=""
+
+	for target in "${CROSS_COMPILE_TARGETS[@]}"; do
+		if option targets:${target}; then
+			[[ -n "${rust_targets}" ]] && rust_targets+=","
+			rust_targets+="\"${target/pc/unknown}\""
+		fi
+	done
+
+	echo "${rust_targets}"
+}
+
+rust-build_target_config() {
+	local target="${1}"
+	local rust_target="${target/pc/unknown}"
+
+	cat << EOF
+[target.${rust_target}]
+cc = "/usr/host/bin/${target}-cc"
+cxx = "/usr/host/bin/${target}-c++"
+ar = "/usr/host/bin/${target}-ar"
+ranlib = "/usr/host/bin/${target}-ranlib"
+linker = "/usr/host/bin/${target}-cc"
+$(option !internal-llvm "llvm-config = \"/usr/${target}/lib/llvm/${LLVM_SLOT}/bin/llvm-config\"")
+$(option !internal-llvm "llvm-filecheck = \"/usr/${target}/lib/llvm/${LLVM_SLOT}/bin/FileCheck\"")
+# jemalloc = let rust handle this
+# android-ndk = this has no use to us
+crt-static = false
+$([[ "${target}" == *-musl ]] && echo "musl-root = \"/usr/${target}\"")
+# wasi-root = this has no use to us
+# qemu-rootfs = this has no use to us
+EOF
+}
+
+rust-build_targets_config() {
+	local target
+
+	for target in "${CROSS_COMPILE_TARGETS[@]}"; do
+		option targets:${target} && rust-build_target_config "${target}"
+	done
+}
+
+rust-build_src_configure() {
+	build=$(exhost --build)
+	build=${build/pc/unknown}
+	local build
+
+	target=$(exhost --target)
+	target=${target/pc/unknown}
+	local target
+
+	bootstrap_slot=$(rust-build_get_bootstrap_slot)
+	local bootstrap_slot
+
+	# Last checked commit: e5e8ba4edc435c9f87314b23a6c5d9c175bdf19c
+	cat > config.toml << EOF
+[llvm]
+skip-rebuild = false
+optimize = true
+thin-lto = false
+release-debuginfo = false
+assertions = false
+ccache = false
+version-check = false
+static-libstdcpp = false
+ninja = true
+# targets = let rust handle this
+# experimental-targets = let rust handle this
+link-jobs = 0
+link-shared = false
+version-suffix = "-rust-${SLOT}"
+# clang-cl = "/usr/host/bin/clang-cl"
+cflags = "$(print-build-flags CFLAGS)"
+cxxflags = "$(print-build-flags CXXFLAGS)"
+ldflags = "$(print-build-flags LDFLAGS)"
+use-libcxx = $(option providers:libc++ true false)
+# use-linker = "lld"
+allow-old-toolchain = false
+[build]
+build = "${build}"
+host = ["${target}"]
+target = [$(rust-build_rust_targets)]
+cargo = "${CARGO:-/usr/host/bin/cargo-${bootstrap_slot:-${SLOT}}}"
+rustc = "${RUSTC:-/usr/host/bin/rustc-${bootstrap_slot:-${SLOT}}}"
+rustfmt = "${RUSTFMT:-/usr/host/bin/rustfmt-${bootstrap_slot:-${SLOT}}}"
+docs = $(option doc true false)
+compiler-docs = false
+submodules = false
+fast-submodules = false
+# gdb = only needed for tests, fail under sydbox
+# nodejs = only needed for emscriptem
+# python = let it use the system python
+locked-deps = true
+vendor = false
+full-bootstrap = false
+extended = true
+# tools = build all tools
+verbose = 2
+sanitizers = $(option disable-sanitizers false true)
+cargo-native-static = false
+low-priority = false
+# configure-args = this has no use to us
+# local-rebuild = let rust autodetect this
+# print-step-timings = this has no use to us
+[install]
+prefix = "/usr/$(exhost --target)"
+sysconfdir = "/etc"
+docdir = "/usr/share/doc/${PNVR}"
+bindir = "/usr/$(exhost --target)/bin"
+libdir = "/usr/$(exhost --target)/lib"
+mandir = "/usr/share/man"
+datadir = "/usr/share"
+infodir = "/usr/share/info"
+localstatedir = "/var/lib"
+[rust]
+debug = false
+optimize = true
+codegen-units = 16
+codegen-units-std = 1
+debug-assertions = false
+debuginfo-level = 0
+debuginfo-level-rustc = 0
+debuginfo-level-std = 0
+debuginfo-level-tools = 0
+debuginfo-level-tests = 0
+backtrace = true
+incremental = false
+parallel-compiler = true
+default-linker = "$(exhost --tool-prefix)cc"
+channel = "${SLOT}"
+$([[ "${target}" == *-musl ]] && echo "musl-root = \"/usr/${build}\"")
+rpath = false
+verbose-tests = true
+optimize-tests = true
+codegen-tests = true
+ignore-git = false
+dist-src = false
+# save-toolstates = we don't need that
+# FIXME: drop codegen-backends-dir once 1.42 is out
+codegen-backends-dir = "codegen-${SLOT}-backends"
+codegen-backends = ["llvm"]
+lld = false # file conflict between slots
+use-lld = false # overriden by target config anyways
+llvm-tools = false # file conflict between slots
+lldb = false # file conflict between slots
+deny-warnings = false
+backtrace-on-ice = false
+verify-llvm-ir = false
+# thin-lto-import-instr-limit = let rust handle this
+remap-debuginfo = true
+jemalloc = $(libc-is-musl && echo false || echo true)
+test-compare-mode = false
+llvm-libunwind = true
+# control-flow-guard = this is windows only
+$(rust-build_targets_config)
+[dist]
+src-tarball = false
+missing-tools = $(ever at_least scm && echo true || echo false)
+EOF
+
+	cargo_src_configure
+}
+
+rust-build_unset_env() {
+	# The build system tries to use sudo when SUDO_USER is set
+	# jemalloc cross compilation fails when CPP is set
+	unset SUDO_USER CPP
+}
+
+rust-build_src_compile() {
+	rust-build_unset_env
+	esandbox allow "${CARGO_HOME}"
+	edo ./x.py dist
+	esandbox disallow "${CARGO_HOME}"
+}
+
+rust-build_src_install() {
+	rust-build_unset_env
+	esandbox allow "${CARGO_HOME}"
+	DESTDIR="${IMAGE}" edo ./x.py install
+	esandbox disallow "${CARGO_HOME}"
+
+	if option bash-completion; then
+		for comp in "${IMAGE}"/etc/bash_completion.d/*; do
+			dobashcompletion "${comp}"
+		done
+	fi
+	edo rm -r "${IMAGE}"/etc/bash_completion.d
+
+	local target
+	local alternatives=()
+	local rustlib_alt_files=(
+		components
+		install.log
+		rust-installer-version
+		uninstall.sh
+	)
+	rustlibdir=/usr/$(exhost --target)/lib/rustlib
+	local rustlibdir
+	alt_dirs=(
+		"${BASHCOMPLETIONDIR}"
+		/usr/share/zsh/site-functions
+		"/usr/$(exhost --target)/bin"
+		"${rustlibdir}/etc"
+		"${rustlibdir}/src"
+	)
+	local alt_dirs
+	local dir
+	local f
+
+	edo pushd "${IMAGE}${rustlibdir}"
+	for f in "${rustlib_alt_files[@]}" manifest-*; do
+		alternatives+=(
+			"${rustlibdir}/${f}"
+			"$(basename ${f} | sed -re 's/^([^-]*)(-?.*)$/\1-'${SLOT}'\2/')"
+		)
+	done
+	edo popd
+	for dir in "${alt_dirs[@]}"; do
+		[[ -d "${IMAGE}${dir}/" ]] || continue
+		edo pushd "${IMAGE}${dir}"
+		for f in *; do
+			alternatives+=(
+				"${dir}/${f}"
+				"$(echo ${f} | sed -re 's/^([^-]*)(-?.*)$/\1-'${SLOT}'\2/')"
+			)
+		done
+		edo popd
+	done
+	edo pushd "${IMAGE}usr/share/man/man1"
+	for f in *; do
+		alternatives+=(
+			"/usr/share/man/man1/${f}"
+			"$(echo ${f} | sed -re 's/^([^-]*)(-?.*).1$/\1-'${SLOT}'\2.1/')"
+		)
+	done
+	edo popd
+
+	for target in "${CROSS_COMPILE_TARGETS[@]}"; do
+		if option targets:${target}; then
+			herebin ${target}-rustc << EOF
+#!/usr/bin/env sh
+exec /usr/$(exhost --target)/bin/rustc-${SLOT} --target "${target/pc/unknown}" -C "linker=${target}-cc" "\${@}"
+EOF
+			alternatives+=( "/usr/$(exhost --target)/bin/${target}-rustc"{,-${SLOT}} )
+		fi
+	done
+
+	alternatives_for ${PN} ${SLOT} ${IMPORTANCE} "${alternatives[@]}"
+
+	if ever is_scm; then
+		local bin
+		bindir="/usr/$(exhost --target)/bin"
+		local bindir
+		revision=$(scm_call revision)
+		local revision
+		edo pushd "${IMAGE}${bindir}"
+		for bin in *-${SLOT}; do
+			dosym ${bin} ${bindir}/${bin}-${revision}
+		done
+		edo popd
+	fi
+}
