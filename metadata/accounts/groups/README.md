@@ -1,0 +1,1 @@
+Directory used to define userland user groups by paludis

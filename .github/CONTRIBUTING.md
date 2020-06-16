@@ -1,0 +1,3 @@
+# Contributing guideliness
+
+FIXME-DOCS
