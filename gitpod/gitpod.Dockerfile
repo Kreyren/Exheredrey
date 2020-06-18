@@ -29,3 +29,8 @@ RUN true \
 # Linting tool for dockerfile linting
 RUN true \
 	&& brew install hadolint
+
+# Set proper ownership of /dev/tty required for paludis
+## Gitpod expects us to use sudo here
+# hadolint ignore=DL3004
+RUN sudo chown root:tty /dev/tty

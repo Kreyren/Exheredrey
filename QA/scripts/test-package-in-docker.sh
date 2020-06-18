@@ -65,6 +65,11 @@
 [ -z "$DIE_FORMAT_STRING_LOG" ] && DIE_FORMAT_STRING_LOG="${logPath}FATAL: %s in script '$myName' located at '$0'\\n"
 [ -z "$DIE_FORMAT_STRING_DEBUG" ] && DIE_FORMAT_STRING_DEBUG="FATAL($myName:$lineNum): %s\n"
 [ -z "$DIE_FORMAT_STRING_DEBUG_LOG" ] && DIE_FORMAT_STRING_DEBUG_LOG="${logPrefix}FATAL($myName:$1): %s\\n"
+### Succees trap
+[ -z "$DIE_FORMAT_STRING_SUCCESS" ] && DIE_FORMAT_STRING_SUCCESS="SUCCESS: %s\\n"
+[ -z "$DIE_FORMAT_STRING_SUCCESS_LOG" ] && DIE_FORMAT_STRING_SUCCESS_LOG="${logPrefix}SUCCESS: %s\\n"
+[ -z "$DIE_FORMAT_STRING_SUCCESS_DEBUG" ] && DIE_FORMAT_STRING_SUCCESS_DEBUG="SUCCESS($myName:$lineNum): %s\\n"
+[ -z "$DIE_FORMAT_STRING_SUCCESS_DEBUG_LOG" ] && DIE_FORMAT_STRING_SUCCESS_DEBUG_LOG="${logPrefix}SUCCESS($myName:$lineNum): %s\\n"
 ### Fixme trap
 [ -z "$DIE_FORMAT_STRING_FIXME" ] && DIE_FORMAT_STRING_FIXME="FATAL: %s in script '$myName' located at '$0', fixme?\n"
 [ -z "$DIE_FORMAT_STRING_FIXME_LOG" ] && DIE_FORMAT_STRING_FIXME_LOG="${logPrefix}FATAL: %s, fixme?\n"
@@ -82,6 +87,9 @@ set -e
 # NOTICE(Krey): By default busybox outputs a full path in '$0' this is used to strip it
 myName="${0##*/}"
 
+# NOTICE(Krey): efixme is not sourced here yet
+printf '%s\n' "Outputs 'QA/scripts/test-package-in-docker.sh: line 92: can't create /home/gitpod/.local/share/test-package-in-docker.log: nonexistent directory' on systems without '$HOME/.local/share', requires those to be created"
+
 # Used to prefix logs with timestemps, uses ISO 8601 by default
 logPrefix="[ $(date -u +"%Y-%m-%dT%H:%M:%SZ") ] "
 # Path to which we will save logs
@@ -94,6 +102,22 @@ logPath="${XDG_DATA_HOME:-$HOME/.local/share}/${myName%%.sh}.log"
 # NOTICE(Krey): Aliases are required for posix-compatible line output (https://gist.github.com/Kreyren/4fc76d929efbea1bc874760e7f78c810)
 die() { funcname=die
 	case "$2" in
+		0|success)
+			if [ "$DEBUG" = 0 ] || [ -z "$DEBUG" ]; then
+				"$PRINTF" "$DIE_FORMAT_STRING_SUCCESS" "$3"
+				"$PRINTF" "$DIE_FORMAT_STRING_SUCCESS_LOG" "$3" >> "$logPath"
+				funcname="$myName"
+			elif [ "$DEBUG" = 1 ]; then
+				"$PRINTF" "$DIE_FORMAT_STRING_SUCCESS_DEBUG" "$3"
+				"$PRINTF" "$DIE_FORMAT_STRING_SUCCESS_DEBUG_LOG" "$3" >> "$logPath"
+				funcname="$myName"
+			else
+				# NOTICE(Krey): Do not use die() here
+				"$PRINTF" 'FATAL: %s\n' "Unexpected happend while processing variable DEBUG with value '$DEBUG' in $funcname"
+			fi
+
+			exit 0
+		;;
 		38|fixme) # FIXME
 			if [ "$DEBUG" = 0 ] || [ -z "$DEBUG" ]; then
 				"$PRINTF" "$DIE_FORMAT_STRING_FIXME" "$3"
@@ -232,7 +256,7 @@ efixme() { funcname=efixme
 	fi
 }; alias efixme='efixme "$LINENO"'
 
-edebug "Resolving root on user with ID '$(id -u)"
+edebug "Resolving root on user with ID '$(id -u)'"
 if [ "$(id -u)" = 0 ]; then
 	edebug "Script has been executed as user with ID 0, assuming root"	
 	funcname="$myName"
@@ -312,26 +336,42 @@ fi
 while [ "$#" -ge 1 ]; do case "$1" in
 	quick-test)
 		case "$KERNEL/$DISTRO-$RELEASE" in
+			# NOTICE(Krey): Tested in gitpod
 			linux/ubuntu-focal)
 				if command -v docker 1>/dev/null; then
 					efixme "Replace exheredrey with repo name"
 					efixme "Outputs 'docker: Cannot connect to the Docker daemon at unix:///var/run/docker.sock. Is the docker daemon running?.' which requires to start docker deamon"
+					efixme "We need to change root:root for /dev/tty on root:tty for usage on gitpod"
 					einfo "Starting docker runtime.."
-					$elevateRoot docker run -v "$(pwd):/var/db/paludis/repositories/exheredrey" exherbo/exherbo-x86_64-pc-linux-gnu-base sh -c "true \
-						&& usermod -a -G tty paludisbuild \
+					efixme "Why is starting docker taking so long?"
+					efixme "Outputs 'Cannot verify that we have sufficient permissions to use PTYs properly using userpriv (user paludisbuild is not in group 0' which prevents rootless docker implementation if paludisbuild is not in root group"
+					# HOLD: -v "$(pwd):/var/db/paludis/repositories/exheredrey" 
+					$elevateRoot docker run exherbo/exherbo-x86_64-pc-linux-gnu-base sh -c "true \
+						&& usermod -a -G tty,root paludisbuild \
 						&& cave sync \
-						&& cave resolve vim -x" || die 1 "Docker"
-					die 0 "Finished as expected"
+						&& cave resolve app-editors/nano" || die 1 "Docker"
+					die 0 "Package (fixme_name) returned success after building"
 				else
 					die fixme "Unfinished"
-				fi
-
-				shift 1 ;;
+				fi ;;
 			*) die fixme "Kernel '$KERNEL', Distro '$DISTRO', release '$RELEASE' was not tested, dieing for safety"
 		esac
-	;;
+		shift 1 ;;
+	debug-env)
+		case "$KERNEL/$DISTRO-$RELEASE" in
+			# NOTICE(Krey): Tested in gitpod
+			linux/ubuntu-focal)
+				if command -v docker 1>/dev/null; then
+					$elevateRoot docker run -it scratch bash || die fixme "Docker"
+				else
+					die fixme "logic"
+				fi
+			;;
+			*) die fixme "Kernel '$KERNEL', Distro '$DISTRO', release '$RELEASE' was not tested, dieing for safety"
+			esac
+		shift 1 ;;
 	*) die 2 "Command '$1' is not recognized by $myName"
 esac; done
 
 # Used to capture sanitization
-eerror "Script escaped sanitization!"
+die 255 "Script escaped sanitization!"
