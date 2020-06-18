@@ -313,11 +313,15 @@ while [ "$#" -ge 1 ]; do case "$1" in
 	quick-test)
 		case "$KERNEL/$DISTRO-$RELEASE" in
 			linux/ubuntu-focal)
-				if command -v docker; then
+				if command -v docker 1>/dev/null; then
 					efixme "Replace exheredrey with repo name"
 					efixme "Outputs 'docker: Cannot connect to the Docker daemon at unix:///var/run/docker.sock. Is the docker daemon running?.' which requires to start docker deamon"
+					einfo "Starting docker runtime.."
 					$elevateRoot docker run -v "$(pwd):/var/db/paludis/repositories/exheredrey" exherbo/exherbo-x86_64-pc-linux-gnu-base sh -c "true \
-						&& echo success!" || die 1 "Docker"
+						&& usermod -a -G tty paludisbuild \
+						&& cave sync \
+						&& cave resolve vim -x" || die 1 "Docker"
+					die 0 "Finished as expected"
 				else
 					die fixme "Unfinished"
 				fi
