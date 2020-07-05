@@ -1,3 +1,5 @@
+# We need docker to test the packages on runtime
+
 image: gitpod/workspace-full:latest
 privileged: true
 github:
@@ -8,3 +10,8 @@ github:
     pullRequestsFromForks: true
     addLabel: gitpod-ready
     addComment: true
+tasks:
+  # Fix permissions to /dev/tty required for paludis
+  - before: sudo chown -R root:tty /dev/tty 
+  # Start dockerd
+  - before: sudo dockerd
