@@ -1,6 +1,7 @@
 # We need docker to test the packages on runtime
 
-image: gitpod/workspace-full:latest
+image: 
+  file: gitpod/gitpod.Dockerfile
 privileged: true
 github:
   prebuilds:
