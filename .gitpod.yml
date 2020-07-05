@@ -11,7 +11,5 @@ github:
     addLabel: gitpod-ready
     addComment: true
 tasks:
-  # Fix permissions to /dev/tty required for paludis
-  - before: sudo chown -R root:tty /dev/tty 
   # Start dockerd
   - before: sudo dockerd
